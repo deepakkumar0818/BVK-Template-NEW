@@ -1,0 +1,1966 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+/* Printed quotation: top inset on every sheet (theader spacer + goods continuation segments). Match A4 side inset (25mm). */
+:root {
+  --quotation-print-top-inset: 25mm;
+}
+
+/*
+ * Print page box — must be top-level (not inside @media print) or Chrome ignores it.
+ * margin: 0 = no browser-added margins (user can set "Margins: None" in print dialog too).
+ */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 210mm;
+  margin: 0 auto;
+  min-height: 100%;
+  height: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11px;
+  color: #000;
+  background: #fff;
+}
+
+/* Repeating <thead> spacer: hidden on screen, height set in @media print */
+.print-page-top-spacer {
+  display: none !important;
+}
+
+/* Screen-only: hide when printing */
+.no-print {
+  display: block;
+}
+
+/* Print header: hidden on screen, repeated on every printed page (when using fixed approach) */
+.print-header {
+  display: none;
+}
+
+/* Wrapper table for repeating header: thead hidden on screen */
+.print-doc-table thead {
+  display: none;
+}
+
+/* Header shown only on first page of quotation content */
+.quotation-content-section .screen-only-header {
+  display: block;
+}
+
+/* Show repeating header on screen */
+.quotation-content-section .repeating-header {
+  display: table-header-group;
+}
+
+/* Show repeating header on screen (Performa) */
+.performa-invoice-content-section .repeating-header {
+  display: table-header-group;
+}
+
+/* Quotation title styling */
+.quotation-title {
+  display: block;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  margin-top: 0;
+}
+
+/* Tighter title when used above seamless stack (less gap before consignee block) */
+.quotation-title--compact {
+  margin-bottom: 0 !important;
+}
+
+/* Performa Invoice title styling */
+.performa-invoice-title {
+  display: block;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  margin-top: 0;
+}
+
+.performa-invoice-title--compact {
+  margin-bottom: 0 !important;
+}
+
+/* Performa Invoice content section */
+.performa-invoice-content-section {
+  border: none;
+  outline: none;
+  box-shadow: none;
+  padding: 16px;
+  margin-bottom: 8px;
+  page-break-inside: avoid;
+}
+
+/* Standard Conditions: hidden on screen, shown when printing (after quotation) */
+.conditions-for-print {
+  display: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* WI seamless master table: spacer row only for print (fills A4 between goods and summary) */
+.quotation-master-body-row--print-spacer {
+  display: none;
+}
+
+/* Hide parent border in print for export template */
+@media print {
+  /* SLS: remove extra bottom padding so conditions follow immediately. */
+  .sls-quotation-container {
+    padding-bottom: 2mm !important;
+  }
+  /* SLS: reduce end-of-document whitespace so conditions follow immediately. */
+  .sls-signature-block {
+    margin-top: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .sls-company-footer {
+    margin-top: 10px !important;
+    padding-top: 8px !important;
+  }
+
+  /* Keep the content-to-conditions gap tight (2–3 lines). */
+  .conditions-for-print.conditions-for-print--sls {
+    margin-top: 0 !important;
+  }
+  .export-quotation-container {
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 10mm 5mm 10mm !important;
+  }
+
+  /* Prevent page breaks inside sections - move whole div to next page */
+  .export-section {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Prevent page breaks inside table rows for export template */
+  .export-quotation-container table tbody tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  html,
+  body,
+  main.quotation-doc {
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Page-level wrapper (does not force height when templates include extra pages e.g. conditions) */
+  .print-container {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Sides/bottom 25mm; top comes from --quotation-print-top-inset (thead spacer + continuation segments). */
+  .quotation-doc .print-container {
+    padding: 0 25mm 25mm 25mm !important;
+    box-sizing: border-box !important;
+  }
+
+  /* WMWD1: nudge printable area a few mm wider on the right (outer box / right border) */
+  .quotation-doc .print-container:has(.quotation-header-master-table--wmwd1) {
+    padding-right: 22mm !important;
+  }
+
+  .quotation-doc .print-container:has(.export-quotation-container),
+  .quotation-doc .print-container:has(.bvk-quotation-container),
+  .quotation-doc .print-container:has(.gkd-quotation-container),
+  .quotation-doc .print-container:has(.sls-quotation-container) {
+    padding: 0 !important;
+  }
+
+  /* WI quotation: natural document height — no forced A4 fill (avoids huge gap before summary when few rows) */
+  .quotation-print-sheet {
+    min-height: 0 !important;
+    height: auto !important;
+    box-sizing: border-box;
+    display: block !important;
+  }
+
+  .quotation-print-sheet > .print-content {
+    display: block !important;
+    margin-bottom: 0 !important;
+  }
+
+  .quotation-print-sheet .quotation-header-master-table {
+    width: 100%;
+    height: auto !important;
+    table-layout: fixed;
+  }
+
+  .quotation-master-body-row--print-spacer {
+    display: none !important;
+    height: 0 !important;
+    line-height: 0 !important;
+    visibility: hidden !important;
+  }
+
+  .quotation-master-body-row--print-spacer td.quotation-print-spacer-cell {
+    padding: 0 !important;
+    height: 0 !important;
+    border: none !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .print-footer {
+    margin-top: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* Page margins come from @page; avoid double inset from main padding */
+  .quotation-doc {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* Header should show only on first page of quotation content section */
+  .print-doc-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  .print-doc-table thead {
+    display: none !important;
+  }
+
+  .print-doc-table tbody tr td {
+    padding-top: 0 !important;
+  }
+
+  .print-header {
+    display: none !important;
+  }
+
+  /* WI quotation: no <table> wrapper borders (avoids PDF double lines + runaway verticals); cells only */
+  .quotation-content-section table,
+  .quotation-doc .quotation-content-section table,
+  .quotation-doc table.quotation-header-master-table {
+    border: none !important;
+  }
+
+  .quotation-doc table.quotation-header-master-table--wmwd1 .qh-supplier-footer__gstin-cin-line {
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  .quotation-content-section .repeating-header {
+    display: table-header-group !important;
+  }
+
+  .quotation-content-section .repeating-header tr {
+    display: table-row;
+  }
+
+  .quotation-content-section .repeating-header td {
+    display: table-cell;
+  }
+
+  /* Performa Invoice: allow header row to repeat on every printed page */
+  .performa-invoice-content-section .repeating-header {
+    display: table-header-group !important;
+  }
+
+  .performa-invoice-content-section .repeating-header tr {
+    display: table-row;
+  }
+
+  .performa-invoice-content-section .repeating-header td {
+    display: table-cell;
+  }
+
+  /* Hide header in conditions section */
+  .conditions-for-print .repeating-header,
+  .conditions-for-print .screen-only-header {
+    display: none !important;
+  }
+
+  /* Show header on screen */
+  .quotation-content-section .repeating-header {
+    display: table-header-group;
+  }
+
+  /* Quotation title - show only on first page in print */
+  .quotation-title {
+    display: block !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Performa Invoice title - show only on first page in print */
+  .performa-invoice-title {
+    display: block !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Hide title if it would appear on a page break */
+  .quotation-content-section {
+    position: relative;
+  }
+
+  /* Remove gap after repeated header: no top margin on first content in tbody */
+  .print-doc-table tbody td>*:first-child {
+    margin-top: 0 !important;
+  }
+
+  .conditions-for-print {
+    display: block !important;
+    padding-top: 12px;
+  }
+
+  /* Performa / goods total row: print once after line items, not on every continuation page */
+  .quotation-doc .goods-description-table>tfoot {
+    display: table-row-group !important;
+  }
+
+  /* Invoice footer once after quotation table (no per-page repeat) */
+  .quotation-doc .quotation-master-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Keep Remarks + DOC NO. with content above when possible to avoid a short page */
+  .quotation-doc table:last-of-type {
+    page-break-after: avoid;
+  }
+
+  /* Prevent sections from splitting across pages (Performa / generic) */
+  .quotation-content-section {
+    page-break-inside: avoid !important;
+    /* WI/Quotation: remove wrapper border to avoid double lines */
+    border: none !important;
+  }
+
+  .performa-invoice-content-section {
+    page-break-inside: avoid !important;
+    /* Outer wrapper border removed; main invoice table keeps visible border */
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Seamless quotation: allow tables to break across pages (dynamic line-item count) */
+  .quotation-content-section.quotation-content-section--seamless,
+  .performa-invoice-content-section.performa-invoice-content-section--seamless {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .quotation-doc .quotation-content-section.quotation-content-section--seamless>.quotation-header-master-table {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .quotation-doc .quotation-header-master-table>tbody>tr>td.quotation-seamless-stack {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Let body split across pages so master <thead> can repeat on continuation sheets (Chrome print) */
+  .quotation-doc .quotation-header-master-table>tbody>tr.quotation-master-body-row {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .quotation-doc .quotation-content-section .goods-description-table,
+  .quotation-doc .quotation-content-section .quotation-summary-block {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Keep each line item on one page; table still breaks between rows → fills sheet like reference PDF */
+  .quotation-doc .quotation-content-section .goods-description-table tbody tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Quotation title - show only on first page */
+  .quotation-title {
+    display: block !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Performa Invoice title - show only on first page */
+  .performa-invoice-title {
+    display: block !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Hide quotation/performa invoice title on subsequent pages */
+  .quotation-content-section:not(:first-of-type) .quotation-title,
+  .performa-invoice-content-section:not(:first-of-type) .performa-invoice-title {
+    display: none !important;
+  }
+
+  .conditions-for-print {
+    page-break-inside: avoid !important;
+    page-break-before: always !important;
+    /* Remove all borders in print */
+    border: none !important;
+  }
+
+  /* SLS: conditions should continue right after SLS content (no forced new page). */
+  .conditions-for-print.conditions-for-print--sls {
+    page-break-before: auto !important;
+    break-before: auto !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    /* Match SLS page content margins/padding (same visual gutter as sls-quotation-container). */
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 1mm 20mm 20mm 20mm !important;
+    box-sizing: border-box !important;
+  }
+
+  .quotation-doc .conditions-for-print h1 {
+    page-break-after: avoid;
+    page-break-before: avoid;
+  }
+
+  /* Only lock conditions tables; WI seamless quotation must split naturally */
+  .conditions-for-print table {
+    page-break-inside: avoid;
+  }
+
+  /* Non-seamless sections: keep single child blocks together. Seamless WI omits this (element has --seamless). */
+  .quotation-content-section:not(.quotation-content-section--seamless) > * {
+    page-break-inside: avoid;
+  }
+
+  /* Ensure Description Of Goods table headers are visible in print */
+  .goods-description-table thead {
+    display: table-header-group !important;
+  }
+
+  .goods-description-table thead th {
+    display: table-cell !important;
+    background-color: #f5f5f5 !important;
+    font-weight: bold !important;
+    border: 1px solid #000 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+  }
+
+  /* WMW line grid: compact spacing like reference PDF (not oversized screen padding) */
+  .quotation-doc .goods-description-table,
+  .performa-invoice-content-section .goods-description-table {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell {
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+    vertical-align: top;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell.text-right {
+    vertical-align: middle !important;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell[colspan='6'],
+  .goods-description-table tbody td.goods-description-table-body-cell[colspan='7'] {
+    padding: 20px 12px !important;
+  }
+
+  /* Line items use break-inside: avoid on rows; pagination fills each sheet naturally (no fixed N rows per page). */
+
+  .goods-description-table tbody tr:last-child td.goods-description-table-body-cell {
+    border-bottom: 1px solid #000 !important;
+  }
+
+  .goods-description-table tfoot td.goods-description-table-foot-cell {
+    border-top: 1px solid #000 !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+  }
+
+  /* Paginated goods (WI + Performa): 7 rows per sheet; optional fill padding on full pages */
+  .quotation-goods-pages-stack {
+    width: 100%;
+    margin: 0;
+  }
+
+  /*
+   * Continuation segments start a new sheet: use a full table frame like the first page.
+   * (Screen preview still uses seam rules in the non-print block below.)
+   */
+  /*
+   * Goods are split into segments with page-break-after; master <thead> often does not repeat
+   * when the break is inside the cell — restore the same top inset as page 1 (A4 / --quotation-print-top-inset).
+   */
+  .quotation-goods-pages-stack .quotation-goods-pages-break + .quotation-goods-pages-segment {
+    margin-top: 0 !important;
+    padding-top: var(--quotation-print-top-inset) !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Injected master thead already includes .print-page-top-spacer — avoid double top gap. */
+  .quotation-goods-pages-stack
+    .quotation-goods-pages-break
+    + .quotation-goods-pages-segment.quotation-goods-pages-segment--master-header-continuation {
+    padding-top: 0 !important;
+  }
+
+  .quotation-goods-pages-stack .quotation-goods-pages-break + .quotation-goods-pages-segment .goods-description-table {
+    border: 1px solid #000 !important;
+    border-top: 1px solid #000 !important;
+  }
+
+  .quotation-goods-pages-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  /* Continuation header: inside goods table thead so it reliably shows when table starts on new page. */
+  .quotation-continuation-header-row {
+    display: table-row !important;
+  }
+
+  .quotation-continuation-header-row td {
+    display: table-cell !important;
+    padding: 0 !important;
+    vertical-align: top !important;
+  }
+
+  .quotation-goods-continuation-inline {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .quotation-doc .goods-description-table .goods-description-table-desc-cell > div,
+  .performa-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div {
+    margin: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  .quotation-doc .goods-description-table .goods-description-table-desc-cell > div + div,
+  .performa-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div + div {
+    margin-top: 1px !important;
+  }
+
+  .quotation-content-section--seamless,
+  .performa-invoice-content-section--seamless {
+    padding: 0 !important;
+    margin-bottom: 8mm !important;
+  }
+
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-table {
+    margin: 0 !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment {
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-table,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-segment,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-table,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-segment,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-goods-pages-stack,
+  .quotation-doc .quotation-seamless-stack>.quotation-goods-pages-stack+.quotation-stack-table,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-amount-row,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-table+.amount-in-words.quotation-stack-amount-row,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-amount-row,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.amount-in-words.quotation-stack-amount-row {
+    margin-top: -1px !important;
+  }
+
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row+.quotation-stack-table,
+  .quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row+.quotation-stack-table,
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row+.quotation-stack-segment,
+  .quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row+.quotation-stack-segment {
+    margin-top: -1px !important;
+  }
+
+  .quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row,
+  .quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row {
+    border: 1px solid #000 !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Consignee / recipient — print: same compact rules + gray band */
+  .quotation-doc .quotation-address-pair {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+    border: 1px solid #000 !important;
+  }
+
+  .quotation-doc .quotation-address-pair__header {
+    background-color: #e9e9e9 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .quotation-doc .quotation-address-pair .quotation-address-state-grid {
+    border: none !important;
+  }
+
+  .quotation-doc .quotation-address-state-grid th,
+  .quotation-doc .quotation-address-state-grid td {
+    border: 1px solid #000 !important;
+    padding: 2px 5px !important;
+  }
+
+  .quotation-title--compact,
+  .performa-invoice-title--compact {
+    margin-bottom: 0 !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .quotation-header-td--title {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  .quotation-doc .quotation-summary-block>tbody>tr>td {
+    padding: 2px 4px !important;
+  }
+
+  .quotation-doc .quotation-summary-block .qs-cell--amount-words {
+    padding-top: 0 !important;
+    padding-bottom: 2px !important;
+  }
+
+  .quotation-doc .quotation-summary-block {
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+  }
+
+  .quotation-doc .quotation-summary-block .qs-notes-fill {
+    min-height: 0 !important;
+  }
+
+  .quotation-doc .quotation-summary-block .qs-notes-banner,
+  .quotation-doc .quotation-summary-block .qs-remarks-table__head,
+  .quotation-doc .quotation-a4-footer .qs-remarks-table__head {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* GKD Template - Repeating Header and Footer on every page */
+  .gkd-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 10mm 5mm 10mm !important;
+  }
+
+  .gkd-print-table {
+    border: none !important;
+  }
+
+  /* Show header and footer on every printed page including first */
+  .gkd-print-table thead.gkd-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .gkd-print-table tfoot.gkd-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .gkd-print-header-row td,
+  .gkd-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  /* Ensure header and footer appear on every page including first */
+  .gkd-print-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .gkd-print-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Force tfoot to display on first page */
+  .gkd-print-table {
+    border-collapse: collapse !important;
+  }
+
+  .gkd-print-table tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* Left-align signatory name in print */
+  .gkd-signatory-name {
+    text-align: left !important;
+  }
+
+  /* GKD proforma line table — borderless rows/columns; top rule on header row only */
+  .gkd-proforma-line-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border: none !important;
+    table-layout: fixed !important;
+    font-size: 11px !important;
+  }
+
+  .gkd-proforma-line-table thead th.gkd-pl-head {
+    border: none !important;
+    border-top: 1px solid #000 !important;
+    padding: 8px 6px !important;
+    font-weight: bold !important;
+    background-color: transparent !important;
+    vertical-align: bottom !important;
+  }
+
+  .gkd-proforma-line-table tbody td.gkd-pl-cell {
+    border: none !important;
+    padding: 8px 6px !important;
+    vertical-align: top !important;
+  }
+
+  .gkd-proforma-line-table .gkd-pl-item {
+    text-align: left !important;
+    width: 5% !important;
+  }
+
+  .gkd-proforma-line-table .gkd-pl-product {
+    text-align: left !important;
+    width: 50% !important;
+  }
+
+  .gkd-proforma-line-table .gkd-pl-num {
+    text-align: right !important;
+  }
+
+  .gkd-proforma-amount-words {
+    border-bottom: 2px solid #000 !important;
+  }
+
+  /* BVK Template - Repeating Header and Footer on every page */
+  .bvk-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 10mm 5mm 10mm !important;
+  }
+
+  .bvk-print-table {
+    border: none !important;
+  }
+
+  /* Show header and footer on every printed page */
+  .bvk-print-table thead.bvk-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .bvk-print-table tfoot.bvk-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .bvk-print-header-row td,
+  .bvk-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  /* Ensure header and footer appear on every page */
+  .bvk-print-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .bvk-print-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Force tfoot to display on first page */
+  .bvk-print-table {
+    border-collapse: collapse !important;
+  }
+
+  .bvk-print-table tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* ══ Export Template - Repeating Header on every printed page ══ */
+  .export-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 10mm 5mm 10mm !important;
+  }
+
+  /* Repeats with document <thead> on every printed page */
+  .print-page-top-spacer {
+    display: table-row !important;
+    height: var(--quotation-print-top-inset) !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-page-top-spacer td {
+    display: table-cell !important;
+    height: var(--quotation-print-top-inset) !important;
+    min-height: var(--quotation-print-top-inset) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    vertical-align: top !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .export-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+  }
+
+  .export-print-table thead.export-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .export-print-header-row td {
+    display: table-cell !important;
+  }
+
+  .export-print-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+/* GKD Template - Show header/footer on screen (once) */
+.gkd-print-table thead.gkd-print-header-row {
+  display: table-header-group;
+}
+
+.gkd-print-table tfoot.gkd-print-footer-row {
+  display: table-footer-group;
+}
+
+/* Ensure footer is visible on screen */
+.gkd-print-table tfoot {
+  display: table-footer-group;
+}
+
+/* GKD proforma line table (screen + print) */
+.gkd-proforma-line-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: none;
+  table-layout: fixed;
+  font-size: 11px;
+  word-wrap: break-word;
+}
+
+.gkd-proforma-line-table thead th.gkd-pl-head {
+  border: none;
+  border-top: 1px solid #000;
+  padding: 8px 6px;
+  font-weight: bold;
+  background-color: transparent;
+  vertical-align: bottom;
+}
+
+.gkd-proforma-line-table tbody td.gkd-pl-cell {
+  border: none;
+  padding: 8px 6px;
+  vertical-align: top;
+}
+
+.gkd-proforma-line-table .gkd-pl-item {
+  text-align: left;
+  width: 5%;
+}
+
+.gkd-proforma-line-table .gkd-pl-product {
+  text-align: left;
+  width: 50%;
+}
+
+.gkd-proforma-line-table .gkd-pl-num {
+  text-align: right;
+}
+
+.gkd-proforma-amount-words {
+  border-bottom: 2px solid #000;
+}
+
+/* BVK Template - Show header/footer on screen (once) */
+.bvk-print-table thead.bvk-print-header-row {
+  display: table-header-group;
+}
+
+.bvk-print-table tfoot.bvk-print-footer-row {
+  display: table-footer-group;
+}
+
+/* Ensure footer is visible on screen */
+.bvk-print-table tfoot {
+  display: table-footer-group;
+}
+
+/* ══ Export Template - Repeating Header on every printed page ══ */
+.export-print-table thead.export-print-header-row {
+  display: table-header-group;
+}
+
+.export-print-table {
+  border-collapse: collapse;
+}
+
+/* Ensure Description Of Goods table headers are visible on both screen and print/PDF */
+.goods-description-table thead {
+  display: table-header-group !important;
+}
+
+.goods-description-table thead th {
+  display: table-cell !important;
+  background-color: #f5f5f5 !important;
+  font-weight: bold !important;
+  border: 1px solid #000 !important;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+/* No horizontal rules between rows — use vertical padding for invisible breathing room between line items */
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell,
+.goods-description-table tbody td.goods-description-table-body-cell {
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+  padding: 12px 8px !important;
+  vertical-align: top;
+}
+
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell.text-right,
+.goods-description-table tbody td.goods-description-table-body-cell.text-right {
+  vertical-align: middle;
+}
+
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell[colspan='6'],
+.goods-description-table tbody td.goods-description-table-body-cell[colspan='6'],
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell[colspan='7'],
+.goods-description-table tbody td.goods-description-table-body-cell[colspan='7'] {
+  padding: 20px 12px !important;
+}
+
+/* Close outer bottom of goods grid (verticals otherwise hang with no closing rule) */
+.quotation-doc .goods-description-table tbody tr:last-child td.goods-description-table-body-cell,
+.goods-description-table tbody tr:last-child td.goods-description-table-body-cell {
+  border-bottom: 1px solid #000 !important;
+}
+
+.quotation-doc .goods-description-table tfoot td.goods-description-table-foot-cell,
+.goods-description-table tfoot td.goods-description-table-foot-cell {
+  border-top: 1px solid #000 !important;
+  border-bottom: none !important;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+}
+
+/*
+ * Fixed-layout goods tables: long formatted amounts (e.g. 4,087,341.88) must not clip
+ * against the cell border. Applies across invoice/quotation templates using
+ * `.goods-description-table.quotation-stack-table`.
+ */
+.quotation-doc table.goods-description-table.quotation-stack-table,
+.quotation-doc table.goods-description-table.quotation-stack-table td,
+.quotation-doc table.goods-description-table.quotation-stack-table th {
+  overflow: visible !important;
+}
+
+.quotation-doc table.goods-description-table.quotation-stack-table td[style*='text-align: right'],
+.quotation-doc table.goods-description-table.quotation-stack-table td[style*='text-align:right'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Optional wrapper for very long totals — use where needed */
+.quotation-doc .quotation-grand-total-amount {
+  display: inline-block;
+  white-space: nowrap;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(9px, 1.1vw, 12px);
+}
+
+/* Quantity + UOM (e.g. "120.3654 Roll") should never overflow fixed cells */
+.quotation-doc .quotation-qty-uom-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  line-height: 1.1;
+}
+
+.quotation-doc .quotation-qty-value {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.quotation-doc .quotation-qty-uom {
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* ── Seamless quotation grid (no gaps between stacked tables, like PDF reference) ── */
+.quotation-doc .quotation-content-section--seamless {
+  padding: 0 0 12px !important;
+  border: none !important;
+}
+
+/* Continuation header row: always show (needed for print; screen preview shows each page's header). */
+
+/* Goods master table → summary master table (second table has no thead → no QUOTATION on summary-only sheets). */
+.quotation-doc .quotation-summary-follow-master-table {
+  margin-top: -1px !important;
+}
+
+/* Bashundhara: attach Description Of Goods to the quotation header block (no white gap; shared border seam). */
+.quotation-doc .quotation-seamless-stack > .bashundhara-quotation-header-table {
+  margin-bottom: 0 !important;
+}
+
+.quotation-doc .quotation-seamless-stack > .bashundhara-quotation-header-table + .quotation-header-master-table {
+  margin-top: -1px !important;
+}
+
+/* Bashundhara goods: no horizontal rules in line-item area — keep verticals only (screen + print) */
+.quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-goods-title-row > td,
+.quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-item-meta-row > td,
+.quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-item-grid-row > td {
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+}
+
+/* ── Quotation header (invoice): full-width title row + supplier | bordered meta ── */
+.quotation-doc table.quotation-header-master-table {
+  border-collapse: collapse !important;
+  border: none !important;
+  border-spacing: 0 !important;
+  font-size: 10px;
+  line-height: 1.15;
+  box-sizing: border-box;
+}
+
+/* Remarks + DOC: stacked under summary inside master tbody (screen + print) */
+.quotation-doc .quotation-master-footer {
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-summary-block+.quotation-master-footer {
+  margin-top: -1px !important;
+}
+
+.quotation-doc .quotation-master-footer .quotation-a4-footer {
+  margin-top: -1px;
+}
+
+.quotation-doc .quotation-header-master-table>thead>tr>td {
+  border-color: #000;
+  border-style: solid;
+  border-width: 0;
+  vertical-align: top;
+  padding: 0;
+}
+
+.quotation-doc .quotation-header-master-table .quotation-header-td--title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-top: 1px solid #000 !important;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+  border-bottom: 1px solid #000 !important;
+  vertical-align: middle;
+}
+
+.quotation-doc .quotation-header-master-table .quotation-header-td--supplier {
+  width: 56%;
+  box-sizing: border-box;
+  padding: 4px 6px 5px;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+  border-bottom: 1px solid #000 !important;
+}
+
+/* Outer right edge comes from qh-meta-grid cells only (avoids double line vs nested table) */
+.quotation-doc .quotation-header-master-table .quotation-header-td--meta {
+  width: 44%;
+  padding: 0 !important;
+  border-right: none !important;
+  border-bottom: 1px solid #000 !important;
+  vertical-align: top;
+}
+
+.quotation-doc .quotation-header-master-table thead .quotation-header-tr--addresses {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.quotation-doc .quotation-header-master-table .quotation-header-td--addresses {
+  padding: 0 !important;
+  vertical-align: top;
+  border-bottom: none !important;
+}
+
+/* Seam: address row (thead) + goods block (tbody) share one outer rule */
+.quotation-doc .quotation-header-master-table tbody .quotation-seamless-stack > .quotation-goods-pages-stack > .quotation-goods-pages-segment:first-child .goods-description-table.quotation-stack-table {
+  margin-top: -1px !important;
+}
+
+/* Seam: goods row + summary row (separate <tr>) — collapse double rule */
+.quotation-doc .quotation-header-master-table tbody tr.quotation-master-body-row--summary .quotation-seamless-stack>.quotation-summary-block:first-child {
+  margin-top: -1px !important;
+}
+
+.quotation-doc .quotation-header-master-table > tbody > tr > td.quotation-seamless-stack {
+  border: none !important;
+  padding: 0 !important;
+  vertical-align: top;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-label {
+  font-weight: bold;
+  margin: 0 0 3px;
+  padding: 0;
+  font-size: 10px;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-layout {
+  width: 100%;
+  border: none !important;
+  margin: 0 0 4px;
+  border-collapse: collapse;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-layout td {
+  border: none !important;
+  padding: 0 6px 0 0;
+  vertical-align: top;
+}
+
+.quotation-doc .quotation-header-master-table .qh-logo-box {
+  width: 132px;
+  min-width: 88px;
+  max-width: 140px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.quotation-doc .quotation-header-master-table .qh-logo-img {
+  display: block;
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+  max-height: 70px;
+  object-fit: contain;
+  object-position: left top;
+}
+
+/* WMWD1 (WI) tab: supplier logo slightly smaller; align with text; offset SVG canvas whitespace */
+.quotation-doc .quotation-header-master-table--wmwd1 .qh-supplier-layout td {
+  vertical-align: middle;
+}
+
+.quotation-doc .quotation-header-master-table--wmwd1 .qh-logo-box {
+  /* Hug the scaled SVG — fixed wide box left ~60px dead space before company text */
+  width: fit-content;
+  max-width: 88px;
+  min-width: 0;
+  overflow: hidden;
+  align-items: center;
+}
+
+.quotation-doc .quotation-header-master-table--wmwd1 .qh-logo-img {
+  width: auto;
+  max-width: 82px;
+  max-height: 64px;
+  object-position: left center;
+  transform: translateX(-4px);
+}
+
+.quotation-doc .quotation-header-master-table--wmwd1 .qh-supplier-layout__logo {
+  padding-right: 0;
+}
+
+/* WMWD1: shift outer document box a few px right (more room inside right border; overrides main inline padding) */
+main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
+  padding: 16px 8px 16px 16px !important;
+}
+
+.quotation-doc .quotation-header-master-table .qh-company-name {
+  font-weight: bold;
+  margin: 0 0 2px;
+}
+
+.quotation-doc .quotation-header-master-table .qh-line {
+  margin: 0;
+  padding: 0;
+  line-height: 1.15;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer {
+  width: 100%;
+  table-layout: fixed;
+  border: none !important;
+  border-collapse: collapse;
+  margin: 3px 0 0;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer td {
+  border: none !important;
+  padding: 1px 0 2px;
+  vertical-align: top;
+  font-weight: bold;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__left {
+  width: 50%;
+  text-align: left;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__right {
+  width: 50%;
+  text-align: right;
+}
+
+/* WMWD1 supplier footer only: GSTIN left, CIN flush right (same idea as web / email row). Flex on <td> is unreliable — use inner row. */
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__gstin-cin-cell {
+  width: 100%;
+  padding: 1px 0 2px;
+  vertical-align: top;
+  font-weight: bold;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__gstin-cin-line {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__gstin-cin-line .qh-supplier-footer__gstin {
+  white-space: nowrap;
+  flex: 0 1 auto;
+  text-align: left;
+}
+
+.quotation-doc .quotation-header-master-table .qh-supplier-footer__gstin-cin-line .qh-supplier-footer__cin {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  margin-left: auto;
+  text-align: right;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-grid {
+  width: 100%;
+  min-height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 0;
+  border: none !important;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-grid td {
+  border: 1px solid #000 !important;
+  padding: 2px 5px !important;
+  font-size: 10px;
+  line-height: 1.15;
+  vertical-align: middle;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Avoid double rules: title row + supplier | meta outer edges already draw these lines */
+.quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr:first-child td {
+  border-top: none !important;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-grid tbody td:first-child {
+  border-left: none !important;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-col--label {
+  width: 28%;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-col--val {
+  width: 50%;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-col--date {
+  width: 22%;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-date-stack {
+  text-align: center;
+  vertical-align: middle;
+  white-space: normal;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  hyphens: manual;
+}
+
+.quotation-doc .quotation-header-master-table .qh-meta-date-stack div {
+  line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  border-collapse: collapse !important;
+  box-sizing: border-box;
+  display: table;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Consignee / recipient: compact invoice layout — gray title band, tight address, State/GST grid */
+.quotation-doc .quotation-address-pair {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  border: 1px solid #000;
+  box-sizing: border-box;
+  margin: 0;
+  min-height: 0;
+  font-size: 10px;
+  line-height: 1.22;
+}
+
+.quotation-doc .quotation-address-pair__col {
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.quotation-doc .quotation-address-pair__col:first-child {
+  border-right: 1px solid #000;
+}
+
+.quotation-doc .quotation-address-pair__header {
+  font-weight: bold;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 4px 6px;
+  margin: 0;
+  text-align: left;
+  background-color: #e9e9e9;
+  border-bottom: 1px solid #000;
+  flex-shrink: 0;
+}
+
+.quotation-doc .quotation-address-plain {
+  margin: 0;
+  padding: 3px 6px 4px;
+  line-height: 1.22;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.quotation-doc .quotation-address-plain__line {
+  margin: 0;
+  padding: 0;
+}
+
+.quotation-doc .quotation-address-plain__line+.quotation-address-plain__line {
+  margin-top: 1px;
+}
+
+.quotation-doc .quotation-address-plain__line--bold {
+  font-weight: bold;
+}
+
+.quotation-doc .quotation-address-pair__empty {
+  margin: 0;
+  padding: 4px 6px 6px;
+  font-size: 10px;
+  line-height: 1.22;
+}
+
+/* Inner State / GST table: no outer table border (cells form continuous grid) */
+.quotation-doc .quotation-address-pair .quotation-address-state-grid {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  border: none !important;
+  font-size: 10px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.quotation-doc .quotation-address-state-grid th,
+.quotation-doc .quotation-address-state-grid td {
+  border: 1px solid #000;
+  padding: 2px 5px;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.quotation-doc .quotation-address-state-grid__label {
+  font-weight: bold;
+  background: #fff;
+  white-space: nowrap;
+}
+
+.quotation-doc .quotation-address-state-grid__value {
+  font-weight: normal;
+}
+
+.quotation-doc .quotation-address-state-grid__col--a {
+  width: 24%;
+}
+
+.quotation-doc .quotation-address-state-grid__col--b {
+  width: 18%;
+}
+
+.quotation-doc .quotation-address-state-grid__col--c {
+  width: 14%;
+}
+
+/* Consignee / recipient table variant: enforce visible cell borders on screen */
+.quotation-doc .quotation-address-pair-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  border: 1px solid #000 !important;
+  font-size: 10px;
+  line-height: 1.22;
+  box-sizing: border-box;
+}
+
+.quotation-doc .quotation-address-pair-table th,
+.quotation-doc .quotation-address-pair-table td {
+  border: 1px solid #000 !important;
+  padding: 3px 6px;
+  vertical-align: middle;
+  text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.quotation-doc .qap-header {
+  font-weight: bold;
+  background-color: #ececec;
+  padding: 5px 8px !important;
+}
+
+.quotation-doc .qap-label {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.quotation-doc .qap-value {
+  font-weight: normal;
+}
+
+.quotation-doc .qap-address-cell {
+  vertical-align: top !important;
+  padding: 0 !important;
+}
+
+.quotation-doc .qap-header--left,
+.quotation-doc .qap-address-cell--left,
+.quotation-doc .qap-cell--left {
+  border-right: 1px solid #000 !important;
+}
+
+.quotation-doc .qap-header--right,
+.quotation-doc .qap-address-cell--right,
+.quotation-doc .qap-cell--right {
+  border-left: 0 !important;
+}
+
+/* ── Quotation bottom summary: validity + total | HSN/notes + tax | amount in words | remarks ── */
+.quotation-doc {
+  --quotation-rule: 1px solid #000;
+}
+
+/* Single continuous grid: one table, border-collapse (no nested left/right tables) */
+.quotation-doc .quotation-summary-block {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  border-spacing: 0;
+  border: none !important;
+  font-size: 10px;
+  line-height: 1.2;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.quotation-doc .quotation-summary-block>tbody>tr>td {
+  border: var(--quotation-rule);
+  vertical-align: top;
+  padding: 2px 5px;
+  text-align: left;
+}
+
+/* Align with goods table: last two columns = Rate/SQM + Amount INR */
+.quotation-doc .quotation-summary-block .qs-cell--validity {
+  font-size: 10px;
+  line-height: 1.22;
+}
+
+.quotation-doc .quotation-summary-block .qs-cell--total-inr,
+.quotation-doc .quotation-summary-block .qs-cell--total-amt {
+  font-size: 10px;
+  font-weight: bold;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.quotation-doc .quotation-summary-block table {
+  border: none !important;
+  margin: 0;
+}
+
+.quotation-doc .quotation-summary-block .qs-hsn-tax-row td {
+  vertical-align: middle;
+}
+
+.quotation-doc .quotation-summary-block .qs-hsn-grid__hsn-head {
+  font-weight: bold;
+  text-align: center;
+}
+
+/* WMWD1: empty cell under per-line HSN column so HSN Number block stays aligned with goods */
+.quotation-doc .quotation-summary-block .qs-hsn-grid__hsn-align-spacer {
+  padding: 0 !important;
+}
+
+.quotation-doc .quotation-summary-block .qs-hsn-grid__col-label {
+  width: 22%;
+  white-space: nowrap;
+}
+
+.quotation-doc .quotation-summary-block .qs-hsn-grid__col-excl {
+  width: 12%;
+  white-space: nowrap;
+}
+
+.quotation-doc .quotation-summary-block .qs-hsn-grid__code {
+  text-align: right;
+  width: 14%;
+  white-space: nowrap;
+}
+
+/* Notes: full-width left block (colspan 4), shares one collapsed grid with charge columns */
+.quotation-doc .quotation-summary-block .qs-notes-merged {
+  padding: 0 !important;
+  vertical-align: top;
+}
+
+.quotation-doc .quotation-summary-block .qs-notes-banner {
+  margin: 0;
+  padding: 2px 4px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 10px;
+  line-height: 1.2;
+  background-color: #f5f5f5;
+  border-bottom: var(--quotation-rule);
+}
+
+.quotation-doc .quotation-summary-block .qs-notes-fill {
+  margin: 0;
+  padding: 3px 4px;
+  min-height: 36px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 10px;
+  line-height: 1.22;
+}
+
+/* Tax / charge columns (5–6): align with reference invoice — middle vertical align, clear divider from col 4 */
+.quotation-doc .quotation-summary-block .qs-cell.qs-tax-label {
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.quotation-doc .quotation-summary-block .qs-cell.qs-tax-num {
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.quotation-doc .quotation-summary-block tr.qs-tax-row--bold .qs-tax-label,
+.quotation-doc .quotation-summary-block tr.qs-tax-row--bold .qs-tax-num {
+  font-weight: bold;
+}
+
+.quotation-doc .quotation-summary-block .qs-cell--amount-words {
+  padding: 3px 5px !important;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.quotation-doc .quotation-summary-block .qs-amount-words-inline {
+  font-style: italic;
+}
+
+/* Remarks / signature grid: summary table row OR standalone A4 footer */
+.quotation-doc .quotation-summary-block .qs-remarks-table,
+.quotation-doc .quotation-a4-footer .qs-remarks-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
+}
+
+/* Summary: flush under amount-in-words (no double top rule) */
+.quotation-doc .quotation-summary-block .qs-remarks-table__head {
+  padding: 3px 4px !important;
+  font-weight: bold;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.2;
+  width: 50%;
+  vertical-align: middle;
+  background-color: #f5f5f5;
+  border: var(--quotation-rule);
+  border-top: none;
+}
+
+/* Standalone footer: full border box */
+.quotation-doc .quotation-a4-footer .qs-remarks-table__head {
+  padding: 3px 4px !important;
+  font-weight: bold;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.2;
+  width: 50%;
+  vertical-align: middle;
+  background-color: #f5f5f5;
+  border: var(--quotation-rule);
+}
+
+.quotation-doc .quotation-summary-block .qs-remarks-table__body,
+.quotation-doc .quotation-a4-footer .qs-remarks-table__body {
+  border: var(--quotation-rule);
+  border-top: none;
+  padding: 3px 5px !important;
+  vertical-align: top;
+  width: 50%;
+  font-size: 10px;
+}
+
+.quotation-doc .quotation-summary-block .qs-remarks-list,
+.quotation-doc .quotation-a4-footer .qs-remarks-list {
+  margin: 0;
+  padding-left: 1.15em;
+  line-height: 1.22;
+}
+
+.quotation-doc .quotation-summary-block .qs-remarks-list li,
+.quotation-doc .quotation-a4-footer .qs-remarks-list li {
+  margin: 0;
+  padding: 0;
+}
+
+.quotation-doc .quotation-summary-block .qs-remarks-list li+li,
+.quotation-doc .quotation-a4-footer .qs-remarks-list li+li {
+  margin-top: 2px;
+}
+
+.quotation-doc .quotation-summary-block .qs-remarks-table__body--right,
+.quotation-doc .quotation-a4-footer .qs-remarks-table__body--right {
+  text-align: center;
+}
+
+.quotation-doc .quotation-summary-block .qs-sig-lines,
+.quotation-doc .quotation-a4-footer .qs-sig-lines {
+  line-height: 1.25;
+  padding-bottom: 2px;
+}
+
+.quotation-doc .quotation-summary-block .qs-sig-dated,
+.quotation-doc .quotation-a4-footer .qs-sig-dated {
+  border-top: var(--quotation-rule);
+  margin-top: 6px;
+  padding-top: 4px;
+  text-align: center;
+  font-size: 10px;
+}
+
+/* Invoice footer block (Remarks / signature / DOC) below master table */
+.quotation-doc .quotation-a4-footer {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.quotation-doc .quotation-a4-footer__docno {
+  text-align: right;
+  margin-top: 2px;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+/* Pull adjacent bordered blocks together so shared horizontal rules don’t double up */
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-table,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-segment,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-table,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-segment,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-goods-pages-stack,
+.quotation-doc .quotation-seamless-stack>.quotation-goods-pages-stack+.quotation-stack-table,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-stack-amount-row,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table+.amount-in-words.quotation-stack-amount-row,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.quotation-stack-amount-row,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-segment+.amount-in-words.quotation-stack-amount-row {
+  margin-top: -1px !important;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row+.quotation-stack-table,
+.quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row+.quotation-stack-table,
+.quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row+.quotation-stack-segment,
+.quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row+.quotation-stack-segment {
+  margin-top: -1px !important;
+}
+
+/* Paginated goods stack: on screen, stack segments with a single shared top rule (print uses full frame per sheet) */
+.quotation-goods-pages-stack {
+  width: 100%;
+  margin: 0;
+}
+
+.quotation-goods-pages-stack .quotation-goods-pages-break + .quotation-goods-pages-segment {
+  margin-top: -1px;
+}
+
+.quotation-goods-pages-stack .quotation-goods-pages-break + .quotation-goods-pages-segment .goods-description-table {
+  border-top: none;
+}
+
+/* Long / dynamic description text: wrap inside Description Of Goods column */
+.goods-description-table .goods-description-table-desc-cell {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-stack-amount-row,
+.quotation-doc .quotation-seamless-stack>.amount-in-words.quotation-stack-amount-row {
+  margin-bottom: 0 !important;
+  padding: 8px 12px !important;
+  border: 1px solid #000;
+  box-sizing: border-box;
+  font-style: italic;
+  display: block;
+}
+
+.quotation-doc .quotation-seamless-stack>.quotation-stack-table+.quotation-doc-footer-meta {
+  margin-top: 2px !important;
+}
+
+.performa-invoice-content-section--seamless {
+  padding: 0 0 12px !important;
+}
+
+/* Print button */
+.print-button {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #1e40af;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.print-button:hover {
+  background: #1e3a8a;
+}
+
+/*
+ * Quotation doc: no blanket table/cell borders — they stack with nested grids (double lines in PDF).
+ */
+.quotation-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.quotation-doc .quotation-content-section table {
+  border: none !important;
+}
+
+.quotation-content-section>table:not(.quotation-header-master-table) {
+  border: none !important;
+}
+
+.quotation-doc .print-doc-table {
+  border: none !important;
+}
+
+.quotation-doc .conditions-for-print table th,
+.quotation-doc .conditions-for-print table td {
+  border: 1px solid #000;
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.quotation-doc .text-right {
+  text-align: right;
+}
+
+.quotation-doc .font-bold {
+  font-weight: bold;
+}
+
+.quotation-doc .section-title {
+  font-weight: bold;
+  text-transform: uppercase;
+  background: #f5f5f5;
+  padding: 6px 8px;
+}
+
+.quotation-doc .amount-in-words {
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Quotation content section - first div with border */
+.quotation-content-section {
+  border: 1px solid #000;
+  padding: 16px;
+  margin-bottom: 24px;
+  page-break-inside: avoid;
+}
+
+/* Conditions section - second div with border */
+.conditions-for-print {
+  border: 1px solid #000;
+  padding: 16px;
+  page-break-inside: avoid;
+}
+
+.conditions-doc h1 {
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.conditions-doc .section {
+  margin-bottom: 16px;
+}
+
+.conditions-doc .section-title {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.conditions-doc p {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
