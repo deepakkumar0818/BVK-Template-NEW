@@ -9,7 +9,7 @@ import { getAccessToken, clearTokenCache } from '@/lib/zoho'
  * - External cron service (cron-job.org, EasyCron, etc.)
  * - Server cron job
  * 
- * Security: Add a secret header to prevent unauthorized access
+ * Security: Add a secret header to prevent unauthorized access 
  */
 export async function GET(request: NextRequest) {
   try {
