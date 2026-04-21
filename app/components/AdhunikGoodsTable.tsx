@@ -10,6 +10,8 @@ import {
   resolveWmwChargeTotals,
   WMW_STANDARD_CHARGE_NAMES,
 } from '@/lib/wmw-subform-mapping'
+import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
+import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -465,70 +467,75 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                     </td>
                   </tr>
 
-                  {chunk.map((row, index) => (
-                    <Fragment key={`adhunik-line-${pageIdx}-${index}`}>
-                      <tr className="adhunik-item-meta-row">
-                        <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
-                          <div style={metaRowLine}>
-                            <span>Product</span><span>:</span><span style={metaRowValue}>{row.product}</span>
-                          </div>
-                          {row.form ? (
+                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
+                    const head = groupRows[0]
+                    return (
+                      <Fragment key={`adhunik-grp-${pageIdx}-${groupIdx}`}>
+                        <tr className="adhunik-item-meta-row">
+                          <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
                             <div style={metaRowLine}>
-                              <span>Form</span><span>:</span><span style={metaRowValue}>{row.form}</span>
+                              <span>Product</span><span>:</span><span style={metaRowValue}>{head.product}</span>
                             </div>
-                          ) : null}
-                          <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                            <span>Quality</span><span>:</span><span style={metaRowValue}>{row.quality}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                      </tr>
-                      <tr className="adhunik-item-grid-row">
-                        <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                          <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                            <span>Item</span>
-                            <span>MESH</span>
-                            <span>BRAND</span>
-                            <span>SIZE [Mtrs] (LxW)</span>
-                            <span>Sqm Area / PC</span>
-                          </div>
-                          <div style={descGrid}>
-                            <span style={{ fontWeight: 'bold', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{row.item}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.mesh}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.brand}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.size}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.sqmArea}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
-                          {row.hsnCode || ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {row.perPc?.toFixed(1) || ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {row.totalWeight?.toFixed(1) || ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                            <span>{row.quantity}</span>
-                            <span>Pcs</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {formatCurrency(row.amount, '')}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
+                            {head.form ? (
+                              <div style={metaRowLine}>
+                                <span>Form</span><span>:</span><span style={metaRowValue}>{head.form}</span>
+                              </div>
+                            ) : null}
+                            <div style={{ ...metaRowLine, marginBottom: 0 }}>
+                              <span>Quality</span><span>:</span><span style={metaRowValue}>{head.quality}</span>
+                            </div>
+                          </td>
+                          <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                        </tr>
+                        {groupRows.map((row, rowIdx) => (
+                          <tr key={`adhunik-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="adhunik-item-grid-row">
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
+                                <span>Item</span>
+                                <span>MESH</span>
+                                <span>BRAND</span>
+                                <span>SIZE [Mtrs] (LxW)</span>
+                                <span>Sqm Area / PC</span>
+                              </div>
+                              <div style={{ ...descGrid, alignItems: 'start' }}>
+                                <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
+                                <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
+                                <span style={goodsDescGridValueSpan}>{row.brand}</span>
+                                <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
+                              {row.hsnCode || ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {row.perPc?.toFixed(1) || ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {row.totalWeight?.toFixed(1) || ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                <span>{row.quantity}</span>
+                                <span>Pcs</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {formatCurrency(row.amount, '')}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    )
+                  })}
 
                   {isLastChunk && (
                     <>

@@ -10,6 +10,8 @@ import {
   resolveWmwChargeTotals,
   WMW_STANDARD_CHARGE_NAMES,
 } from '@/lib/wmw-subform-mapping'
+import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
+import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -42,6 +44,14 @@ const rightMergedEmpty: CSSProperties = {
   borderBottom: 'none',
   padding: '6px',
   verticalAlign: 'top',
+}
+
+/** Full row without top edge (avoids a line across all columns); use with inner first-cell border if needed */
+const bdRowNoTop: CSSProperties = {
+  borderLeft: '1px solid #000',
+  borderRight: '1px solid #000',
+  borderBottom: '1px solid #000',
+  borderTop: 'none',
 }
 
 interface EveriteGoodsTableProps {
@@ -468,62 +478,67 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                     </td>
                   </tr>
 
-                  {chunk.map((row, index) => (
-                    <Fragment key={`everite-line-${pageIdx}-${index}`}>
-                      <tr className="everite-item-meta-row">
-                        <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
-                          <div style={metaRowLine}>
-                            <span>Product</span><span>:</span><span style={metaRowValue}>{row.product}</span>
-                          </div>
-                          {row.form ? (
+                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
+                    const head = groupRows[0]
+                    return (
+                      <Fragment key={`everite-grp-${pageIdx}-${groupIdx}`}>
+                        <tr className="everite-item-meta-row">
+                          <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
                             <div style={metaRowLine}>
-                              <span>Form</span><span>:</span><span style={metaRowValue}>{row.form}</span>
+                              <span>Product</span><span>:</span><span style={metaRowValue}>{head.product}</span>
                             </div>
-                          ) : null}
-                          <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                            <span>Quality</span><span>:</span><span style={metaRowValue}>{row.quality}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                      </tr>
-                      <tr className="everite-item-grid-row">
-                        <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                          <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                            <span>Item</span>
-                            <span>MESH</span>
-                            <span>BRAND</span>
-                            <span>SIZE [Mtrs] (LxW)</span>
-                            <span>Sqm Area / PC</span>
-                          </div>
-                          <div style={descGrid}>
-                            <span style={{ fontWeight: 'bold', textDecoration: 'underline', whiteSpace: 'nowrap' }}>{row.item}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.mesh}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.brand}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.size}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.sqmArea}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
-                          {row.hsnCode || ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                            <span>{row.quantity}</span>
-                            <span>Pcs</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {formatCurrency(row.amount, '')}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
+                            {head.form ? (
+                              <div style={metaRowLine}>
+                                <span>Form</span><span>:</span><span style={metaRowValue}>{head.form}</span>
+                              </div>
+                            ) : null}
+                            <div style={{ ...metaRowLine, marginBottom: 0 }}>
+                              <span>Quality</span><span>:</span><span style={metaRowValue}>{head.quality}</span>
+                            </div>
+                          </td>
+                          <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                        </tr>
+                        {groupRows.map((row, rowIdx) => (
+                          <tr key={`everite-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="everite-item-grid-row">
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
+                                <span>Item</span>
+                                <span>MESH</span>
+                                <span>BRAND</span>
+                                <span>SIZE [Mtrs] (LxW)</span>
+                                <span>Sqm Area / PC</span>
+                              </div>
+                              <div style={{ ...descGrid, alignItems: 'start' }}>
+                                <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
+                                <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
+                                <span style={goodsDescGridValueSpan}>{row.brand}</span>
+                                <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
+                              {row.hsnCode || ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                                <span>{row.quantity}</span>
+                                <span>Pcs</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {formatCurrency(row.amount, '')}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    )
+                  })}
 
                   {isLastChunk && (
                     <>
@@ -564,12 +579,17 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
 
                       {(showPerformanceWarranty || showPaymentSchedule) && (
                         <tr>
-                          <td colSpan={2} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top', lineHeight: 1.25 }}>
+                          <td colSpan={2} style={{ ...bdRowNoTop, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top', lineHeight: 1.25 }}>
                             {showPerformanceWarranty ? (
-                              <>
+                              <div
+                                style={{
+                                  borderTop: '1px solid #000',
+                                  paddingTop: '8px',
+                                }}
+                              >
                                 <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Performance warranty :</div>
                                 <div style={{ whiteSpace: 'pre-wrap' }}>{performanceWarrantyText}</div>
-                              </>
+                              </div>
                             ) : null}
                             {showPerformanceWarranty && showPaymentSchedule ? <div style={{ height: '6px' }} /> : null}
                             {showPaymentSchedule ? (
@@ -579,16 +599,16 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                               </>
                             ) : null}
                           </td>
-                          <td style={{ ...bd, padding: '6px' }} aria-hidden>
+                          <td style={{ ...bdRowNoTop, padding: '6px' }} aria-hidden>
                             {'\u00A0'}
                           </td>
-                          <td style={{ ...bd, padding: '6px' }} aria-hidden>
+                          <td style={{ ...bdRowNoTop, padding: '6px' }} aria-hidden>
                             {'\u00A0'}
                           </td>
-                          <td style={{ ...bd, padding: '6px' }} aria-hidden>
+                          <td style={{ ...bdRowNoTop, padding: '6px' }} aria-hidden>
                             {'\u00A0'}
                           </td>
-                          <td style={{ ...bd, padding: '6px' }} aria-hidden>
+                          <td style={{ ...bdRowNoTop, padding: '6px' }} aria-hidden>
                             {'\u00A0'}
                           </td>
                         </tr>

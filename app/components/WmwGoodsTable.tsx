@@ -5,6 +5,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
 import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows } from '@/lib/wmw-subform-mapping'
+import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
+import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
 const txBlue = '#0000CD'
 
@@ -323,99 +325,104 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                     <td colSpan={5} style={{ borderTop: '1px solid #000', padding: 0, margin: 0, height: 0, lineHeight: 0, fontSize: 0 }} />
                   </tr>
 
-                  {chunk.map((row, index) => (
-                    <Fragment key={`wmw-line-${pageIdx}-${index}`}>
-                      <tr className="wmw-item-meta-row">
-                        <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                            <strong>Product</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.product}</span>
-                          </div>
-                          {row.form ? (
+                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
+                    const head = groupRows[0]
+                    return (
+                      <Fragment key={`wmw-grp-${pageIdx}-${groupIdx}`}>
+                        <tr className="wmw-item-meta-row">
+                          <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                              <strong>Form</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.form}</span>
+                              <strong>Product</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.product}</span>
                             </div>
-                          ) : null}
-                          {row.quality ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                              <strong>{row.usesJoinedQuantity ? 'Type' : 'Quality'}</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.quality}</span>
-                            </div>
-                          ) : null}
-                          {row.deliveryDate ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                              <strong>Delivery Date</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.deliveryDate}</span>
-                            </div>
-                          ) : null}
-                          {trimStr(row.freightCharge) !== '' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                              <strong>Freight</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.freightCharge}</span>
-                            </div>
-                          ) : null}
-                          {trimStr(row.packingCharge) !== '' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
-                              <strong>Packing</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.packingCharge}</span>
-                            </div>
-                          ) : null}
-                          {trimStr(row.seamCharge) !== '' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto' }}>
-                              <strong>Seam chg.</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{row.seamCharge}</span>
-                            </div>
-                          ) : null}
-                        </td>
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                        <td style={rightMergedEmpty} />
-                      </tr>
-                      <tr className="wmw-item-grid-row">
-                        <td colSpan={2} style={{ ...bdItemGrid, padding: '16px 10px 6px 10px', verticalAlign: 'middle' }}>
-                          <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                            <span style={{ textAlign: 'center' }}>Item</span>
-                            <span>Mesh</span>
-                            <span>Brand</span>
-                            <span>Size [m]</span>
-                            <span>(L x W)</span>
-                            <span>Sqm Area</span>
-                          </div>
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
-                            columnGap: '10px',
-                            rowGap: '2px',
-                            alignItems: 'center',
-                            width: '100%',
-                            textAlign: 'left'
-                          }}>
-                            <span style={{ fontWeight: 'bold', textAlign: 'center' }}>{row.item}</span>
-                            <span>{row.mesh}</span>
-                            <span>{row.brand}</span>
-                            <span style={{ whiteSpace: 'nowrap' }}>{row.size}</span>
-                            <span style={{ opacity: 0 }}>(L x W)</span>
-                            <span>{row.sqmArea}</span>
-                          </div>
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
-                          {row.usesJoinedQuantity ? (
-                            (() => {
-                              const { qty, uom } = splitQtyAndUom(row.quantity)
-                              return (
-                                <div className="quotation-qty-uom-cell">
-                                  <div className="quotation-qty-value">{qty || '\u00A0'}</div>
-                                  {uom ? <div className="quotation-qty-uom">{uom}</div> : null}
-                                </div>
-                              )
-                            })()
-                          ) : (
-                            `${row.quantity}${row.quantity !== '0' ? ' Pc' : ''}`
-                          )}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
-                        </td>
-                        <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
-                          {formatCurrency(row.amount, currency) || '-'}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
+                            {head.form ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
+                                <strong>Form</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.form}</span>
+                              </div>
+                            ) : null}
+                            {head.quality ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
+                                <strong>{head.usesJoinedQuantity ? 'Type' : 'Quality'}</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.quality}</span>
+                              </div>
+                            ) : null}
+                            {head.deliveryDate ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
+                                <strong>Delivery Date</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.deliveryDate}</span>
+                              </div>
+                            ) : null}
+                            {trimStr(head.freightCharge) !== '' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
+                                <strong>Freight</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.freightCharge}</span>
+                              </div>
+                            ) : null}
+                            {trimStr(head.packingCharge) !== '' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto', marginBottom: '3px' }}>
+                                <strong>Packing</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.packingCharge}</span>
+                              </div>
+                            ) : null}
+                            {trimStr(head.seamCharge) !== '' ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '80px 10px auto' }}>
+                                <strong>Seam chg.</strong><span>:</span><span style={{ fontWeight: 'bold' }}>{head.seamCharge}</span>
+                              </div>
+                            ) : null}
+                          </td>
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                          <td style={rightMergedEmpty} />
+                        </tr>
+                        {groupRows.map((row, rowIdx) => (
+                          <tr key={`wmw-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="wmw-item-grid-row">
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '16px 10px 6px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
+                                <span style={{ textAlign: 'center' }}>Item</span>
+                                <span>Mesh</span>
+                                <span>Brand</span>
+                                <span>Size [m]</span>
+                                <span>(L x W)</span>
+                                <span>Sqm Area</span>
+                              </div>
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+                                columnGap: '10px',
+                                rowGap: '2px',
+                                alignItems: 'start',
+                                width: '100%',
+                                textAlign: 'left',
+                              }}>
+                                <span style={{ fontWeight: 'bold', textAlign: 'center', ...goodsDescGridValueSpan }}>{row.item}</span>
+                                <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
+                                <span style={goodsDescGridValueSpan}>{row.brand}</span>
+                                <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                <span style={{ opacity: 0, ...goodsDescGridValueSpan }}>(L x W)</span>
+                                <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              {row.usesJoinedQuantity ? (
+                                (() => {
+                                  const { qty, uom } = splitQtyAndUom(row.quantity)
+                                  return (
+                                    <div className="quotation-qty-uom-cell">
+                                      <div className="quotation-qty-value">{qty || '\u00A0'}</div>
+                                      {uom ? <div className="quotation-qty-uom">{uom}</div> : null}
+                                    </div>
+                                  )
+                                })()
+                              ) : (
+                                `${row.quantity}${row.quantity !== '0' ? ' Pc' : ''}`
+                              )}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                              {formatCurrency(row.amount, currency) || '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    )
+                  })}
 
                   {isLastChunk && (
                     <>

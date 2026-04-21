@@ -89,7 +89,6 @@ function QuotationPageContent() {
     { key: 'adhunik', label: 'adhunik' },
     { key: 'perfomainvoice', label: 'perfomainvoice' },
     { key: 'seamp', label: 'seamp' },
-    { key: 'ekamass', label: 'ekamass' },
     { key: 'wmwquotation', label: 'wmwquotation' },
     { key: 'everite', label: 'everite' },
     { key: 'performa', label: 'performa' },

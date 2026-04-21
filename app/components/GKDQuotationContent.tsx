@@ -76,7 +76,7 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
   }
   
   const signatory = rawQuotationData?.Payement || 'Milap Verma'
-  const companyName = rawQuotationData?.Company_Name || 'GKD INDIA LTD.'
+  const companyName = rawQuotationData?.Company_Name || 'WMW INDUSTRIES LTD.'
   const companyAddress = rawQuotationData?.Company_Address || '52, Industrial Area, Jhotwara, Jaipur-202012 Rajasthan, India'
   const phone = rawQuotationData?.Phone || '91 141 710 5100'
   const fax = rawQuotationData?.Fax || '91 141 710 5199'
@@ -139,7 +139,7 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
 
                 {/* PROFORMA INVOICE Title */}
                 <div style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
-                  PROFORMA INVOICE
+                  PERFORMA INVOICE
                 </div>
 
                 {/* GST No. and Ref. No. */}
