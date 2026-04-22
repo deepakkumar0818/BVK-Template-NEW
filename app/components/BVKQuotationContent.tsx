@@ -1,6 +1,6 @@
 'use client'
 
-import { QuotationData } from '@/lib/types'
+import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency, resolveQuotationValidity } from '@/lib/quotation-utils'
 import { buildBvkQuotationTableRows } from '@/lib/wi-line-display-shared'
@@ -10,7 +10,7 @@ interface BVKQuotationContentProps {
   data: QuotationData
   shippingData?: any
   billingData?: any
-  rawQuotationData?: any
+  rawQuotationData?: ZohoQuotation
 }
 
 /** BVK tab: show mesh count with `/Inch` suffix when a value exists. */
@@ -21,6 +21,9 @@ function bvkMeshCellValue(meshDisplay?: string): string {
 }
 
 export default function BVKQuotationContent({ data, shippingData, billingData, rawQuotationData }: BVKQuotationContentProps) {
+  const tolerancesFromZoho = String(rawQuotationData?.Tolerances ?? '').trim()
+  const pleaseNoteFromZoho = String(rawQuotationData?.Please_Note ?? '').trim()
+
   // Format date for BVK (DD.MM.YY format)
   const formatBVKDate = (dateString?: string): string => {
     if (!dateString) {
@@ -220,13 +223,29 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                 <div style={{ marginBottom: '15px' }}>
                   <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
                   <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Tolerances :</div>
-                  <div style={{ marginBottom: '8px', marginLeft: '20px' }}>
-                    (+) 0.00 mm, (-) 3.00 m
+                  <div
+                    style={{
+                      marginBottom: '8px',
+                      marginLeft: '20px',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {tolerancesFromZoho}
                   </div>
-                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Note :</div>
-                  <div style={{ marginLeft: '20px', marginBottom: '15px' }}>
-                    If any other tolerances are required, can be discussed, defined and agreed.
-                  </div>
+                  {pleaseNoteFromZoho ? (
+                    <>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Note :</div>
+                      <div
+                        style={{
+                          marginLeft: '20px',
+                          marginBottom: '15px',
+                          whiteSpace: 'pre-wrap',
+                        }}
+                      >
+                        {pleaseNoteFromZoho}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
 
                 {/* Exclusions Section */}

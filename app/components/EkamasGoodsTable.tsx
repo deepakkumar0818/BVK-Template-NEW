@@ -4,6 +4,8 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords, resolveQuotationValidity } from '@/lib/quotation-utils'
+import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
+import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -36,6 +38,28 @@ const descGrid: CSSProperties = {
   textAlign: 'left',
 }
 
+/** Qty / Rate / Amount cells — top-aligned; paddingTop matches left Item header band so figures line up with value row */
+const ekamasRightValueCell: CSSProperties = {
+  ...bdSides,
+  borderTop: 'none',
+  borderBottom: 'none',
+  padding: '10px 6px',
+  paddingTop: '46px',
+  textAlign: 'center',
+  verticalAlign: 'top',
+  fontWeight: 'bold',
+}
+
+const ekamasRightPlaceholderCell: CSSProperties = {
+  ...bdSides,
+  borderTop: 'none',
+  borderBottom: 'none',
+  padding: '10px 6px',
+  textAlign: 'center',
+  verticalAlign: 'top',
+  fontWeight: 'bold',
+}
+
 interface EkamasGoodsTableProps {
   data: QuotationData
   rawQuotationData?: Record<string, unknown> | null
@@ -56,9 +80,8 @@ interface EkamasDisplayRow {
   quantity: number
   rate: number
   amount: number
-  warrantyText: string
-  packingText: string
-  grossWeightLine: string
+  /** Per-line kg (Net_Weight_Per_Pcs × Qty); summed for document total when Zoho has no Total_Gross_Weight */
+  lineGrossKg: number
 }
 
 export default function EkamasGoodsTable({
@@ -135,12 +158,21 @@ export default function EkamasGoodsTable({
     const brand = productDetail.Brand_Selling_Name?.trim() || ''
 
     const wiLine = data.lineItems?.[index]
+    /** Product column: Zoho Blend_Category (WMW product / 2.0 line), then name fields / transformed line */
     const product =
+      String(productDetail.Blend_Category ?? '').trim() ||
+      String(item.Blend_Category ?? '').trim() ||
       productDetail.Product_Name?.trim() ||
       productDetail.Product_Master?.trim() ||
       wiLine?.product?.trim() ||
       defaultProductLabel
-    const form = productDetail.Supply_Form?.trim() || wiLine?.form?.trim() || ''
+    /** Form column: Zoho End_Type (product row or 2.0 line), then Supply_Form / transformed line */
+    const form =
+      String(productDetail.End_Type ?? '').trim() ||
+      String(item.End_Type ?? '').trim() ||
+      productDetail.Supply_Form?.trim() ||
+      wiLine?.form?.trim() ||
+      ''
     const quality = wiLine?.quality?.trim() || ''
 
     const perPc = parseFloat(productDetail.Net_Weight_Per_Pcs || '0') || (index === 0 ? 50 : 50)
@@ -158,9 +190,7 @@ export default function EkamasGoodsTable({
       quantity,
       rate,
       amount,
-      warrantyText: defaultWarranty,
-      packingText: defaultPacking,
-      grossWeightLine: `Total gross weight: ${totalWeight ? `${totalWeight.toFixed(0)} kgs` : '100 kgs'}`,
+      lineGrossKg: totalWeight,
     }
   })
 
@@ -181,9 +211,7 @@ export default function EkamasGoodsTable({
       quantity,
       rate,
       amount,
-      warrantyText: defaultWarranty,
-      packingText: defaultPacking,
-      grossWeightLine: `Total gross weight: ${dummyWeight ? `${dummyWeight.toFixed(0)} kgs` : '100 kgs'}`,
+      lineGrossKg: dummyWeight,
     }
   })
 
@@ -203,12 +231,18 @@ export default function EkamasGoodsTable({
         quantity: 2,
         rate: 1100,
         amount: 2200,
-        warrantyText: defaultWarranty,
-        packingText: defaultPacking,
-        grossWeightLine: 'Total gross weight: 100 kgs',
+        lineGrossKg: 100,
       },
     ]
   }
+
+  const documentGrossWeightLine = (() => {
+    const raw = String(grossFromRaw || '').trim()
+    if (raw) return `Total gross weight: ${raw} kgs`
+    const sumKg = displayLineItems.reduce((s, r) => s + (r.lineGrossKg || 0), 0)
+    if (sumKg > 0) return `Total gross weight: ${sumKg.toFixed(0)} kgs`
+    return 'Total gross weight: 100 kgs'
+  })()
 
   const lineSum = displayLineItems.reduce((s, it) => s + (it.amount || 0), 0)
 
@@ -323,120 +357,125 @@ export default function EkamasGoodsTable({
                     </td>
                   </tr>
 
-                  {chunk.map((row, index) => (
-                    <Fragment key={`ekamas-line-${pageIdx}-${index}`}>
-                      <tr className="ekamas-item-row">
-                        <td
-                          style={{
-                            ...bdProductBlock,
-                            borderTop: index === 0 && pageIdx === 0 ? 'none' : '1px solid #000',
-                          }}
-                        >
-                          <div style={{ display: 'grid', gridTemplateColumns: '60px 10px auto', marginBottom: '4px', fontWeight: 'bold' }}>
-                            <span>Product</span>
-                            <span>:</span>
-                            <span>{row.product}</span>
-                          </div>
-                          {row.form ? (
+                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx, chunkGroups) => {
+                    const head = groupRows[0]
+                    return (
+                      <Fragment key={`ekamas-grp-${pageIdx}-${groupIdx}`}>
+                        <tr className="ekamas-item-row ekamas-item-meta-row">
+                          <td
+                            style={{
+                              ...bdProductBlock,
+                              borderTop: 'none',
+                            }}
+                          >
                             <div style={{ display: 'grid', gridTemplateColumns: '60px 10px auto', marginBottom: '4px', fontWeight: 'bold' }}>
-                              <span>Form</span>
+                              <span>Product</span>
                               <span>:</span>
-                              <span>{row.form}</span>
+                              <span>{head.product}</span>
                             </div>
-                          ) : null}
-                          {row.quality ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '60px 10px auto', marginBottom: '8px', fontWeight: 'bold' }}>
-                              <span>Quality</span>
-                              <span>:</span>
-                              <span>{row.quality}</span>
-                            </div>
-                          ) : null}
+                            {head.form ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '60px 10px auto', marginBottom: '4px', fontWeight: 'bold' }}>
+                                <span>Form</span>
+                                <span>:</span>
+                                <span>{head.form}</span>
+                              </div>
+                            ) : null}
+                            {head.quality ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '60px 10px auto', marginBottom: '8px', fontWeight: 'bold' }}>
+                                <span>Quality</span>
+                                <span>:</span>
+                                <span>{head.quality}</span>
+                              </div>
+                            ) : null}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                        </tr>
+                        {groupRows.map((row, rowIdx) => {
+                          const isLastProductRow =
+                            isLastChunk &&
+                            groupIdx === chunkGroups.length - 1 &&
+                            rowIdx === groupRows.length - 1
+                          return (
+                            <tr
+                              key={`ekamas-line-${pageIdx}-${groupIdx}-${rowIdx}`}
+                              className="ekamas-item-row ekamas-item-values-row"
+                            >
+                              <td
+                                style={{
+                                  ...bdProductBlock,
+                                  borderTop: 'none',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    paddingTop: '8px',
+                                    marginTop: '4px',
+                                  }}
+                                >
+                                  <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px', fontSize: '10px' }}>
+                                    <span>Item</span>
+                                    <span>MESH</span>
+                                    <span>BRAND</span>
+                                    <span>SIZE [Mtrs] (LxW)</span>
+                                    <span>Sqm Area / PC</span>
+                                  </div>
+                                  <div style={{ ...descGrid, alignItems: 'start' }}>
+                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
+                                    <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
+                                    <span style={goodsDescGridValueSpan}>{row.brand}</span>
+                                    <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                    <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
+                                  </div>
+                                </div>
 
-                          <div
-                            style={{
-                              borderTop: '1px solid #000',
-                              paddingTop: '8px',
-                              marginTop: '4px',
-                            }}
-                          >
-                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px', fontSize: '10px' }}>
-                              <span>Item</span>
-                              <span>MESH</span>
-                              <span>BRAND</span>
-                              <span>SIZE [Mtrs] (LxW)</span>
-                              <span>Sqm Area / PC</span>
-                            </div>
-                            <div style={descGrid}>
-                              <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{row.item}</span>
-                              <span>{row.mesh}</span>
-                              <span>{row.brand}</span>
-                              <span>{row.size}</span>
-                              <span>{row.sqmArea}</span>
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              borderTop: '1px solid #000',
-                              paddingTop: '8px',
-                              marginTop: '8px',
-                              lineHeight: 1.45,
-                            }}
-                          >
-                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{row.warrantyText}</div>
-                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{row.packingText}</div>
-                            <div style={{ fontWeight: 'bold' }}>
-                              {grossFromRaw ? `Total gross weight: ${grossFromRaw} kgs` : row.grossWeightLine}
-                            </div>
-                          </div>
-                        </td>
-                        <td
-                          style={{
-                            ...bdSides,
-                            borderTop: index === 0 && pageIdx === 0 ? 'none' : '1px solid #000',
-                            borderBottom: '1px solid #000',
-                            padding: '10px 6px',
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {row.quantity} Pcs
-                        </td>
-                        <td
-                          style={{
-                            ...bdSides,
-                            borderTop: index === 0 && pageIdx === 0 ? 'none' : '1px solid #000',
-                            borderBottom: '1px solid #000',
-                            padding: '10px 6px',
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
-                        </td>
-                        <td
-                          style={{
-                            ...bdSides,
-                            borderTop: index === 0 && pageIdx === 0 ? 'none' : '1px solid #000',
-                            borderBottom: '1px solid #000',
-                            padding: '10px 6px',
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                            fontWeight: 'bold',
-                          }}
-                        >
-                          {formatCurrency(row.amount, '')}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  ))}
+                                {isLastProductRow ? (
+                                  <div
+                                    style={{
+                                      borderTop: '1px solid #000',
+                                      paddingTop: '8px',
+                                      marginTop: '8px',
+                                      lineHeight: 1.45,
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{defaultWarranty}</div>
+                                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{defaultPacking}</div>
+                                    <div style={{ fontWeight: 'bold' }}>{documentGrossWeightLine}</div>
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td style={ekamasRightValueCell}>{row.quantity} Pcs</td>
+                              <td style={ekamasRightValueCell}>
+                                {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
+                              </td>
+                              <td style={ekamasRightValueCell}>{formatCurrency(row.amount, '')}</td>
+                            </tr>
+                          )
+                        })}
+                      </Fragment>
+                    )
+                  })}
 
                   {isLastChunk && (
                     <>
                       <tr>
-                        <td style={{ ...bd, padding: 0, verticalAlign: 'top' }}>
+                        <td
+                          style={{
+                            borderLeft: '1px solid #000',
+                            borderRight: '1px solid #000',
+                            borderBottom: '1px solid #000',
+                            borderTop: 'none',
+                            padding: 0,
+                            verticalAlign: 'top',
+                          }}
+                        >
                           <div
                             style={{
                               borderTop: '1px solid #000',
@@ -472,9 +511,36 @@ export default function EkamasGoodsTable({
                             100 per invoice shall be charged extra
                           </div>
                         </td>
-                        <td style={{ ...bd, padding: '6px', verticalAlign: 'middle' }} />
-                        <td style={{ ...bd, padding: '6px', verticalAlign: 'middle' }} />
-                        <td style={{ ...bd, padding: '6px', verticalAlign: 'middle' }} />
+                        <td
+                          style={{
+                            borderLeft: '1px solid #000',
+                            borderRight: '1px solid #000',
+                            borderBottom: '1px solid #000',
+                            borderTop: 'none',
+                            padding: '6px',
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                        <td
+                          style={{
+                            borderLeft: '1px solid #000',
+                            borderRight: '1px solid #000',
+                            borderBottom: '1px solid #000',
+                            borderTop: 'none',
+                            padding: '6px',
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                        <td
+                          style={{
+                            borderLeft: '1px solid #000',
+                            borderRight: '1px solid #000',
+                            borderBottom: '1px solid #000',
+                            borderTop: 'none',
+                            padding: '6px',
+                            verticalAlign: 'middle',
+                          }}
+                        />
                       </tr>
 
                       <tr>
@@ -509,19 +575,76 @@ export default function EkamasGoodsTable({
                       </tr>
 
                       <tr>
-                        <td style={{ ...bd, padding: '8px 10px', fontSize: '10px', verticalAlign: 'top', fontWeight: 'bold', lineHeight: 1.35 }}>
-                          Amount Chargeable
-                          <br />
-                          (In words) :
-                        </td>
-                        <td colSpan={2} style={{ ...bd, padding: '8px 10px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px' }}>
-                          {currencyWords} {amountInWords} Only
-                        </td>
-                        <td style={{ ...bd, padding: '8px 10px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold' }}>
-                          <div style={{ fontSize: '11px', marginBottom: '4px' }}>Total:-</div>
-                          <div style={{ fontSize: '14px' }}>
-                            <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, '')}</span>
-                          </div>
+                        <td colSpan={4} style={{ ...bd, padding: 0, verticalAlign: 'middle' }}>
+                          <table
+                            style={{
+                              width: '100%',
+                              borderCollapse: 'collapse',
+                              tableLayout: 'fixed',
+                              fontSize: '10px',
+                            }}
+                          >
+                            <colgroup>
+                              <col style={{ width: '18%' }} />
+                              <col style={{ width: '62%' }} />
+                              <col style={{ width: '20%' }} />
+                            </colgroup>
+                            <tbody>
+                              <tr>
+                                <td
+                                  style={{
+                                    borderRight: '1px solid #000',
+                                    padding: '8px 10px',
+                                    fontSize: '10px',
+                                    verticalAlign: 'middle',
+                                    fontWeight: 'bold',
+                                    lineHeight: 1.35,
+                                  }}
+                                >
+                                  Amount Chargeable
+                                  <br />
+                                  (In words) :
+                                </td>
+                                <td
+                                  style={{
+                                    borderRight: '1px solid #000',
+                                    padding: '8px 10px',
+                                    fontWeight: 'bold',
+                                    verticalAlign: 'middle',
+                                    fontSize: '11px',
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '10px',
+                                      width: '100%',
+                                    }}
+                                  >
+                                    <span style={{ textAlign: 'left', flex: '1 1 auto', minWidth: 0 }}>
+                                      {currencyWords} {amountInWords} Only
+                                    </span>
+                                    <span style={{ fontSize: '11px', flexShrink: 0, whiteSpace: 'nowrap' }}>Total:-</span>
+                                  </div>
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '8px 10px',
+                                    textAlign: 'right',
+                                    verticalAlign: 'middle',
+                                    fontWeight: 'bold',
+                                    fontSize: '14px',
+                                  }}
+                                >
+                                  <span className="quotation-grand-total-amount">
+                                    {formatCurrency(totalWithCharges, '')}
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </td>
                       </tr>
 

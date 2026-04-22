@@ -176,53 +176,67 @@ export function parseQuotationTaxForSummary(raw: unknown, lineItemsTotalFallback
 }
 
 /**
- * Converts number to words
+ * Converts a non-negative integer &lt; 1000 to words (hundreds + tens + ones).
  */
-export function numberToWords(num: number): string {
+function convertBelowThousand(n: number): string {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
     'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
-  
-  function convertHundreds(n: number): string {
-    let result = ''
-    if (n >= 100) {
-      result += ones[Math.floor(n / 100)] + ' Hundred '
-      n %= 100
-    }
-    if (n >= 20) {
-      result += tens[Math.floor(n / 10)] + ' '
-      n %= 10
-    }
-    if (n > 0) {
-      result += ones[n] + ' '
-    }
-    return result.trim()
+
+  let x = Math.floor(Math.abs(n)) % 1000
+  let result = ''
+  if (x >= 100) {
+    result += ones[Math.floor(x / 100)] + ' Hundred '
+    x %= 100
   }
-  
+  if (x >= 20) {
+    result += tens[Math.floor(x / 10)] + ' '
+    x %= 10
+  }
+  if (x > 0) {
+    result += ones[x] + ' '
+  }
+  return result.trim()
+}
+
+/**
+ * Converts number to words (integer chunked by thousands → Million / Billion …).
+ * The previous implementation only supported amounts &lt; ~1M and produced the literal "undefined"
+ * for larger values because {@link convertBelowThousand} was fed numbers ≥ 1000.
+ */
+export function numberToWords(num: number): string {
+  if (!Number.isFinite(num)) return 'Zero'
   if (num === 0) return 'Zero'
-  
-  const integerPart = Math.floor(num)
-  const decimalPart = Math.round((num - integerPart) * 100)
-  
-  let words = ''
-  
-  // Handle thousands
-  if (integerPart >= 1000) {
-    const thousands = Math.floor(integerPart / 1000)
-    words += convertHundreds(thousands) + ' Thousand '
+
+  const negative = num < 0
+  const abs = Math.abs(num)
+  const integerPart = Math.floor(abs)
+  const decimalPart = Math.round((abs - integerPart) * 100)
+
+  const scales = ['', 'Thousand', 'Million', 'Billion', 'Trillion', 'Quadrillion', 'Quintillion']
+  const parts: string[] = []
+  let n = integerPart
+  let scaleIdx = 0
+  while (n > 0 && scaleIdx < scales.length) {
+    const chunk = n % 1000
+    if (chunk > 0) {
+      const chunkWords = convertBelowThousand(chunk)
+      const suffix = scales[scaleIdx]
+      parts.push(suffix ? `${chunkWords} ${suffix}` : chunkWords)
+    }
+    n = Math.floor(n / 1000)
+    scaleIdx++
   }
-  
-  // Handle hundreds
-  const remainder = integerPart % 1000
-  if (remainder > 0) {
-    words += convertHundreds(remainder)
+  if (n > 0) {
+    parts.push(String(n))
   }
-  
-  // Handle decimal part (cents/paisa)
+
+  let words = (negative ? 'Minus ' : '') + parts.reverse().join(' ').replace(/\s+/g, ' ').trim()
+
   if (decimalPart > 0) {
     words += ` and ${decimalPart}/100`
   }
-  
+
   return words.trim()
 }
 

@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
 import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -330,6 +331,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   })
 
   const displayLineItems = lineItemsFromZoho.length > 0 ? lineItemsFromZoho : lineItemsFallback
+  const groupedSaintLineItems = groupChunkRowsByProductFormQuality(displayLineItems)
 
   const lineSum = displayLineItems.reduce((s, it) => s + (it.amount || 0), 0)
 
@@ -436,156 +438,164 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   </td>
                 </tr>
               ) : (
-                displayLineItems.map((row, idx) => (
-                  <Fragment key={`saint-line-${row.item}-${idx}`}>
-                    <tr>
-                      <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
-                          {idx === 0 ? 'Trial Batch' : row.product || `Item ${row.item}`}
-                        </div>
-                        <div style={{ ...metaGrid }}>
-                          <span>Product</span>
-                          <span>:</span>
-                          <span>{row.product || '\u00A0'}</span>
-                        </div>
-                        <div style={{ ...metaGrid }}>
-                          <span>Form</span>
-                          <span>:</span>
-                          <span>{row.form || '\u00A0'}</span>
-                        </div>
-                        <div style={{ ...metaGrid, marginBottom: idx === displayLineItems.length - 1 ? '16px' : '8px' }}>
-                          <span>Quality</span>
-                          <span>:</span>
-                          <span>{row.quality || '\u00A0'}</span>
-                        </div>
-                      </td>
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                    </tr>
-                    <tr>
-                      <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
-                        <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
-                          <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
-                          <span style={descGridCell}>Mesh</span>
-                          <span style={descGridCell}>Brand</span>
-                          <span style={{ ...descGridCell, lineHeight: 1.25 }}>Size [m] (L x W)</span>
-                          <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
-                        </div>
-                      </td>
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                      <td style={contentBdSides} />
-                    </tr>
-                    <tr>
-                      <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '4px 10px' }}>
-                        {quotationScalarFieldPresent(row.remarks) ? (
-                          <div
-                            style={{
-                              ...descGrid,
-                              fontSize: '11px',
-                              gridTemplateRows: 'auto auto',
-                              rowGap: '4px',
-                            }}
-                          >
-                            <span
+                groupedSaintLineItems.map((groupRows, groupIdx) => {
+                  const head = groupRows[0]
+                  const isLastGroup = groupIdx === groupedSaintLineItems.length - 1
+                  return (
+                    <Fragment key={`saint-grp-${groupIdx}`}>
+                      <tr>
+                        <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
+                            {groupIdx === 0 ? 'Trial Batch' : head.product || `Item ${head.item}`}
+                          </div>
+                          <div style={{ ...metaGrid }}>
+                            <span>Product</span>
+                            <span>:</span>
+                            <span>{head.product || '\u00A0'}</span>
+                          </div>
+                          <div style={{ ...metaGrid }}>
+                            <span>Form</span>
+                            <span>:</span>
+                            <span>{head.form || '\u00A0'}</span>
+                          </div>
+                          <div style={{ ...metaGrid, marginBottom: isLastGroup ? '16px' : '8px' }}>
+                            <span>Quality</span>
+                            <span>:</span>
+                            <span>{head.quality || '\u00A0'}</span>
+                          </div>
+                        </td>
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                      </tr>
+                      {groupRows.map((row, rowIdx) => (
+                        <Fragment key={`saint-line-${groupIdx}-${rowIdx}`}>
+                          <tr>
+                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
+                                <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
+                                <span style={descGridCell}>Mesh</span>
+                                <span style={descGridCell}>Brand</span>
+                                <span style={{ ...descGridCell, lineHeight: 1.25 }}>Size [m] (L x W)</span>
+                                <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
+                              </div>
+                            </td>
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                          </tr>
+                          <tr>
+                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '4px 10px' }}>
+                              {quotationScalarFieldPresent(row.remarks) ? (
+                                <div
+                                  style={{
+                                    ...descGrid,
+                                    fontSize: '11px',
+                                    gridTemplateRows: 'auto auto',
+                                    rowGap: '4px',
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      ...descGridCell,
+                                      gridColumn: 1,
+                                      gridRow: 1,
+                                      textAlign: 'center',
+                                      fontWeight: 'bold',
+                                    }}
+                                  >
+                                    {row.item}
+                                  </span>
+                                  <span
+                                    style={{
+                                      ...descGridCell,
+                                      gridColumn: 2,
+                                      gridRow: 1,
+                                      fontWeight: 'bold',
+                                    }}
+                                  >
+                                    {row.mesh || '\u00A0'}
+                                  </span>
+                                  <span
+                                    style={{
+                                      ...descGridCell,
+                                      gridColumn: 3,
+                                      gridRow: 1,
+                                      fontWeight: 'bold',
+                                      fontSize: '13px',
+                                    }}
+                                  >
+                                    {row.brand || '\u00A0'}
+                                  </span>
+                                  <span style={{ ...descGridCell, gridColumn: 4, gridRow: 1 }}>{row.size || '\u00A0'}</span>
+                                  <span
+                                    style={{
+                                      ...descGridCell,
+                                      gridColumn: 5,
+                                      gridRow: 1,
+                                      textAlign: 'right',
+                                    }}
+                                  >
+                                    {row.sqmArea || '\u00A0'}
+                                  </span>
+                                  <div
+                                    style={{
+                                      gridColumn: '2 / 5',
+                                      gridRow: 2,
+                                      minWidth: 0,
+                                      fontSize: '10px',
+                                      fontWeight: 'normal',
+                                      lineHeight: 1.45,
+                                      textAlign: 'left',
+                                      whiteSpace: 'pre-wrap',
+                                      overflowWrap: 'break-word',
+                                      wordBreak: 'break-word',
+                                    }}
+                                  >
+                                    {String(row.remarks).trim()}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ ...descGrid, fontSize: '11px' }}>
+                                  <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
+                                  <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
+                                  <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '13px' }}>{row.brand || '\u00A0'}</span>
+                                  <span style={descGridCell}>{row.size || '\u00A0'}</span>
+                                  <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td
                               style={{
-                                ...descGridCell,
-                                gridColumn: 1,
-                                gridRow: 1,
+                                ...contentBdSides,
+                                padding: '4px 8px',
                                 textAlign: 'center',
+                                verticalAlign: 'top',
                                 fontWeight: 'bold',
-                              }}
-                            >
-                              {row.item}
-                            </span>
-                            <span
-                              style={{
-                                ...descGridCell,
-                                gridColumn: 2,
-                                gridRow: 1,
-                                fontWeight: 'bold',
-                              }}
-                            >
-                              {row.mesh || '\u00A0'}
-                            </span>
-                            <span
-                              style={{
-                                ...descGridCell,
-                                gridColumn: 3,
-                                gridRow: 1,
-                                fontWeight: 'bold',
-                                fontSize: '13px',
-                              }}
-                            >
-                              {row.brand || '\u00A0'}
-                            </span>
-                            <span style={{ ...descGridCell, gridColumn: 4, gridRow: 1 }}>{row.size || '\u00A0'}</span>
-                            <span
-                              style={{
-                                ...descGridCell,
-                                gridColumn: 5,
-                                gridRow: 1,
-                                textAlign: 'right',
-                              }}
-                            >
-                              {row.sqmArea || '\u00A0'}
-                            </span>
-                            <div
-                              style={{
-                                gridColumn: '2 / 5',
-                                gridRow: 2,
-                                minWidth: 0,
-                                fontSize: '10px',
-                                fontWeight: 'normal',
-                                lineHeight: 1.45,
-                                textAlign: 'left',
-                                whiteSpace: 'pre-wrap',
-                                overflowWrap: 'break-word',
+                                fontSize: '11px',
+                                lineHeight: 1.35,
                                 wordBreak: 'break-word',
                               }}
                             >
-                              {String(row.remarks).trim()}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ ...descGrid, fontSize: '11px' }}>
-                            <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
-                            <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
-                            <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '13px' }}>{row.brand || '\u00A0'}</span>
-                            <span style={descGridCell}>{row.size || '\u00A0'}</span>
-                            <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td
-                        style={{
-                          ...contentBdSides,
-                          padding: '4px 8px',
-                          textAlign: 'center',
-                          verticalAlign: 'top',
-                          fontWeight: 'bold',
-                          fontSize: '11px',
-                          lineHeight: 1.35,
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {row.hsnCode || ''}
-                      </td>
-                      <td style={{ ...contentBdSides, padding: '4px 8px', verticalAlign: 'top' }}>
-                        {renderQtyUomCell(row.quantity || '', row.uom)}
-                      </td>
-                      <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
-                        {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
-                      </td>
-                      <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
-                        {formatCurrency(row.amount, currency)}
-                      </td>
-                    </tr>
-                  </Fragment>
-                ))
+                              {row.hsnCode || ''}
+                            </td>
+                            <td style={{ ...contentBdSides, padding: '4px 8px', verticalAlign: 'top' }}>
+                              {renderQtyUomCell(row.quantity || '', row.uom)}
+                            </td>
+                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
+                              {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
+                            </td>
+                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
+                              {formatCurrency(row.amount, currency)}
+                            </td>
+                          </tr>
+                        </Fragment>
+                      ))}
+                    </Fragment>
+                  )
+                })
               )}
 
               <tr>

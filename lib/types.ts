@@ -66,6 +66,10 @@ export interface ZohoQuotation {
   Customer_Zone?: string
   Currency?: string
   Remarks?: string
+  /** Quotation-level tolerances text (Zoho API name: Tolerances) */
+  Tolerances?: string
+  /** Quotation-level note under tolerances (Zoho API name: Please_Note) */
+  Please_Note?: string
   Type_Of_Quotation?: string
   Template?: string
   /** Consignee GST from quotation record (Zoho Creator) */
