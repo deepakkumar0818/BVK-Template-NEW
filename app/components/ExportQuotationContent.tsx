@@ -4,7 +4,7 @@ import { Fragment } from 'react'
 import { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency, numberToWords, formatDate, resolveQuotationValidity } from '@/lib/quotation-utils'
-import { buildWmwJoinedLineRows } from '@/lib/wmw-subform-mapping'
+import { buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface ExportTableLine {
@@ -147,7 +147,11 @@ export default function ExportQuotationContent({
   
   const packingFreight = parseFloat(rawQuotationData?.Packing_Freight || '0') || 0
   const transaction = parseFloat(rawQuotationData?.Transaction_Charges || '0') || 0
-  const totalWithCharges = baseAmount + packingFreight + transaction
+  const { discountTotal: overallDiscountAmt, discountLabel: overallDiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+  const discountDeduct = Math.max(0, overallDiscountAmt)
+  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
   const amountInWords = numberToWords(totalWithCharges)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
@@ -545,6 +549,18 @@ export default function ExportQuotationContent({
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '8px' }}></td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '8px' }}></td>
             </tr>
+
+            {/* ── Overall discount (Zoho: Discount_Type + Overall_Discount_Value) — above packing/freight ── */}
+            {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
+              <tr>
+                <td colSpan={7} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>
+                  {overallDiscountLabel}
+                </td>
+                <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'right' }}>
+                  {formatCurrency(overallDiscountAmt, currency)}
+                </td>
+              </tr>
+            ) : null}
 
             {/* ── Packing / Freight ── */}
             {packingFreight > 0 && (

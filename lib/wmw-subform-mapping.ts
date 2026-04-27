@@ -27,6 +27,10 @@
  *    - If a charge row has no `last_item_ref`, it is treated as global for that name (applies to any line
  *      when no ref-scoped row matched).
  *
+ * 7. **Product Fitment** (when `Product_Fitments` / `Product_Fitments2_0` have rows): the same join shape is
+ *    applied using `Product_Fitments_Other_Charges` and `Product_Fitments_Desired_Date`. If Category 1 WMW also
+ *    has lines, **WMW rows are listed first**, then fitment rows (continuous `rowIndex`).
+ *
  * This module is intentionally data-only (no React) so the same shapes can be reused in APIs, PDFs, or tests.
  */
 
@@ -41,7 +45,16 @@ export const WMW_SUBFORM_KEYS = {
   DESIRED_DATE: 'Category_1_MM_Database_WMW_Desired_Date',
 } as const
 
+export const PRODUCT_FITMENT_SUBFORM_KEYS = {
+  MAIN: 'Product_Fitments',
+  LINK_2_0: 'Product_Fitments2_0',
+  LINK_3_0: '',
+  OTHER_CHARGES: 'Product_Fitments_Other_Charges',
+  DESIRED_DATE: 'Product_Fitments_Desired_Date',
+} as const
+
 export const WMW_STANDARD_CHARGE_NAMES = {
+  DISCOUNT: 'Discount',
   FREIGHT: 'Freight Charge',
   PACKING: 'Packing Charges',
   SEAM: 'Seam Charges',
@@ -81,6 +94,15 @@ export interface WmwFormTotalsDisplay {
   addIgst: string
   taxAmountGst: string
   totalAmountAfterGst: string
+}
+
+type WmwLikeSubformKeyBundle = {
+  MAIN: string
+  LINK_2_0: string
+  LINK_3_0: string
+  OTHER_CHARGES: string
+  DESIRED_DATE: string
+  isProductFitment: boolean
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -127,12 +149,15 @@ function toRowArray(raw: ZohoQuotation | null | undefined, key: string): Unknown
 }
 
 function refFromRow(row: UnknownRecord): string {
-  return normalizeLastItemRef(row.last_item_ref ?? row.Last_item_ref ?? row.Line_Item_ref)
+  return normalizeLastItemRef(row.last_item_ref ?? row.Last_item_ref ?? row.Line_Item_ref ?? row.Sr_No ?? row.S_No)
 }
 
 function rowHasExplicitLastItemRef(row: UnknownRecord): boolean {
   return (
-    normalizeLastItemRef(row.last_item_ref) !== '' || normalizeLastItemRef(row.Last_item_ref) !== ''
+    normalizeLastItemRef(row.last_item_ref) !== '' ||
+    normalizeLastItemRef(row.Last_item_ref) !== '' ||
+    normalizeLastItemRef(row.Sr_No) !== '' ||
+    normalizeLastItemRef(row.S_No) !== ''
   )
 }
 
@@ -267,19 +292,43 @@ function desiredDateForRef(
   return stringifyField(row.Date_field)
 }
 
-/**
- * Builds joined line rows for UI / export. Never throws; missing pieces become blank strings.
- */
-export function buildWmwJoinedLineRows(raw: ZohoQuotation | null | undefined): WmwJoinedLineDisplayRow[] {
-  if (!raw) return []
+type WmwLikeKeysOnly = Omit<WmwLikeSubformKeyBundle, 'isProductFitment'>
 
-  const mainRows = toRowArray(raw, WMW_SUBFORM_KEYS.MAIN)
+/**
+ * Resolves main line drivers: WMW main, or Product_Fitments, or Product_Fitments2_0 (fitment only when 1.0 empty).
+ */
+function mainRowsForBundle(
+  raw: ZohoQuotation,
+  keys: WmwLikeKeysOnly,
+  isProductFitment: boolean
+): UnknownRecord[] {
+  const fromMain = toRowArray(raw, keys.MAIN)
+  if (fromMain.length > 0) return fromMain
+  if (isProductFitment && keys.LINK_2_0) {
+    const from20 = toRowArray(raw, keys.LINK_2_0)
+    if (from20.length > 0) return from20
+  }
+  return []
+}
+
+/**
+ * One joined block: WMW (Category_1) or Product Fitment — same display row shape.
+ * `rowIndexBase` is 0-based offset so WMW + fitment lines share one continuous numbering in the document.
+ */
+function buildJoinedLineRowsForSubformBundle(
+  raw: ZohoQuotation,
+  keys: WmwLikeKeysOnly,
+  isProductFitment: boolean,
+  idPrefix: 'wmw' | 'pf',
+  rowIndexBase: number
+): WmwJoinedLineDisplayRow[] {
+  const mainRows = mainRowsForBundle(raw, keys, isProductFitment)
   if (mainRows.length === 0) return []
 
-  const rows2 = toRowArray(raw, WMW_SUBFORM_KEYS.LINK_2_0)
-  const rows3 = toRowArray(raw, WMW_SUBFORM_KEYS.LINK_3_0)
-  const chargeRows = toRowArray(raw, WMW_SUBFORM_KEYS.OTHER_CHARGES)
-  const desiredRows = toRowArray(raw, WMW_SUBFORM_KEYS.DESIRED_DATE)
+  const rows2 = toRowArray(raw, keys.LINK_2_0)
+  const rows3 = keys.LINK_3_0 ? toRowArray(raw, keys.LINK_3_0) : []
+  const chargeRows = toRowArray(raw, keys.OTHER_CHARGES)
+  const desiredRows = toRowArray(raw, keys.DESIRED_DATE)
 
   const byRef2 = groupRowsByLastItemRef(rows2)
   const byRef3 = groupRowsByLastItemRef(rows3)
@@ -301,33 +350,79 @@ export function buildWmwJoinedLineRows(raw: ZohoQuotation | null | undefined): W
     const blendProductLabel =
       stringifyField(ext3?.Blend_Category) ||
       stringifyField(ext2?.Blend_Category) ||
-      stringifyField(main.Blend_Category)
+      stringifyField(main.Blend_Category) ||
+      stringifyField(main.Product_Group) ||
+      stringifyField(main.Product_Name) ||
+      stringifyField(main.Price_Master)
+
+    const supplyForm = isProductFitment
+      ? coalesceMainFirst(main, ext2, ext3, 'UOM_Billing')
+      : (
+          coalesceLinkedFirst(ext2, ext3, main, 'End_Type') ||
+          coalesceLinkedFirst(ext2, ext3, main, 'Supply_Form')
+        )
+
+    const size = isProductFitment
+      ? (
+          [stringifyField(main.Length_field || ext2?.Length_field), stringifyField(main.Width || ext2?.Width)]
+            .filter((v) => v !== '')
+            .join(' x ') ||
+          coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type')
+        )
+      : coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type')
+
+    const seamType = isProductFitment
+      ? (
+          coalesceMainFirst(main, ext2, ext3, 'Brand_Selling_Name') ||
+          coalesceMainFirst(main, ext2, ext3, 'Brand_Category') ||
+          coalesceMainFirst(main, ext2, ext3, 'Seam_Type')
+        )
+      : (
+          coalesceMainFirst(main, ext2, ext3, 'Brand_Selling_Name') ||
+          coalesceLinkedFirst(ext2, ext3, main, 'Seam_Type')
+        )
+
+    const ratePerSqmDisplay = isProductFitment
+      ? (
+          coalesceMainFirst(main, ext2, ext3, 'Total_SQM') ||
+          coalesceMainFirst(main, ext2, ext3, 'Selling_Price') ||
+          coalesceMainFirst(main, ext2, ext3, 'List_Price')
+        )
+      : coalesceMainFirst(main, ext2, ext3, 'Total_SQM')
+
+    const amountDisplay = (() => {
+      if (isProductFitment) {
+        const netSales = coalesceMainFirst(main, ext2, ext3, 'Net_sales_value')
+        if (netSales) return netSales
+        const ga = coalesceMainFirst(main, ext2, ext3, 'Gross_Amount')
+        if (ga) return ga
+      }
+      const qty = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
+      const rate = parseNumeric(
+        isProductFitment
+          ? coalesceMainFirst(main, ext2, ext3, 'Total_SQM') || coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
+          : coalesceMainFirst(main, ext2, ext3, 'Total_SQM')
+      )
+      const computed = qty * rate
+      if (Number.isFinite(computed)) return computed.toFixed(2)
+      return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
+    })()
 
     return {
-      rowKey: `${mainId}-${idx}`,
+      rowKey: `${idPrefix}-${mainId}-${idx}`,
       lastItemRef,
-      rowIndex: idx + 1,
+      rowIndex: rowIndexBase + idx + 1,
       mainRowId: mainId,
 
-      productLabel: blendProductLabel || stringifyField(main.Product_Group),
-      supplyForm:
-        coalesceLinkedFirst(ext2, ext3, main, 'End_Type') ||
-        coalesceLinkedFirst(ext2, ext3, main, 'Supply_Form'),
-      size: coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type'),
-      seamType:
-        coalesceMainFirst(main, ext2, ext3, 'Brand_Selling_Name') ||
-        coalesceLinkedFirst(ext2, ext3, main, 'Seam_Type'),
+      productLabel: blendProductLabel,
+      supplyForm,
+      size,
+      seamType,
       hsnCode: coalesceLinkedFirst(ext2, ext3, main, 'HSN_Code'),
-      uom: coalesceMainFirst(main, ext2, ext3, 'UOM_Billing'),
-      quantity: coalesceMainFirst(main, ext2, ext3, 'Qty'),
-      ratePerSqmDisplay: coalesceMainFirst(main, ext2, ext3, 'Total_SQM'),
-      amountDisplay: (() => {
-        const qty = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
-        const rate = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Total_SQM'))
-        const computed = qty * rate
-        if (Number.isFinite(computed)) return computed.toFixed(2)
-        return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
-      })(),
+      uom: coalesceMainFirst(main, ext2, ext3, 'UOM_Billing') || (isProductFitment ? 'SQM' : ''),
+      quantity: coalesceMainFirst(main, ext2, ext3, 'Qty') || (isProductFitment ? coalesceMainFirst(main, ext2, ext3, 'Pieces') : ''),
+      ratePerSqmDisplay,
+      amountDisplay,
 
       deliveryDate: desiredDateForRef(desiredRows, lastItemRef),
 
@@ -336,6 +431,30 @@ export function buildWmwJoinedLineRows(raw: ZohoQuotation | null | undefined): W
       seamCharges: pickOtherChargePrice(chargeRows, WMW_STANDARD_CHARGE_NAMES.SEAM, lastItemRef),
     }
   })
+}
+
+/**
+ * Joined lines for UI / export: **Category 1 WMW** block first (when present), then **Product Fitment** block
+ * (when `Product_Fitments` and/or `Product_Fitments2_0` has rows). Other charges / desired dates use each
+ * block’s subforms. Never throws; missing pieces become blank strings.
+ */
+export function buildWmwJoinedLineRows(raw: ZohoQuotation | null | undefined): WmwJoinedLineDisplayRow[] {
+  if (!raw) return []
+  const wmwBlock = buildJoinedLineRowsForSubformBundle(
+    raw,
+    WMW_SUBFORM_KEYS,
+    false,
+    'wmw',
+    0
+  )
+  const pfBlock = buildJoinedLineRowsForSubformBundle(
+    raw,
+    PRODUCT_FITMENT_SUBFORM_KEYS,
+    true,
+    'pf',
+    wmwBlock.length
+  )
+  return [...wmwBlock, ...pfBlock]
 }
 
 /**
@@ -399,20 +518,44 @@ export function quotationScalarFieldPresent(value: unknown): boolean {
 }
 
 /**
- * Freight / packing / seam from quotation scalars only: `Total_Freight_Charges`, `Total_Packing_Charges`, `Total_Seam_Charges`.
- * No subform sum and no `Packing_Freight` fallback — empty/missing field → 0 (UI hides the row).
+ * Right-hand summary label: `Discount_Type` + " Discount", or "Discount" when type is empty.
+ * Shown just above Freight Charge on WMWD1 / performa / export goods footers.
+ */
+export function formatOverallDiscountRowLabel(discountType: unknown): string {
+  const t = String(discountType ?? '').trim()
+  if (!t) return 'Discount'
+  return `${t} Discount`
+}
+
+/**
+ * Freight / discount / packing / seam from quotation scalars only.
+ * Discount amount: `Overall_Discount_Value` if set, else `Total_Discount` (legacy).
+ * Discount label: from `Discount_Type` via {@link formatOverallDiscountRowLabel}.
+ * Other charges: `Total_Freight_Charges`, `Total_Packing_Charges`, `Total_Seam_Charges`.
+ * No subform sum — empty/missing field → 0 (UI hides the row when amount is 0).
  */
 export function resolveWmwChargeTotals(raw: ZohoQuotation | null | undefined): {
+  discountTotal: number
+  discountLabel: string
   freightTotal: number
   packingTotal: number
   seamTotal: number
 } {
   const r = raw as Record<string, unknown> | undefined
   if (!r) {
-    return { freightTotal: 0, packingTotal: 0, seamTotal: 0 }
+    return { discountTotal: 0, discountLabel: 'Discount', freightTotal: 0, packingTotal: 0, seamTotal: 0 }
+  }
+
+  let discountTotal = 0
+  if (quotationScalarFieldPresent(r.Overall_Discount_Value)) {
+    discountTotal = parseChargeNumber(String(r.Overall_Discount_Value))
+  } else if (quotationScalarFieldPresent(r.Total_Discount)) {
+    discountTotal = parseChargeNumber(String(r.Total_Discount))
   }
 
   return {
+    discountTotal,
+    discountLabel: formatOverallDiscountRowLabel(r.Discount_Type),
     freightTotal: quotationScalarFieldPresent(r.Total_Freight_Charges)
       ? parseChargeNumber(String(r.Total_Freight_Charges))
       : 0,

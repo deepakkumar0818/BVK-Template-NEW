@@ -2,7 +2,8 @@
 
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { QuotationData } from '@/lib/types'
+import type { QuotationData, ZohoQuotation } from '@/lib/types'
+import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
 import {
   filterNonZeroWmwChargeRows,
@@ -203,6 +204,8 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
   const transaction = parseFloat(rawQuotationData?.Transaction_Charges || '0') || 0
 
   const chargeTotalsResolved = resolveWmwChargeTotals(rawQuotationData)
+  const discountRowLabel = chargeTotalsResolved.discountLabel
+  const discountChargeAmt = chargeTotalsResolved.discountTotal
   const freightChargeAmt = chargeTotalsResolved.freightTotal
   const packingChargeAmt = chargeTotalsResolved.packingTotal
   const seamChargeAmt = chargeTotalsResolved.seamTotal
@@ -211,9 +214,11 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     : 0
   const typeOfOtherCharges = String(rawQuotationData?.Type_of_Other_Charges ?? '').trim()
   const otherChargesLabel = typeOfOtherCharges ? `Other Charges (${typeOfOtherCharges})` : 'Other Charges'
-  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt
+  const discountDeduct = Math.max(0, discountChargeAmt)
+  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
   const adhunikChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
+    [discountRowLabel, discountChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
@@ -387,8 +392,34 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     }
   })
 
-  let displayLineItems = lineItemsFromZoho.length > 0 ? lineItemsFromZoho : lineItemsFallback
-  
+  const rawWmw2Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0)
+  const wmwMappedBlock = rawWmw2Rows.length > 0 ? lineItemsFromZoho : []
+  const fitmentMappedBlock = buildProductFitmentBrandedGoodsBlock(
+    (rawQuotationData ?? null) as ZohoQuotation | null
+  ).map((f) => ({
+    item: 0,
+    product: f.product,
+    form: f.form,
+    quality: f.quality,
+    hsnCode: f.hsnCode,
+    mesh: f.mesh,
+    brand: f.brand,
+    size: f.size,
+    sqmArea: f.sqmArea,
+    quantity: f.quantity,
+    rate: f.rate,
+    amount: f.amount,
+    perPc: f.perPc,
+    totalWeight: f.totalWeight,
+  }))
+
+  let displayLineItems: typeof lineItemsFromZoho =
+    wmwMappedBlock.length + fitmentMappedBlock.length > 0
+      ? renumberMergedGoodsItems([...wmwMappedBlock, ...fitmentMappedBlock])
+      : lineItemsFromZoho.length > 0
+        ? lineItemsFromZoho
+        : lineItemsFallback
+
   // If we only have 0 items and want to match screenshot exactly, inject dummy data
   if (displayLineItems.length === 0) {
     displayLineItems = [

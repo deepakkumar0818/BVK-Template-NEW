@@ -1,6 +1,7 @@
 import { ZohoQuotation, QuotationData, QuotationLineItem, TemplateType } from './types'
 import {
   buildWmwJoinedLineRows,
+  type WmwJoinedLineDisplayRow,
   normalizeLastItemRef,
   pickBlendCategoryFromWmw30Row,
   resolveCategory1WmwHsnCode,
@@ -64,14 +65,14 @@ export function formatCurrency(value: string | number | undefined, currency: str
  */
 export function resolveQuotationValidity(
   rawQuotationData: Record<string, unknown> | null | undefined,
-  defaultValue = '7 Days'
+  defaultValue = ' '
 ): string {
   const raw = rawQuotationData
-  if (raw != null && Object.prototype.hasOwnProperty.call(raw, 'Quotation_Validity')) {
-    const v = raw.Quotation_Validity
+  if (raw != null && Object.prototype.hasOwnProperty.call(raw, 'Expiry_Date')) {
+    const v = raw.Expiry_Date
     return v == null ? '' : String(v)
   }
-  return String(raw?.Offer_Validity ?? '') || defaultValue
+  return String(raw?.Expiry_Date ?? '') || defaultValue
 }
 
 /** WMW WMWD1 / Performa summary row when Zoho `Quotation_Validity` and `Offer_Validity` are absent. */
@@ -343,6 +344,12 @@ export function getCategoryFieldsFromTemplate(templateField?: string, zohoData?:
   }
 
   const template = templateField.trim().toLowerCase()
+  if (template.includes('product fitment')) {
+    return {
+      lineItemsField: 'Product_Fitments2_0',
+      productDetailsField: 'Product_Fitments',
+    }
+  }
   
   // Map Template field to Category fields
   if (template.includes('gkd')) {
@@ -469,6 +476,59 @@ export function determineTemplateType(
 }
 
 /**
+ * Pushes {@link buildWmwJoinedLineRows} output into `lineItems` (Category 1 WMW + Product Fitment),
+ * using the same mapping as the WI template branch in {@link transformQuotationData}.
+ * @returns sum of parsed line amounts to add to `totalAmount`
+ */
+function addQuotationLineItemsFromWmwJoin(
+  joinedWmw: WmwJoinedLineDisplayRow[],
+  zohoData: ZohoQuotation,
+  lineItems: QuotationLineItem[],
+  currency: string
+): number {
+  let totalAdd = 0
+  for (const row of joinedWmw) {
+    const qty = String(row.quantity ?? '0').trim()
+    const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
+    const unit =
+      qtyNum === 1
+        ? 'One Pc'
+        : qtyNum === 2
+          ? 'Two Pc'
+          : qtyNum === 3
+            ? 'Three Pc'
+            : qtyNum === 4
+              ? 'Four Pc'
+              : qtyNum > 0
+                ? `${qtyNum} Pc`
+                : ''
+
+    const amtNum = parseFloat(String(row.amountDisplay || '').replace(/,/g, '')) || 0
+    totalAdd += amtNum
+
+    lineItems.push({
+      product: row.productLabel?.trim() || 'N/A',
+      quality: '',
+      form: row.supplyForm?.trim() || '',
+      size: row.size?.trim() || '',
+      type: row.seamType?.trim() || '',
+      hsnCode: row.hsnCode?.trim() || '',
+      delivery: row.deliveryDate?.trim()
+        ? formatDate(row.deliveryDate)
+        : formatDate(zohoData.Delivery_Date_Control),
+      uom: row.uom?.trim() || 'SQMT',
+      qty,
+      subQty: '',
+      unit,
+      pieces: '',
+      rate: formatCurrency(row.ratePerSqmDisplay, currency),
+      amount: formatCurrency(row.amountDisplay, currency),
+    })
+  }
+  return totalAdd
+}
+
+/**
  * Transforms Zoho quotation data to quotation display format
  */
 export function transformQuotationData(
@@ -489,6 +549,9 @@ export function transformQuotationData(
     categoryFields = getCategoryFieldsFromTemplate(templateField, zohoData)
     zohoLineItems = (zohoData[categoryFields.lineItemsField] as any[]) || []
     productDetails = (zohoData[categoryFields.productDetailsField] as any[]) || []
+    if (categoryFields.lineItemsField === 'Product_Fitments2_0' && zohoLineItems.length === 0) {
+      zohoLineItems = (zohoData.Product_Fitments as any[]) || []
+    }
   } else {
     // Fallback to original logic based on templateType
     zohoLineItems = templateType === 'WI' 
@@ -545,6 +608,8 @@ export function transformQuotationData(
   const bvkZohoSource: BvkZohoLineSource | null =
     templateType === 'BVK' ? resolveBvkLineSource(zohoData) : null
   const currency = zohoData.Currency || 'INR'
+  /** Single WMW+Product_Fitment join for this quotation — used by WI, WMW/WMW2, and SLS/GKD when we prefer the same pipeline as Export. */
+  const joinedWmwForTransform = buildWmwJoinedLineRows(zohoData)
 
   /**
    * Extracts Quality from Product_Code by splitting on '.' and getting second-to-last segment
@@ -561,52 +626,16 @@ export function transformQuotationData(
   }
 
   /**
-   * WI quotation layout, but line data lives in Category 1 WMW + linked subforms (last_item_ref).
-   * Reuses the same join as WMW/Export so Product / Form / Size / Type / Delivery / UOM / Qty / Rate / Amount match Creator.
+   * WI quotation layout, but line data lives in Category 1 WMW + linked subforms (last_item_ref)
+   * and Product Fitment — same join as Export/WMW quotation tab.
    */
-  if (templateType === 'WI') {
-    const joinedWmw = buildWmwJoinedLineRows(zohoData)
-    if (joinedWmw.length > 0) {
-      const currency = zohoData.Currency || 'INR'
-      joinedWmw.forEach((row) => {
-        const qty = String(row.quantity ?? '0').trim()
-        const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-        const unit =
-          qtyNum === 1
-            ? 'One Pc'
-            : qtyNum === 2
-              ? 'Two Pc'
-              : qtyNum === 3
-                ? 'Three Pc'
-                : qtyNum === 4
-                  ? 'Four Pc'
-                  : qtyNum > 0
-                    ? `${qtyNum} Pc`
-                    : ''
-
-        const amtNum = parseFloat(String(row.amountDisplay || '').replace(/,/g, '')) || 0
-        totalAmount += amtNum
-
-        lineItems.push({
-          product: row.productLabel?.trim() || 'N/A',
-          quality: '',
-          form: row.supplyForm?.trim() || '',
-          size: row.size?.trim() || '',
-          type: row.seamType?.trim() || '',
-          hsnCode: row.hsnCode?.trim() || '',
-          delivery: row.deliveryDate?.trim()
-            ? formatDate(row.deliveryDate)
-            : formatDate(zohoData.Delivery_Date_Control),
-          uom: row.uom?.trim() || 'SQMT',
-          qty,
-          subQty: '',
-          unit,
-          pieces: '',
-          rate: formatCurrency(row.ratePerSqmDisplay, currency),
-          amount: formatCurrency(row.amountDisplay, currency),
-        })
-      })
-    }
+  if (templateType === 'WI' && joinedWmwForTransform.length > 0) {
+    totalAmount += addQuotationLineItemsFromWmwJoin(
+      joinedWmwForTransform,
+      zohoData,
+      lineItems,
+      currency
+    )
   }
 
   // Check if we're using WMW category fields (for GKD, SLS, BVK that might use WMW data)
@@ -617,6 +646,14 @@ export function transformQuotationData(
   if (lineItems.length > 0 && templateType === 'WI') {
     // WI + WMW join already populated lineItems; skip WI/WMW legacy branches
   } else if (templateType === 'WMW' || templateType === 'WMW2' || isUsingWMWCategories) {
+    if (joinedWmwForTransform.length > 0) {
+      totalAmount += addQuotationLineItemsFromWmwJoin(
+        joinedWmwForTransform,
+        zohoData,
+        lineItems,
+        currency
+      )
+    } else {
     // WMW template uses different structure (also used by GKD/SLS/BVK when they have WMW data)
     zohoLineItems.forEach((item, index) => {
       // Try to find matching product detail by Last_item_ref (capital L) or last_item_ref (lowercase) or Line_Item_ref
@@ -719,6 +756,7 @@ export function transformQuotationData(
       const amountNum = parseFloat(amount.toString().replace(/,/g, '')) || 0
       totalAmount += amountNum
     })
+    }
   } else if (
     templateType === 'BVK' &&
     bvkZohoSource === 'cat2_wi' &&
@@ -876,6 +914,17 @@ export function transformQuotationData(
         ...(weave ? { weave } : {}),
       })
     })
+  } else if (
+    (templateType === 'SLS' || templateType === 'GKD') &&
+    joinedWmwForTransform.length > 0
+  ) {
+    // Same WMW + Product_Fitment join as WI / Export when Zoho has Category_1 WMW and/or fitment subform rows
+    totalAmount += addQuotationLineItemsFromWmwJoin(
+      joinedWmwForTransform,
+      zohoData,
+      lineItems,
+      currency
+    )
   } else if (mergedCategory1WiLines && productDetails.length > 0) {
     // One table row per Category_1_MM_Database_WI product; merge WI_2_0 + WI_3_0 by Line_Item_ref (no duplicate rows)
     const usedLineKeys = new Set<string>()

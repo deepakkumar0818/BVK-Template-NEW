@@ -5,6 +5,7 @@ import { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency, resolveQuotationValidity } from '@/lib/quotation-utils'
 import { buildSlsLineItemsFromWi20SubformsShared } from '@/lib/wi-line-display-shared'
+import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface SLSQuotationContentProps {
@@ -83,7 +84,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           unitPrice: parseFloat(item.rate?.replace(/,/g, '') || '0'),
           totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
         })) || []
-  
+
+  const { discountTotal: slsDiscountAmount, discountLabel: slsDiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+  const slsShowDiscountRow = Number.isFinite(slsDiscountAmount) && slsDiscountAmount !== 0
+
   // "Please Note:" line maps to Zoho `Please_Note` only when the field exists on the record.
   // Empty string must not fall through to `Remarks` (|| would treat "" as missing).
   const pleaseNote = (() => {
@@ -190,6 +196,19 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>{formatCurrency(item.totalPrice, displayCurrency)}</td>
                 </tr>
               ))}
+              {slsShowDiscountRow ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
+                  >
+                    {slsDiscountLabel}
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {formatCurrency(slsDiscountAmount, displayCurrency)}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import PrintButton from './components/PrintButton'
 import QuotationTemplateByType from './components/QuotationTemplateByType'
 import { ZohoQuotationResponse, ShippingMasterResponse, BillingMasterResponse, TemplateType, ZohoQuotation, QuotationData } from '@/lib/types'
+import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData, determineTemplateType } from '@/lib/quotation-utils'
 import { TEST_TEMPLATE_ROUTES } from '@/lib/test-template-routes'
 
@@ -36,6 +37,9 @@ function QuotationPageContent() {
         }
 
         const quotation = data.data[0]
+        if (id) {
+          logQuotationPayloadForUrlId(id, quotation, 'home / ?id')
+        }
         setRawQuotationData(quotation)
 
         const typeOfQuotation = quotation.Type_Of_Quotation

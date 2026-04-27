@@ -353,6 +353,32 @@ export function buildSlsLineItemsFromWi20SubformsShared(
   templateField?: string
 ): Array<{ item: number; product: string; qty: string; unitPrice: number; totalPrice: number }> {
   if (!raw) return []
+  const t = String(templateField ?? '').trim().toLowerCase()
+  if (t.includes('product fitment')) {
+    const fit20 = subformRows(raw, 'Product_Fitments2_0')
+    const fitMain = subformRows(raw, 'Product_Fitments')
+    const rows = fit20.length > 0 ? fit20 : fitMain
+    return rows.map((row, index) => {
+      const product =
+        strVal(row.Remarks) ||
+        strVal(row.Price_Master) ||
+        strVal(row.Product_Name) ||
+        strVal(row.Product_Group) ||
+        strVal(row.Item_Name)
+      const qtyRaw = strVal(row.Qty) || strVal(row.Pieces)
+      const sp = strVal(row.Selling_Price || row.List_Price).replace(/,/g, '')
+      const total = strVal(
+        row.Total_Sale_Value ?? row.Net_sales_value ?? row.Net_Selling_Amount ?? row.Gross_Amount ?? row.Total_Price
+      ).replace(/,/g, '')
+      return {
+        item: index + 1,
+        product,
+        qty: qtyRaw,
+        unitPrice: parseFloat(sp) || 0,
+        totalPrice: parseFloat(total) || 0,
+      }
+    })
+  }
   const key = resolveSlsWi20SubformKey(templateField)
   const rows = subformRows(raw, key)
   return rows.map((row, index) => {

@@ -2,8 +2,10 @@
 
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { QuotationData } from '@/lib/types'
+import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { formatCurrency, numberToWords, resolveQuotationValidity } from '@/lib/quotation-utils'
+import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
+import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
@@ -95,6 +97,13 @@ export default function EkamasGoodsTable({
 
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
+  const toRowArray = (v: unknown): any[] => {
+    if (v == null) return []
+    if (Array.isArray(v)) return v
+    if (typeof v === 'object') return [v]
+    return []
+  }
+
   const currency = data.currency || (rawQuotationData?.Currency as string) || 'USD'
   const currencySymbol = currency
 
@@ -112,6 +121,10 @@ export default function EkamasGoodsTable({
 
   const packingFreight = parseFloat(String(rawQuotationData?.Packing_Freight || '0')) || 0
   const transaction = parseFloat(String(rawQuotationData?.Transaction_Charges || '0')) || 0
+  const { discountTotal: overallDiscountAmt, discountLabel: overallDiscountLabel } = resolveWmwChargeTotals(
+    (rawQuotationData ?? null) as ZohoQuotation | null
+  )
+  const discountDeduct = Math.max(0, overallDiscountAmt)
 
   const portOfDischarge = String(rawQuotationData?.Port_of_Discharge || '')
   const finalDestination = String(rawQuotationData?.Final_Destination || portOfDischarge || '')
@@ -215,7 +228,31 @@ export default function EkamasGoodsTable({
     }
   })
 
-  let displayLineItems = lineItemsFromZoho.length > 0 ? lineItemsFromZoho : lineItemsFallback
+  const rawWmw2Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0)
+  const wmwMappedBlock = rawWmw2Rows.length > 0 ? lineItemsFromZoho : []
+  const fitmentMappedBlock = buildProductFitmentBrandedGoodsBlock(
+    (rawQuotationData ?? null) as ZohoQuotation | null
+  ).map((f) => ({
+    item: 0,
+    product: f.product,
+    form: f.form,
+    quality: f.quality,
+    mesh: f.mesh || f.brandCategoryForMeshCol,
+    brand: f.brand,
+    size: f.size,
+    sqmArea: f.sqmArea,
+    quantity: f.quantity,
+    rate: f.rate,
+    amount: f.amount,
+    lineGrossKg: f.totalWeight,
+  }))
+
+  let displayLineItems: EkamasDisplayRow[] =
+    wmwMappedBlock.length + fitmentMappedBlock.length > 0
+      ? renumberMergedGoodsItems([...wmwMappedBlock, ...fitmentMappedBlock])
+      : lineItemsFromZoho.length > 0
+        ? lineItemsFromZoho
+        : lineItemsFallback
 
   if (displayLineItems.length === 0) {
     displayLineItems = [
@@ -255,7 +292,7 @@ export default function EkamasGoodsTable({
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + packingFreight + transaction
+  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
   const amountInWords = numberToWords(totalWithCharges)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
@@ -465,6 +502,41 @@ export default function EkamasGoodsTable({
 
                   {isLastChunk && (
                     <>
+                      {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
+                        <tr>
+                          <td
+                            colSpan={3}
+                            style={{
+                              borderLeft: '1px solid #000',
+                              borderRight: '1px solid #000',
+                              borderBottom: '1px solid #000',
+                              borderTop: '1px solid #000',
+                              padding: '6px 10px',
+                              textAlign: 'right',
+                              fontWeight: 'bold',
+                              fontSize: '10px',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            {overallDiscountLabel}
+                          </td>
+                          <td
+                            style={{
+                              borderLeft: '1px solid #000',
+                              borderRight: '1px solid #000',
+                              borderBottom: '1px solid #000',
+                              borderTop: '1px solid #000',
+                              padding: '6px 10px',
+                              textAlign: 'right',
+                              fontWeight: 'bold',
+                              fontSize: '10px',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            {formatCurrency(overallDiscountAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
                       <tr>
                         <td
                           style={{
