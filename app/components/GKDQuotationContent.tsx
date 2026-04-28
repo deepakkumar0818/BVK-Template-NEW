@@ -2,6 +2,7 @@
 
 import { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface GKDQuotationContentProps {
@@ -49,7 +50,12 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
     unitPrice: parseFloat(item.rate?.replace(/,/g, '') || '0'),
     totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0')
   })) || []
-  
+
+  const { discountTotal: gkdDiscountAmount, discountLabel: gkdDiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+  const gkdShowDiscountRow = Number.isFinite(gkdDiscountAmount) && gkdDiscountAmount !== 0
+
   // Direct field mapping for IGST
   const igstPercent = parseFloat(rawQuotationData?.IGST_Percent || rawQuotationData?.IGST_Rate || '0') || 0
   const igstAmount = parseFloat(rawQuotationData?.IGST_Amount || '0') || 0
@@ -181,6 +187,16 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
                           <td className="gkd-pl-cell gkd-pl-num">{formatCurrency(item.totalPrice, 'INR')}</td>
                         </tr>
                       ))}
+                      {gkdShowDiscountRow ? (
+                        <tr>
+                          <td colSpan={4} className="gkd-pl-cell" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                            {gkdDiscountLabel}
+                          </td>
+                          <td className="gkd-pl-cell gkd-pl-num" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                            {formatCurrency(gkdDiscountAmount, 'INR')}
+                          </td>
+                        </tr>
+                      ) : null}
                     </tbody>
                   </table>
                 </div>

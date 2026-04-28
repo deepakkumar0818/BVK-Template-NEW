@@ -32,7 +32,9 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
   const totalAmount = formatCurrency(data.totalAmount)
   const lineItems = data.lineItems ?? []
 
-  const { freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(rawQuotationData ?? null)
+  const { discountTotal, discountLabel, freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
 
   return (
     <>
@@ -85,6 +87,8 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
                   taxAmount={taxAmount}
                   totalBeforeTax={totalBeforeTax}
                   totalAfterTax={totalAfterTax}
+                  wmwDiscountTotal={discountTotal}
+                  wmwDiscountRowLabel={discountLabel}
                   wmwFreightChargeTotal={freightTotal}
                   wmwPackingChargeTotal={packingTotal}
                   wmwSeamChargeTotal={seamTotal}

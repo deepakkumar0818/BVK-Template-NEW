@@ -11,6 +11,7 @@ import type {
   ZohoQuotation,
   ZohoQuotationResponse,
 } from '@/lib/types'
+import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData } from '@/lib/quotation-utils'
 import PrintButton from './PrintButton'
 import QuotationTemplateByType from './QuotationTemplateByType'
@@ -50,6 +51,7 @@ export default function ForcedTemplatePageContent({ templateType, documentLabel 
         }
 
         const quotation = data.data[0]
+        logQuotationPayloadForUrlId(id, quotation, documentLabel)
         setRawQuotationData(quotation)
 
         const transformed = transformQuotationData(quotation, templateType, quotation.Template)

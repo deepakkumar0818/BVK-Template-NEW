@@ -21,6 +21,10 @@ export interface QuotationSummarySectionProps {
   /** “Total Amount Before Tax” — from Total_Cost_Before_Tax when set, else line-items total */
   totalBeforeTax: number
   totalAfterTax: number
+  /** From `Overall_Discount_Value` or `Total_Discount` (quotation scalars); shown above freight; defaults to 0 */
+  wmwDiscountTotal?: number
+  /** From `Discount_Type` + " Discount" — right-hand label for the discount row; default `Discount` */
+  wmwDiscountRowLabel?: string
   /** From Category_1_MM_Database_WMW_Other_Charges (summed per line); defaults to 0 */
   wmwFreightChargeTotal?: number
   wmwPackingChargeTotal?: number
@@ -62,6 +66,8 @@ export default function QuotationSummarySection({
   taxAmount,
   totalBeforeTax,
   totalAfterTax,
+  wmwDiscountTotal = 0,
+  wmwDiscountRowLabel = 'Discount',
   wmwFreightChargeTotal = 0,
   wmwPackingChargeTotal = 0,
   wmwSeamChargeTotal = 0,
@@ -84,6 +90,14 @@ export default function QuotationSummarySection({
   }
 
   const wmwBandRows: WmwBandRow[] = []
+  if (wmwChargeVisible(wmwDiscountTotal)) {
+    wmwBandRows.push({
+      leftMain: 'Discount',
+      leftSub: 'Less',
+      label: wmwDiscountRowLabel,
+      value: formatCurrency(wmwDiscountTotal, cur),
+    })
+  }
   if (wmwChargeVisible(wmwFreightChargeTotal)) {
     wmwBandRows.push({
       leftMain: 'Freight',

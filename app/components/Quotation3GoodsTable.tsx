@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 
 const txBlue = '#000000' // Changed from blue per screenshot, though original had some blue. Keeping black to match screenshot where most text is black
 
@@ -117,7 +118,13 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
     }
   ];
 
-  const totalAmount = 50610.00;
+  const baseLineTotal = dummyBlocks.reduce((sum, b) => sum + b.amount, 0)
+  const { discountTotal: q3DiscountTotal, discountLabel: q3DiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+  const q3DiscountDeduct = Math.max(0, q3DiscountTotal)
+  const totalAmount = baseLineTotal - q3DiscountDeduct
+  const q3ShowDiscountRow = Number.isFinite(q3DiscountTotal) && q3DiscountTotal !== 0
 
   return (
     <div className="quotation-goods-pages-stack">
@@ -255,6 +262,20 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     )
                   })}
 
+                  {q3ShowDiscountRow ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        style={{ ...bd, padding: '5px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px' }}
+                      >
+                        {q3DiscountLabel}
+                      </td>
+                      <td style={{ ...bd, padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px' }}>
+                        {formatCurrency(q3DiscountTotal, currency)}
+                      </td>
+                    </tr>
+                  ) : null}
+
                   <tr aria-hidden className="quotation3-goods-spacer">
                     <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '6px 0', lineHeight: 0, fontSize: 0 }} />
                     <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '6px 0', lineHeight: 0, fontSize: 0 }} />
@@ -309,9 +330,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     </td>
                     <td style={{ ...bd, padding: '5px 6px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'bottom' }}>USD</td>
                     <td style={{ ...bd, padding: '5px 8px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'bottom' }}>
-                      <span className="quotation-grand-total-amount">
-                        {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
+                      <span className="quotation-grand-total-amount">{formatCurrency(totalAmount, currency)}</span>
                     </td>
                   </tr>
                   <tr>
@@ -324,14 +343,12 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     </td>
                     <td colSpan={2} style={{ ...bd, padding: '6px 10px', fontSize: '12px', verticalAlign: 'middle' }}>
                       <div style={{ fontWeight: 'bold', color: '#444' }}>
-                        US Dollar : Fifty Thousand Six Hundred And Ten Only
+                        US Dollar : {numberToWords(totalAmount)} Only
                       </div>
                     </td>
                     <td style={{ ...bd, padding: '8px 10px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle', fontSize: '13px' }}>Total:-</td>
                     <td style={{ ...bd, padding: '8px 8px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle', fontSize: '13px' }}>
-                      <span className="quotation-grand-total-amount">
-                        {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
+                      <span className="quotation-grand-total-amount">{formatCurrency(totalAmount, currency)}</span>
                     </td>
                   </tr>
                 </tbody>

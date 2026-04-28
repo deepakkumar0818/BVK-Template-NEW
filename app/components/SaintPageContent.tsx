@@ -10,6 +10,7 @@ import type {
   ZohoQuotation,
   QuotationData,
 } from '@/lib/types'
+import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData, determineTemplateType } from '@/lib/quotation-utils'
 import PrintButton from './PrintButton'
 import SaintInvoiceContent from './SaintInvoiceContent'
@@ -44,6 +45,7 @@ export default function SaintPageContent() {
         }
 
         const quotation = data.data[0]
+        logQuotationPayloadForUrlId(id, quotation, 'saint')
         setRawQuotationData(quotation)
 
         const autoTemplateType = determineTemplateType(quotation.Type_Of_Quotation, quotation.Template)

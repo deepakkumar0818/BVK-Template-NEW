@@ -149,13 +149,16 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     : 0
 
   const chargeTotalsResolved = resolveWmwChargeTotals(rawQuotationData)
+  const discountChargeAmt = chargeTotalsResolved.discountTotal
+  const discountRowLabel = chargeTotalsResolved.discountLabel
   const freightChargeAmt = chargeTotalsResolved.freightTotal
   const packingChargeAmt = chargeTotalsResolved.packingTotal
   const seamChargeAmt = chargeTotalsResolved.seamTotal
   const otherChargesAmt = quotationScalarFieldPresent(rawQuotationData?.Other_Charges)
     ? parseFloat(String(rawQuotationData?.Other_Charges).replace(/,/g, '').trim()) || 0
     : 0
-  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt
+  const discountDeduct = Math.max(0, discountChargeAmt)
+  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Air'
 
@@ -614,6 +617,17 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   {formatCurrency(baseAmount, currency)}
                 </td>
               </tr>
+
+              {Number.isFinite(discountChargeAmt) && discountChargeAmt !== 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {discountRowLabel}
+                  </td>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {formatCurrency(discountChargeAmt, currency)}
+                  </td>
+                </tr>
+              ) : null}
 
               <tr>
                 <td style={{ ...bd, padding: '10px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle' }}>

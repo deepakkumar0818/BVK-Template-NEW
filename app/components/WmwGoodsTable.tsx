@@ -4,7 +4,7 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
-import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows } from '@/lib/wmw-subform-mapping'
+import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
 
@@ -121,6 +121,10 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
 
   const packingFreight = parseFloat(rawQuotationData?.Packing_Freight || '0') || 0
   const transaction = parseFloat(rawQuotationData?.Transaction_Charges || '0') || 0
+  const { discountTotal: overallDiscountAmt, discountLabel: overallDiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData
+  )
+  const discountDeduct = Math.max(0, overallDiscountAmt)
 
   const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || ''
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
@@ -244,7 +248,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + packingFreight + transaction
+  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
   const amountInWords = numberToWords(totalWithCharges)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
@@ -502,6 +506,19 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                             </td>
                           </tr>
                         </>
+                      ) : null}
+
+                      {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right' }}>
+                            {overallDiscountLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
+                            {formatCurrency(overallDiscountAmt, currency)}
+                          </td>
+                        </tr>
                       ) : null}
 
                       <tr>

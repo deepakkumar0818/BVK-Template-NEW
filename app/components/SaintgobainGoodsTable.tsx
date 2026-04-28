@@ -188,6 +188,8 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
     : 0
 
   const chargeTotalsResolved = resolveWmwChargeTotals(rawQuotationData)
+  const discountRowLabel = chargeTotalsResolved.discountLabel
+  const discountChargeAmt = chargeTotalsResolved.discountTotal
   const freightChargeAmt = chargeTotalsResolved.freightTotal
   const packingChargeAmt = chargeTotalsResolved.packingTotal
   const seamChargeAmt = chargeTotalsResolved.seamTotal
@@ -196,9 +198,11 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
     : 0
   const typeOfOtherCharges = String(rawQuotationData?.Type_of_Other_Charges ?? '').trim()
   const otherChargesLabel = typeOfOtherCharges ? `Other Charges (${typeOfOtherCharges})` : 'Other Charges'
-  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt
+  const discountDeduct = Math.max(0, discountChargeAmt)
+  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
   const bashundharaChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
+    [discountRowLabel, discountChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],

@@ -105,7 +105,9 @@ export default function PerformaInvoiceContent({
 
   const lineItems = data.lineItems ?? []
 
-  const { freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(rawQuotationData ?? null)
+  const { discountTotal, discountLabel, freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
 
   if (useWmwd1StyleLayout) {
     const performaTitle = 'PERFORMA INVOICE'
@@ -164,6 +166,8 @@ export default function PerformaInvoiceContent({
                       taxAmount={taxAmount}
                       totalBeforeTax={totalBeforeTax}
                       totalAfterTax={totalAfterTax}
+                      wmwDiscountTotal={discountTotal}
+                      wmwDiscountRowLabel={discountLabel}
                       wmwFreightChargeTotal={freightTotal}
                       wmwPackingChargeTotal={packingTotal}
                       wmwSeamChargeTotal={seamTotal}
@@ -345,6 +349,14 @@ export default function PerformaInvoiceContent({
                                 <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold' }}>Total INR</td>
                                 <td style={{ border: '1px solid #000', padding: '3px 8px', textAlign: 'right' }}>{totalAmount}</td>
                               </tr>
+                              {Number.isFinite(discountTotal) && discountTotal !== 0 ? (
+                                <tr>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{discountLabel}</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>
+                                    {formatCurrency(discountTotal, data.currency || 'INR')}
+                                  </td>
+                                </tr>
+                              ) : null}
                               {Number.isFinite(freightTotal) && freightTotal !== 0 ? (
                                 <tr>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Freight Charge</td>

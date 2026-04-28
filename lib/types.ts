@@ -234,6 +234,10 @@ export interface ZohoQuotation {
   Product_Fitments?: Array<Record<string, unknown>>
   /** Product fitments line items (2.0 subform) */
   Product_Fitments2_0?: Array<Record<string, unknown>>
+  /** Product fitments per-line extra charges */
+  Product_Fitments_Other_Charges?: Array<Record<string, unknown>>
+  /** Product fitments delivery / desired date rows */
+  Product_Fitments_Desired_Date?: Array<Record<string, unknown>>
   Total_Net_Sale_Value_Before_Tax?: string
   Total_CGST?: string
   Total_SGST?: string
@@ -242,6 +246,11 @@ export interface ZohoQuotation {
   Total_Tax_Amount_IGST_CGST?: string
   Total_Cost_After_Tax_Grand_Total?: string
   Overall_Grand_Total_incl_Accessories?: string
+  /** Zoho: kind of overall discount; shown in summary as `{Discount_Type} Discount` */
+  Discount_Type?: string
+  Total_Discount?: string
+  /** Zoho: overall discount amount; preferred over `Total_Discount` when set */
+  Overall_Discount_Value?: string
   Total_Freight_Charges?: string
   Total_Packing_Charges?: string
   Total_Seam_Charges?: string

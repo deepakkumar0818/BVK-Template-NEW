@@ -4,6 +4,7 @@ import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency, resolveQuotationValidity } from '@/lib/quotation-utils'
 import { buildBvkQuotationTableRows } from '@/lib/wi-line-display-shared'
+import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface BVKQuotationContentProps {
@@ -86,6 +87,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
           const amount = parseFloat(String(item.amount).replace(/,/g, '')) || 0
           return sum + amount
         }, 0)
+
+  const { discountTotal: bvkDiscountAmount, discountLabel: bvkDiscountLabel } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+  const bvkShowDiscountRow = Number.isFinite(bvkDiscountAmount) && bvkDiscountAmount !== 0
 
   return (
     <>
@@ -215,6 +221,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                           </td>
                         </tr>
                       ))}
+                      {bvkShowDiscountRow ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top' }}
+                          >
+                            {bvkDiscountLabel}
+                          </td>
+                          <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top' }}>
+                            {formatCurrency(bvkDiscountAmount, displayCurrency)}
+                          </td>
+                        </tr>
+                      ) : null}
                     </tbody>
                   </table>
                 </div>
