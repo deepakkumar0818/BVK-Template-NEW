@@ -149,11 +149,8 @@ export function buildProductFitmentBrandedGoodsBlock(
       stringifyField(main.Product_Master) ||
       stringifyField(main.Price_Master)
 
-    const endType = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
-    const uomOrSupply =
-      coalesceMainFirst(main, ext2, ext3, 'UOM_Billing') ||
-      coalesceMainFirst(main, ext2, ext3, 'Supply_Form')
-    const form = endType || uomOrSupply
+    /** Form: `End_Type` from `Product_Fitments2_0` (linked row) first, then main `Product_Fitments`. */
+    const form = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
 
     const sr = lastItemRef || String(idx + 1)
     const wiLineBySr =

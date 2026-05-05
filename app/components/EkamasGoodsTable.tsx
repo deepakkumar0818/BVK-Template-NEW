@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { formatCurrency, numberToWords, resolveQuotationValidity } from '@/lib/quotation-utils'
+import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
@@ -148,6 +149,15 @@ export default function EkamasGoodsTable({
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
+    const rows3Linked = toRowArray(rawQuotationData?.Category_1_MM_Database_WMW_3_0)
+    const ext3 =
+      (itemRef
+        ? rows3Linked.find(
+            (x: Record<string, unknown>) =>
+              String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+          )
+        : undefined) || rows3Linked[index]
+
     let size = ''
     if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
       const extractNumber = (str: string) => {
@@ -179,13 +189,8 @@ export default function EkamasGoodsTable({
       productDetail.Product_Master?.trim() ||
       wiLine?.product?.trim() ||
       defaultProductLabel
-    /** Form column: Zoho End_Type (product row or 2.0 line), then Supply_Form / transformed line */
-    const form =
-      String(productDetail.End_Type ?? '').trim() ||
-      String(item.End_Type ?? '').trim() ||
-      productDetail.Supply_Form?.trim() ||
-      wiLine?.form?.trim() ||
-      ''
+    /** Form column: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
+    const form = endTypeDisplayFromRecords(ext3 as Record<string, unknown>, item as Record<string, unknown>, productDetail as Record<string, unknown>)
     const quality = wiLine?.quality?.trim() || ''
 
     const perPc = parseFloat(productDetail.Net_Weight_Per_Pcs || '0') || (index === 0 ? 50 : 50)
