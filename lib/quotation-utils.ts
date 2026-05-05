@@ -1,4 +1,5 @@
 import { ZohoQuotation, QuotationData, QuotationLineItem, TemplateType } from './types'
+import { endTypeDisplayFromRecords } from './goods-description-form'
 import {
   buildWmwJoinedLineRows,
   type WmwJoinedLineDisplayRow,
@@ -710,10 +711,18 @@ export function transformQuotationData(
       // Quality: Extract from Product_Code (second-to-last segment when split by '.')
       const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
       
-      // Form: Different mapping for WMW2 (Category 2)
-      const form = templateType === 'WMW2'
-        ? (productDetail.Invoice_Form || productDetail.Supply_Form || item.Invoice_Dimension_Type || '')
-        : (productDetail.Invoice_Form || productDetail.Supply_Form || '')
+      const wmw30Key =
+        templateType === 'WMW2' ? 'Category_2_MM_Database_WMW_3_0' : 'Category_1_MM_Database_WMW_3_0'
+      const wmw30Rows = ((zohoData as Record<string, unknown>)[wmw30Key] as any[]) || []
+      const refNorm = String(itemRef ?? '').trim()
+      const ext30Row =
+        refNorm !== ''
+          ? wmw30Rows.find(
+              (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === refNorm
+            )
+          : undefined
+      const ext30 = ext30Row ?? wmw30Rows[index]
+      const form = endTypeDisplayFromRecords(ext30, item, productDetail)
       
       // Size: Use Length_field and Width, or dimensions
       const size = productDetail.Length_field && productDetail.Width
@@ -784,11 +793,7 @@ export function transformQuotationData(
         extractQualityFromProductCode(productDetail.Product_Code) ||
         String(productDetail.Material ?? '').trim() ||
         ''
-      const form =
-        item.Invoice_Dimension_Type ||
-        productDetail.Invoice_Form ||
-        productDetail.Supply_Form ||
-        ''
+      const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
           ? `${item.Invoice_Dimension_1}x${item.Invoice_Dimension_2}`
@@ -853,7 +858,7 @@ export function transformQuotationData(
     const rows2 = (zohoData.Product_Fitments2_0 as any[]) || []
     const rows1 = (zohoData.Product_Fitments as any[]) || []
     const fitRows = rows2.length > 0 ? rows2 : rows1
-    fitRows.forEach((row: any) => {
+    fitRows.forEach((row: any, idx: number) => {
       const product =
         String(
           row.Product_Name ??
@@ -866,7 +871,26 @@ export function transformQuotationData(
       const pc = String(row.Product_Code ?? '').trim()
       const quality =
         extractQualityFromProductCode(pc) || String(row.Material ?? row.Material_Code ?? '').trim() || ''
-      const form = String(row.Invoice_Form ?? row.Supply_Form ?? row.Invoice_Dimension_Type ?? '').trim()
+      const ref =
+        String(row.Last_item_ref ?? row.last_item_ref ?? '').trim() ||
+        String(row.S_No ?? row.Sr_No ?? '').trim()
+      const row20 =
+        (ref
+          ? rows2.find(
+              (r: any) =>
+                String(r.Last_item_ref ?? r.last_item_ref ?? '').trim() === ref ||
+                String(r.S_No ?? r.Sr_No ?? '').trim() === ref
+            )
+          : undefined) || rows2[idx]
+      const mainRow =
+        (ref
+          ? rows1.find(
+              (m: any) =>
+                String(m.Last_item_ref ?? m.last_item_ref ?? '').trim() === ref ||
+                String(m.S_No ?? m.Sr_No ?? '').trim() === ref
+            )
+          : undefined) || rows1[idx]
+      const form = endTypeDisplayFromRecords(row20, mainRow)
       const type = String(row.Brand_Category ?? '').trim()
       const size =
         [row.Length_field, row.Width].filter(Boolean).join('x').trim() ||
@@ -930,11 +954,7 @@ export function transformQuotationData(
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
       const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
-      const form =
-        item.Invoice_Dimension_Type ||
-        productDetail.Invoice_Form ||
-        productDetail.Supply_Form ||
-        ''
+      const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
           ? `${item.Invoice_Dimension_1}x${item.Invoice_Dimension_2}`
@@ -985,11 +1005,7 @@ export function transformQuotationData(
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
       const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
-      const form =
-        item.Invoice_Dimension_Type ||
-        productDetail.Invoice_Form ||
-        productDetail.Supply_Form ||
-        ''
+      const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
           ? `${item.Invoice_Dimension_1}x${item.Invoice_Dimension_2}`
@@ -1050,11 +1066,7 @@ export function transformQuotationData(
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
       const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
-      const form =
-        item.Invoice_Dimension_Type ||
-        productDetail.Invoice_Form ||
-        productDetail.Supply_Form ||
-        ''
+      const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
           ? `${item.Invoice_Dimension_1}x${item.Invoice_Dimension_2}`

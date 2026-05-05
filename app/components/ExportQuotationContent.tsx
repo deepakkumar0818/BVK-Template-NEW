@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency, numberToWords, formatDate, resolveQuotationValidity } from '@/lib/quotation-utils'
+import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
@@ -99,6 +100,12 @@ export default function ExportQuotationContent({
     : rawQuotationData?.Category_1_MM_Database_WMW && typeof rawQuotationData.Category_1_MM_Database_WMW === 'object'
       ? [rawQuotationData.Category_1_MM_Database_WMW]
       : []
+  const raw30Rows = Array.isArray(rawQuotationData?.Category_1_MM_Database_WMW_3_0)
+    ? (rawQuotationData.Category_1_MM_Database_WMW_3_0 as any[])
+    : rawQuotationData?.Category_1_MM_Database_WMW_3_0 &&
+        typeof rawQuotationData.Category_1_MM_Database_WMW_3_0 === 'object'
+      ? [rawQuotationData.Category_1_MM_Database_WMW_3_0]
+      : []
 
   /** Main-subform-driven join (last_item_ref) — same as WmwGoodsTable; required when Type = Export (this template). */
   const joinedWmwRows = rawQuotationData ? buildWmwJoinedLineRows(rawQuotationData) : []
@@ -108,14 +115,26 @@ export default function ExportQuotationContent({
   const firstItem = data.lineItems && data.lineItems.length > 0 ? data.lineItems[0] : null
   const firstJoined = useWmwJoinedPipeline ? joinedWmwRows[0] : null
   const firstProductDetail = rawProductDetails[0] || {}
+  const firstRawLine = rawLineItems[0] || {}
+  const firstRef = String(firstRawLine.last_item_ref ?? firstRawLine.Last_item_ref ?? '').trim()
+  const ext30First =
+    (firstRef !== ''
+      ? raw30Rows.find(
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === firstRef
+        )
+      : undefined) || raw30Rows[0]
 
   const product = useWmwJoinedPipeline
     ? firstJoined?.productLabel?.trim() || firstItem?.product || 'Stainless Steel Wire Cloth (Woven Type)'
     : firstItem?.product || 'Stainless Steel Wire Cloth (Woven Type)'
 
   const form = useWmwJoinedPipeline
-    ? firstJoined?.supplyForm?.trim() || firstProductDetail.Supply_Form || firstItem?.form || ''
-    : firstProductDetail.Supply_Form || firstItem?.form || ''
+    ? (firstJoined?.supplyForm?.trim() || '')
+    : endTypeDisplayFromRecords(
+        ext30First as Record<string, unknown> | undefined,
+        firstRawLine as Record<string, unknown>,
+        firstProductDetail as Record<string, unknown>
+      )
 
   const weave = rawQuotationData?.Weave || firstProductDetail.Weave || ''
   const quality = useWmwJoinedPipeline

@@ -327,7 +327,7 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
     const productColumnLines: Array<{ apiName: string; value: string }> = []
     if (item.product) productColumnLines.push({ apiName: 'Remarks', value: item.product })
     if (item.size) productColumnLines.push({ apiName: 'Size', value: item.size })
-    if (item.form) productColumnLines.push({ apiName: 'Supply_Form / Invoice_Form (display)', value: item.form })
+    if (item.form) productColumnLines.push({ apiName: 'End_Type (display as Form)', value: item.form })
     if (item.type) productColumnLines.push({ apiName: 'Brand_Category (display)', value: item.type })
     const meshDisplay = item.mesh?.trim() || ''
     const materialDisplay = item.quality || ''

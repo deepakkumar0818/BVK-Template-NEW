@@ -3,7 +3,8 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
-import { formatCurrency, numberToWords, resolveQuotationValidity } from '@/lib/quotation-utils'
+import { formatCurrency, numberToWords, resolveQuotationValidity, meshInchFromProductCode } from '@/lib/quotation-utils'
+import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
@@ -92,9 +93,6 @@ export default function EkamasGoodsTable({
   headerNode,
   signatureDate = '',
 }: EkamasGoodsTableProps) {
-  const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as Record<string, string>[]) || []
-  const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as Record<string, string>[]) || []
-
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
   const toRowArray = (v: unknown): any[] => {
@@ -102,6 +100,25 @@ export default function EkamasGoodsTable({
     if (Array.isArray(v)) return v
     if (typeof v === 'object') return [v]
     return []
+  }
+
+  /** Category 1 WMW lines take precedence when present; otherwise Category 2 WMW (e.g. Template "Category 2 WMW"). */
+  const cat1Wmw20 = toRowArray(rawQuotationData?.Category_1_MM_Database_WMW_2_0)
+  const cat2Wmw20 = toRowArray(rawQuotationData?.Category_2_MM_Database_WMW_2_0)
+  const useCat1WmwBundle = cat1Wmw20.length > 0
+  const rawLineItems = (useCat1WmwBundle ? cat1Wmw20 : cat2Wmw20) as Record<string, string>[]
+
+  const cat1WmwMainRows = toRowArray(rawQuotationData?.Category_1_MM_Database_WMW)
+  const cat2WmwMainRows = toRowArray(rawQuotationData?.Category_2_MM_Database_WMW)
+  const rawProductDetails = (useCat1WmwBundle ? cat1WmwMainRows : cat2WmwMainRows) as Record<string, string>[]
+
+  const firstField = (records: unknown[], field: string): string => {
+    for (const r of records) {
+      if (r == null || typeof r !== 'object') continue
+      const s = String((r as Record<string, unknown>)[field] ?? '').trim()
+      if (s) return s
+    }
+    return ''
   }
 
   const currency = data.currency || (rawQuotationData?.Currency as string) || 'USD'
@@ -148,6 +165,16 @@ export default function EkamasGoodsTable({
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
+    const wmw30Key = useCat1WmwBundle ? 'Category_1_MM_Database_WMW_3_0' : 'Category_2_MM_Database_WMW_3_0'
+    const rows3Linked = toRowArray((rawQuotationData as Record<string, unknown> | null)?.[wmw30Key])
+    const ext3 =
+      (itemRef
+        ? rows3Linked.find(
+            (x: Record<string, unknown>) =>
+              String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+          )
+        : undefined) || rows3Linked[index]
+
     let size = ''
     if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
       const extractNumber = (str: string) => {
@@ -157,6 +184,10 @@ export default function EkamasGoodsTable({
       const dim1 = extractNumber(item.Invoice_Dimension_1)
       const dim2 = extractNumber(item.Invoice_Dimension_2)
       size = `${dim1} x ${dim2}`
+    } else {
+      const len = String(productDetail.Length_field ?? productDetail.Supply_Dimension_1 ?? '').trim()
+      const wid = String(productDetail.Width ?? productDetail.Supply_Dimension_2 ?? '').trim()
+      if (len && wid) size = `${len} x ${wid}`
     }
 
     const sqmArea = productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || ''
@@ -167,7 +198,31 @@ export default function EkamasGoodsTable({
     const computedAmount = quantity * rate
     const amount = Number.isFinite(computedAmount) ? computedAmount : amountFromLine
 
-    const mesh = productDetail.Brand_Category?.trim() || ''
+    const cat2ProductDetail = itemRef
+      ? cat2WmwMainRows.find(
+          (pd: Record<string, unknown>) =>
+            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
+        ) || cat2WmwMainRows[index] || {}
+      : cat2WmwMainRows[index] || {}
+    const cat1ProductDetail = itemRef
+      ? cat1WmwMainRows.find(
+          (pd: Record<string, unknown>) =>
+            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
+        ) || cat1WmwMainRows[index] || {}
+      : cat1WmwMainRows[index] || {}
+
+    const fitmentRows = toRowArray((rawQuotationData as Record<string, unknown> | null)?.Product_Fitments2_0)
+    const fitmentRow =
+      fitmentRows.find(
+        (x: Record<string, unknown>) => String(x?.S_No ?? '').trim() === String(index + 1)
+      ) || fitmentRows[index]
+
+    /** MESH: same as other WMW goods tables — first non-empty `Product_Code` across main / Cat2 / Cat1 / fitment rows. */
+    const productCodeForMesh = firstField(
+      [productDetail, cat2ProductDetail, cat1ProductDetail, fitmentRow],
+      'Product_Code'
+    )
+    const mesh = meshInchFromProductCode(productCodeForMesh)
     const brand = productDetail.Brand_Selling_Name?.trim() || ''
 
     const wiLine = data.lineItems?.[index]
@@ -179,13 +234,8 @@ export default function EkamasGoodsTable({
       productDetail.Product_Master?.trim() ||
       wiLine?.product?.trim() ||
       defaultProductLabel
-    /** Form column: Zoho End_Type (product row or 2.0 line), then Supply_Form / transformed line */
-    const form =
-      String(productDetail.End_Type ?? '').trim() ||
-      String(item.End_Type ?? '').trim() ||
-      productDetail.Supply_Form?.trim() ||
-      wiLine?.form?.trim() ||
-      ''
+    /** Form column: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
+    const form = endTypeDisplayFromRecords(ext3 as Record<string, unknown>, item as Record<string, unknown>, productDetail as Record<string, unknown>)
     const quality = wiLine?.quality?.trim() || ''
 
     const perPc = parseFloat(productDetail.Net_Weight_Per_Pcs || '0') || (index === 0 ? 50 : 50)
@@ -228,8 +278,8 @@ export default function EkamasGoodsTable({
     }
   })
 
-  const rawWmw2Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0)
-  const wmwMappedBlock = rawWmw2Rows.length > 0 ? lineItemsFromZoho : []
+  const wmw2DriverRows = useCat1WmwBundle ? cat1Wmw20 : cat2Wmw20
+  const wmwMappedBlock = wmw2DriverRows.length > 0 ? lineItemsFromZoho : []
   const fitmentMappedBlock = buildProductFitmentBrandedGoodsBlock(
     (rawQuotationData ?? null) as ZohoQuotation | null
   ).map((f) => ({

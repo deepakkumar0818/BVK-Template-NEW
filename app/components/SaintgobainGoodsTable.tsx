@@ -330,8 +330,8 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
     const wiLine = data.lineItems?.[index]
     /** Product row: Blend_Category only; if missing, keep it blank. */
     const product = blendCategory || ''
-    /** Form row: End_Type from subform join; then Supply_Form / transformed line. */
-    const form = endType || productDetail.Supply_Form?.trim() || wiLine?.form?.trim() || ''
+    /** Form row: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
+    const form = endType
     /** Quality: keep "AISI" constant; append Material code when present. */
     const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
 

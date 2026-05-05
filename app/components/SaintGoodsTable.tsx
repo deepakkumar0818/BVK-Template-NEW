@@ -273,7 +273,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
     const wiLine = data.lineItems?.[index]
     const product = blendCategory || ''
-    const form = endType || productDetail.Supply_Form?.trim() || wiLine?.form?.trim() || ''
+    /** Form row: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
+    const form = endType
     const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
     const uom =
       String(productDetail.UOM ?? productDetail.uom ?? '').trim() ||

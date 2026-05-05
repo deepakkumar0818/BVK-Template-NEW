@@ -67,7 +67,7 @@ export interface WmwJoinedLineDisplayRow {
   mainRowId: string
 
   productLabel: string
-  /** Shown as “Form” on quotation — from End_Type, else Supply_Form */
+  /** Shown as “Form” on quotation — Zoho `End_Type` only (2_0 → 3_0 → main). */
   supplyForm: string
   size: string
   /** Shown as “Type” — `Brand_Selling_Name` from Category_1_MM_Database_WMW (main first), else linked rows, else Seam_Type */
@@ -357,12 +357,8 @@ function buildJoinedLineRowsForSubformBundle(
       stringifyField(main.Product_Name) ||
       stringifyField(main.Price_Master)
 
-    const supplyForm = isProductFitment
-      ? coalesceMainFirst(main, ext2, ext3, 'UOM_Billing')
-      : (
-          coalesceLinkedFirst(ext2, ext3, main, 'End_Type') ||
-          coalesceLinkedFirst(ext2, ext3, main, 'Supply_Form')
-        )
+    /** “Form” column: `End_Type` only (linked 2_0 → 3_0 → main), same as branded goods tables. */
+    const supplyForm = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
 
     const size = isProductFitment
       ? (

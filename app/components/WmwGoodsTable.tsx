@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
@@ -88,6 +89,13 @@ function trimStr(value: string | undefined): string {
   return (value ?? '').trim()
 }
 
+function toRowArray(v: unknown): Record<string, unknown>[] {
+  if (v == null) return []
+  if (Array.isArray(v)) return v as Record<string, unknown>[]
+  if (typeof v === 'object') return [v as Record<string, unknown>]
+  return []
+}
+
 const descGrid: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
@@ -166,6 +174,14 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
       ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
+    const rows3Linked = toRowArray(rawQuotationData?.Category_1_MM_Database_WMW_3_0)
+    const ext3 =
+      (itemRef
+        ? rows3Linked.find(
+            (x) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+          )
+        : undefined) || rows3Linked[index]
+
     let size = ''
     if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
       const extractNumber = (str: string) => {
@@ -192,7 +208,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
       productDetail.Product_Master?.trim() ||
       wiLine?.product?.trim() ||
       defaultProductLabel
-    const form = productDetail.Supply_Form?.trim() || wiLine?.form?.trim() || ''
+    const form = endTypeDisplayFromRecords(ext3, item as Record<string, unknown>, productDetail as Record<string, unknown>)
     const quality = wiLine?.quality?.trim() || ''
 
     return {
