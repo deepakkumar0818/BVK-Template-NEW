@@ -197,7 +197,7 @@ export function buildProductFitmentBrandedGoodsBlock(
       return Number.isFinite(p) ? p : 0
     })()
 
-    const rateStr = coalesceMainFirst(main, ext2, ext3, 'Selling_Price') || firstFieldString([ext2, main], 'List_Price')
+    const rateStr = coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
     const rateParsed = rateStr ? parseNumericValue(rateStr) : NaN
     const rate = Number.isFinite(rateParsed) ? rateParsed : Number.NaN
 

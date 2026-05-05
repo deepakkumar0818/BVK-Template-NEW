@@ -76,6 +76,8 @@ export interface WmwJoinedLineDisplayRow {
   hsnCode: string
   uom: string
   quantity: string
+  /** Zoho `Pieces` (main → 2_0 → 3_0); shown in quantity column instead of synthetic `N Pc` when set. */
+  piecesDisplay: string
   /** Source field Total_SQM — displayed as “Rate/Sqm” per business mapping */
   ratePerSqmDisplay: string
   /** Source field Total_Price — displayed as “Amount INR” (or invoice currency in UI) */
@@ -382,13 +384,8 @@ function buildJoinedLineRowsForSubformBundle(
           coalesceLinkedFirst(ext2, ext3, main, 'Seam_Type')
         )
 
-    const ratePerSqmDisplay = isProductFitment
-      ? (
-          coalesceMainFirst(main, ext2, ext3, 'Total_SQM') ||
-          coalesceMainFirst(main, ext2, ext3, 'Selling_Price') ||
-          coalesceMainFirst(main, ext2, ext3, 'List_Price')
-        )
-      : coalesceMainFirst(main, ext2, ext3, 'Total_SQM')
+    /** Rate column: Zoho `Selling_Price` only (WMW + Product Fitment). */
+    const ratePerSqmDisplay = coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
 
     const amountDisplay = (() => {
       if (isProductFitment) {
@@ -421,6 +418,7 @@ function buildJoinedLineRowsForSubformBundle(
       hsnCode: coalesceLinkedFirst(ext2, ext3, main, 'HSN_Code'),
       uom: coalesceMainFirst(main, ext2, ext3, 'UOM_Billing') || (isProductFitment ? 'SQM' : ''),
       quantity: coalesceMainFirst(main, ext2, ext3, 'Qty') || (isProductFitment ? coalesceMainFirst(main, ext2, ext3, 'Pieces') : ''),
+      piecesDisplay: coalesceMainFirst(main, ext2, ext3, 'Pieces'),
       ratePerSqmDisplay,
       amountDisplay,
 

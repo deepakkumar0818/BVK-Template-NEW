@@ -366,7 +366,7 @@ export function buildSlsLineItemsFromWi20SubformsShared(
         strVal(row.Product_Group) ||
         strVal(row.Item_Name)
       const qtyRaw = strVal(row.Qty) || strVal(row.Pieces)
-      const sp = strVal(row.Selling_Price || row.List_Price).replace(/,/g, '')
+      const sp = strVal(row.Selling_Price).replace(/,/g, '')
       const total = strVal(
         row.Total_Sale_Value ?? row.Net_sales_value ?? row.Net_Selling_Amount ?? row.Gross_Amount ?? row.Total_Price
       ).replace(/,/g, '')

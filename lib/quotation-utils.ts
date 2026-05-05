@@ -475,6 +475,36 @@ export function determineTemplateType(
   return 'WI'
 }
 
+/** Append a space + `Pc` after Zoho `Pieces` when the value does not already end with `Pc`. */
+function formatPiecesWithPcSuffix(piecesFromApi: string): string {
+  const p = String(piecesFromApi ?? '').trim()
+  if (!p) return ''
+  if (/\s*pc$/i.test(p)) return p
+  return `${p} Pc`
+}
+
+/**
+ * Prefer Zoho `Pieces` for the quantity-column piece line (`pieces` on {@link QuotationLineItem});
+ * only synthesize `One Pc` / `N Pc` in `unit` when `Pieces` is empty.
+ */
+function unitAndPiecesFromQty(qtyNum: number, piecesFromApi: string): { unit: string; pieces: string } {
+  const p = String(piecesFromApi ?? '').trim()
+  if (p) return { unit: '', pieces: formatPiecesWithPcSuffix(p) }
+  const unit =
+    qtyNum === 1
+      ? 'One Pc'
+      : qtyNum === 2
+        ? 'Two Pc'
+        : qtyNum === 3
+          ? 'Three Pc'
+          : qtyNum === 4
+            ? 'Four Pc'
+            : qtyNum > 0
+              ? `${qtyNum} Pc`
+              : ''
+  return { unit, pieces: '' }
+}
+
 /**
  * Pushes {@link buildWmwJoinedLineRows} output into `lineItems` (Category 1 WMW + Product Fitment),
  * using the same mapping as the WI template branch in {@link transformQuotationData}.
@@ -490,18 +520,8 @@ function addQuotationLineItemsFromWmwJoin(
   for (const row of joinedWmw) {
     const qty = String(row.quantity ?? '0').trim()
     const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-    const unit =
-      qtyNum === 1
-        ? 'One Pc'
-        : qtyNum === 2
-          ? 'Two Pc'
-          : qtyNum === 3
-            ? 'Three Pc'
-            : qtyNum === 4
-              ? 'Four Pc'
-              : qtyNum > 0
-                ? `${qtyNum} Pc`
-                : ''
+    const piecesStr = String(row.piecesDisplay ?? '').trim()
+    const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesStr)
 
     const amtNum = parseFloat(String(row.amountDisplay || '').replace(/,/g, '')) || 0
     totalAdd += amtNum
@@ -520,7 +540,7 @@ function addQuotationLineItemsFromWmwJoin(
       qty,
       subQty: '',
       unit,
-      pieces: '',
+      pieces,
       rate: formatCurrency(row.ratePerSqmDisplay, currency),
       amount: formatCurrency(row.amountDisplay, currency),
     })
@@ -714,16 +734,9 @@ export function transformQuotationData(
         ? (item.Total_Cost?.trim() || item.Gross_Amount?.trim() || productDetail.Total_Price?.trim() || item.Total_Sale_Value?.trim() || '0')
         : (item.Gross_Amount?.trim() || productDetail.Total_Price?.trim() || item.Total_Sale_Value?.trim() || '0')
       
-      // Calculate unit description
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit = qtyNum === 1 ? 'One Pc' : 
-                   qtyNum === 2 ? 'Two Pc' : 
-                   qtyNum === 3 ? 'Three Pc' : 
-                   qtyNum === 4 ? 'Four Pc' : 
-                   qtyNum > 0 ? `${qtyNum} Pc` : ''
-
-      // Pieces from line item or product detail
-      const pieces = item.Pieces?.trim() || productDetail.Pieces?.trim() || ''
+      const piecesFromApi = String(item.Pieces ?? productDetail.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
 
       const hsnCodeForWmwTab =
         templateType === 'WMW'
@@ -747,7 +760,7 @@ export function transformQuotationData(
         qty,
         subQty,
         unit,
-        pieces: pieces && subQty ? `${subQty}, ${unit}` : (pieces || ''),
+        pieces,
         rate: rate ? formatCurrency(rate) : '',
         amount: formatCurrency(amount),
       })
@@ -793,20 +806,8 @@ export function transformQuotationData(
         '0'
 
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit =
-        qtyNum === 1
-          ? 'One Pc'
-          : qtyNum === 2
-            ? 'Two Pc'
-            : qtyNum === 3
-              ? 'Three Pc'
-              : qtyNum === 4
-                ? 'Four Pc'
-                : qtyNum > 0
-                  ? `${qtyNum} Pc`
-                  : ''
-
-      const pieces = item.Pieces?.trim() || ''
+      const piecesFromApi = String(item.Pieces ?? productDetail.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
       const mesh = meshInchFromProductCode(productDetail.Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
@@ -879,19 +880,8 @@ export function transformQuotationData(
         row.Total_Sale_Value ?? row.Net_Selling_Amount ?? row.Gross_Amount ?? row.Total_Price ?? '0'
       ).trim()
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit =
-        qtyNum === 1
-          ? 'One Pc'
-          : qtyNum === 2
-            ? 'Two Pc'
-            : qtyNum === 3
-              ? 'Three Pc'
-              : qtyNum === 4
-                ? 'Four Pc'
-                : qtyNum > 0
-                  ? `${qtyNum} Pc`
-                  : ''
-      const pieces = String(row.Pieces ?? '').trim()
+      const piecesFromApi = String(row.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
       const mesh = meshInchFromProductCode(pc)
       const weave = String(row.Seam_Type ?? row.Weave ?? '').trim()
       const amountNum = parseFloat(amount.replace(/,/g, '')) || 0
@@ -962,20 +952,8 @@ export function transformQuotationData(
         '0'
 
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit =
-        qtyNum === 1
-          ? 'One Pc'
-          : qtyNum === 2
-            ? 'Two Pc'
-            : qtyNum === 3
-              ? 'Three Pc'
-              : qtyNum === 4
-                ? 'Four Pc'
-                : qtyNum > 0
-                  ? `${qtyNum} Pc`
-                  : ''
-
-      const pieces = item.Pieces?.trim() || ''
+      const piecesFromApi = String(item.Pieces ?? productDetail.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
       const mesh = meshInchFromProductCode(productDetail.Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
@@ -1027,20 +1005,8 @@ export function transformQuotationData(
         '0'
 
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit =
-        qtyNum === 1
-          ? 'One Pc'
-          : qtyNum === 2
-            ? 'Two Pc'
-            : qtyNum === 3
-              ? 'Three Pc'
-              : qtyNum === 4
-                ? 'Four Pc'
-                : qtyNum > 0
-                  ? `${qtyNum} Pc`
-                  : ''
-
-      const pieces = item.Pieces?.trim() || ''
+      const piecesFromApi = String(item.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
       const mesh = meshInchFromProductCode(item.Product_Code)
       const weave = String(item.Seam_Type ?? productDetail.Seam_Type ?? '').trim()
 
@@ -1106,20 +1072,8 @@ export function transformQuotationData(
         '0'
 
       const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
-      const unit =
-        qtyNum === 1
-          ? 'One Pc'
-          : qtyNum === 2
-            ? 'Two Pc'
-            : qtyNum === 3
-              ? 'Three Pc'
-              : qtyNum === 4
-                ? 'Four Pc'
-                : qtyNum > 0
-                  ? `${qtyNum} Pc`
-                  : ''
-
-      const pieces = item.Pieces?.trim() || ''
+      const piecesFromApi = String(item.Pieces ?? productDetail.Pieces ?? '').trim()
+      const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
       const mesh = meshInchFromProductCode(productDetail.Product_Code || (item as any).Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 

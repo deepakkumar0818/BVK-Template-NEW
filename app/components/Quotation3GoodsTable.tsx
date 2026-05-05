@@ -23,6 +23,11 @@ const bdTitleRow: CSSProperties = {
   borderBottom: '1px solid #000',
 }
 
+function parseMoneyLoose(value: string | undefined): number {
+  if (value == null || String(value).trim() === '') return 0
+  return parseFloat(String(value).replace(/,/g, '')) || 0
+}
+
 interface Quotation3GoodsTableProps {
   data: QuotationData
   rawQuotationData?: any
@@ -46,6 +51,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
   
   const chunks = [1]; // just one page chunk for dummy data
 
+  /** Live rows: `transformQuotationData` maps rate from Zoho `Selling_Price` into each line item’s `rate`. */
   const dummyBlocks = [
     {
       title: 'Panel-1',
@@ -116,9 +122,37 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
         }
       ]
     }
-  ];
+  ]
 
-  const baseLineTotal = dummyBlocks.reduce((sum, b) => sum + b.amount, 0)
+  const blocksFromLineItems =
+    data.lineItems && data.lineItems.length > 0
+      ? data.lineItems.map((li, idx) => ({
+          title: li.product?.trim() || `Item ${idx + 1}`,
+          ref: String(idx + 1),
+          qty: parseMoneyLoose(li.qty),
+          uom: li.uom?.trim() || 'Pcs',
+          rate: parseMoneyLoose(li.rate),
+          amount: parseMoneyLoose(li.amount),
+          subgroups: [
+            {
+              quality: li.quality?.trim() || '',
+              items: [
+                {
+                  id: 1,
+                  mesh: li.mesh?.trim() || '',
+                  wireDia: '',
+                  size: li.size?.trim() || '',
+                  sqm: li.subQty?.trim() || '',
+                },
+              ],
+            },
+          ],
+        }))
+      : null
+
+  const displayBlocks = blocksFromLineItems ?? dummyBlocks
+
+  const baseLineTotal = displayBlocks.reduce((sum, b) => sum + b.amount, 0)
   const { discountTotal: q3DiscountTotal, discountLabel: q3DiscountLabel } = resolveWmwChargeTotals(
     rawQuotationData ?? null
   )
@@ -198,7 +232,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
                   </tr>
 
-                  {dummyBlocks.map((block, idx) => {
+                  {displayBlocks.map((block, idx) => {
                     const totalRowsInBlock = block.subgroups.reduce((acc, sg) => acc + 1 + sg.items.length, 0) + 2; // +1 for title, +1 for headers
 
                     return (
