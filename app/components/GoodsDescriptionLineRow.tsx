@@ -89,6 +89,12 @@ export default function GoodsDescriptionLineRow({
             {unit}
           </>
         ) : null}
+        {lineText(row.pieces) ? (
+          <>
+            <br />
+            {lineText(row.pieces)}
+          </>
+        ) : null}
       </td>
       <td className="goods-description-table-body-cell text-right" style={pad}>
         {rate || '—'}

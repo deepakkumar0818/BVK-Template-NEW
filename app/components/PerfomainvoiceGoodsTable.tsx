@@ -475,7 +475,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                       HSN Code
                     </td>
                     <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Quantity<br />UOM
+                      Quantiy<br />UOM
                     </td>
                     <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
                       Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
