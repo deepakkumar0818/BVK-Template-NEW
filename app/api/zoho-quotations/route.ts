@@ -10,7 +10,7 @@ const REPORT_LINK_NAME = 'All_Quotations'
 
 async function fetchQuotations(accessToken: string, searchParams: URLSearchParams): Promise<Response> {
     // Optional: id (from perm), max_records, criteria, field_config, fields, privatelink
-    const id = searchParams.get('id') || ''
+    const id = searchParams.get('id') ||  ''
     const max_records = searchParams.get('max_records') || '200'
     const field_config = searchParams.get('field_config') || 'all'
     const criteriaParam = searchParams.get('criteria') || ''
