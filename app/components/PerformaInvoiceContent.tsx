@@ -114,6 +114,8 @@ export default function PerformaInvoiceContent({
 
   if (useWmwd1StyleLayout) {
     const performaTitle = 'PERFORMA INVOICE'
+    const cur = data.currency || 'INR'
+    const totalBeforeTaxFormatted = formatCurrency(totalBeforeTax, cur)
     return (
       <>
         <div className="quotation-print-sheet">
@@ -135,7 +137,10 @@ export default function PerformaInvoiceContent({
                   <td colSpan={2} className="quotation-seamless-stack">
                     <GoodsDescriptionPaginatedBlock
                       lineItems={lineItems}
-                      totalFoot={{ currency: data.currency, amountFormatted: totalAmount }}
+                      totalFoot={{
+                        currency: data.currency,
+                        amountFormatted: totalBeforeTaxFormatted,
+                      }}
                       masterQuotationHeaderProps={{
                         title: performaTitle,
                         data,
