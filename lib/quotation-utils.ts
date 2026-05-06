@@ -190,23 +190,6 @@ function amountFromTotalOrLegacy(
   return parseNumericField(r[legacyKey])
 }
 
-function resolveTotalAfterTax(raw: Record<string, unknown> | null | undefined, fallback: number): number {
-  const r = raw ?? {}
-  const keys = [
-    'Total_Cost_After_Tax_Grand_Total',
-    'Overall_Grand_Total_incl_Accessories',
-    'Total_After_Tax',
-    'Total_Amount_After_GST',
-  ] as const
-  for (const k of keys) {
-    const v = r[k]
-    if (v !== undefined && v !== null && String(v).trim() !== '') {
-      return parseNumericField(v)
-    }
-  }
-  return fallback
-}
-
 /**
  * Tax rows for quotation / performa summary: Creator rollups (Total_*) with legacy field fallback.
  */
@@ -232,7 +215,8 @@ export function parseQuotationTaxForSummary(raw: unknown, lineItemsTotalFallback
     igstAmount: amountFromTotalOrLegacy(r, 'Total_IGST', 'IGST_Amount'),
     taxAmount: amountFromTotalOrLegacy(r, 'Total_Tax_Amount_IGST_CGST', 'Tax_Amount'),
     totalBeforeTax: resolveTotalCostBeforeTax(r, lineItemsTotalFallback),
-    totalAfterTax: resolveTotalAfterTax(r, lineItemsTotalFallback),
+    /** Zoho `Overall_Grand_Total_incl_Accessories` only (no other keys, no line-sum fallback). */
+    totalAfterTax: parseOverallGrandTotalInclAccessories(r ?? undefined),
   }
 }
 
@@ -274,6 +258,130 @@ function convertBelowThousand(n: number): string {
 }
 
 /**
+ * Indian numbering: Crore → Lakh → Thousand → remainder (&lt; 1000), each chunk via {@link convertBelowThousand}.
+ */
+function numberToWordsIndianInteger(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return 'Zero'
+  const num = Math.floor(Math.abs(n))
+  if (num === 0) return 'Zero'
+
+  const parts: string[] = []
+  let rem = num
+
+  const crore = Math.floor(rem / 10000000)
+  rem %= 10000000
+  if (crore > 0) {
+    parts.push(`${convertBelowThousand(crore)} Crore`.trim())
+  }
+
+  const lakh = Math.floor(rem / 100000)
+  rem %= 100000
+  if (lakh > 0) {
+    parts.push(`${convertBelowThousand(lakh)} Lakh`.trim())
+  }
+
+  const thousand = Math.floor(rem / 1000)
+  rem %= 1000
+  if (thousand > 0) {
+    parts.push(`${convertBelowThousand(thousand)} Thousand`.trim())
+  }
+
+  if (rem > 0) {
+    parts.push(convertBelowThousand(rem))
+  }
+
+  return parts.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+/** Integer part only: international grouping (thousand / million / …). */
+function numberToWordsInternationalInteger(num: number): string {
+  if (!Number.isFinite(num)) return 'Zero'
+  const n = Math.floor(Math.abs(num))
+  if (n === 0) return 'Zero'
+
+  const scales = ['', 'Thousand', 'Million', 'Billion', 'Trillion', 'Quadrillion', 'Quintillion']
+  const parts: string[] = []
+  let x = n
+  let scaleIdx = 0
+  while (x > 0 && scaleIdx < scales.length) {
+    const chunk = x % 1000
+    if (chunk > 0) {
+      const chunkWords = convertBelowThousand(chunk)
+      const suffix = scales[scaleIdx]
+      parts.push(suffix ? `${chunkWords} ${suffix}` : chunkWords)
+    }
+    x = Math.floor(x / 1000)
+    scaleIdx++
+  }
+  if (x > 0) {
+    parts.push(String(x))
+  }
+
+  return parts.reverse().join(' ').replace(/\s+/g, ' ').trim()
+}
+
+function formatAmountInWordsUsd(amount: number): string {
+  const safe = Number.isFinite(amount) ? amount : 0
+  const negative = safe < 0
+  const abs = Math.abs(safe)
+  const totalCents = Math.round(abs * 100 + Number.EPSILON)
+  const dollars = Math.floor(totalCents / 100)
+  const cents = totalCents % 100
+
+  let main = numberToWordsInternationalInteger(dollars)
+  if (negative) main = `Minus ${main}`
+
+  const dUnit = dollars === 1 ? 'Dollar' : 'Dollars'
+  if (cents === 0) {
+    return `${main} ${dUnit} Only`.replace(/\s+/g, ' ').trim()
+  }
+  const cw = convertBelowThousand(cents).trim()
+  const cUnit = cents === 1 ? 'Cent' : 'Cents'
+  return `${main} ${dUnit} and ${cw} ${cUnit} Only`.replace(/\s+/g, ' ').trim()
+}
+
+function formatAmountInWordsEur(amount: number): string {
+  const safe = Number.isFinite(amount) ? amount : 0
+  const negative = safe < 0
+  const abs = Math.abs(safe)
+  const totalCents = Math.round(abs * 100 + Number.EPSILON)
+  const euros = Math.floor(totalCents / 100)
+  const cents = totalCents % 100
+
+  let main = numberToWordsInternationalInteger(euros)
+  if (negative) main = `Minus ${main}`
+
+  const eUnit = euros === 1 ? 'Euro' : 'Euros'
+  if (cents === 0) {
+    return `${main} ${eUnit} Only`.replace(/\s+/g, ' ').trim()
+  }
+  const cw = convertBelowThousand(cents).trim()
+  const cUnit = cents === 1 ? 'Cent' : 'Cents'
+  return `${main} ${eUnit} and ${cw} ${cUnit} Only`.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * INR amount in words: Indian lakhs/crores + optional paisa (not "/100").
+ */
+function formatAmountInWordsInr(amount: number): string {
+  const safe = Number.isFinite(amount) ? amount : 0
+  const negative = safe < 0
+  const abs = Math.abs(safe)
+  const totalPaise = Math.round(abs * 100 + Number.EPSILON)
+  const rupees = Math.floor(totalPaise / 100)
+  const paise = totalPaise % 100
+
+  let main = numberToWordsIndianInteger(rupees)
+  if (negative) main = `Minus ${main}`
+
+  if (paise === 0) {
+    return `${main} Rupees Only`.replace(/\s+/g, ' ').trim()
+  }
+  const pw = convertBelowThousand(paise).trim()
+  return `${main} Rupees and ${pw} Paisa Only`.replace(/\s+/g, ' ').trim()
+}
+
+/**
  * Converts number to words (integer chunked by thousands → Million / Billion …).
  * The previous implementation only supported amounts &lt; ~1M and produced the literal "undefined"
  * for larger values because {@link convertBelowThousand} was fed numbers ≥ 1000.
@@ -287,25 +395,10 @@ export function numberToWords(num: number): string {
   const integerPart = Math.floor(abs)
   const decimalPart = Math.round((abs - integerPart) * 100)
 
-  const scales = ['', 'Thousand', 'Million', 'Billion', 'Trillion', 'Quadrillion', 'Quintillion']
-  const parts: string[] = []
-  let n = integerPart
-  let scaleIdx = 0
-  while (n > 0 && scaleIdx < scales.length) {
-    const chunk = n % 1000
-    if (chunk > 0) {
-      const chunkWords = convertBelowThousand(chunk)
-      const suffix = scales[scaleIdx]
-      parts.push(suffix ? `${chunkWords} ${suffix}` : chunkWords)
-    }
-    n = Math.floor(n / 1000)
-    scaleIdx++
-  }
-  if (n > 0) {
-    parts.push(String(n))
-  }
+  const intWords =
+    integerPart === 0 ? (decimalPart > 0 ? '' : 'Zero') : numberToWordsInternationalInteger(integerPart)
 
-  let words = (negative ? 'Minus ' : '') + parts.reverse().join(' ').replace(/\s+/g, ' ').trim()
+  let words = (negative ? 'Minus ' : '') + intWords
 
   if (decimalPart > 0) {
     words += ` and ${decimalPart}/100`
@@ -315,18 +408,25 @@ export function numberToWords(num: number): string {
 }
 
 /**
- * Printable “in words” line for invoices (uses {@link numberToWords}).
+ * Printable “in words” line for invoices.
+ * **INR:** Lakh/Crore + Paisa; **USD / EUR:** international scales + Dollars/Euro + Cents (no `XX/100`).
  */
 export function formatAmountInWords(amount: number, currency: string = 'INR'): string {
-  const safe = Number.isFinite(amount) ? amount : 0
-  const words = numberToWords(safe)
   const cur = (currency || 'INR').trim().toUpperCase()
-  let unit: string
-  if (cur === 'USD') unit = 'US Dollars'
-  else if (cur === 'INR') unit = 'Rupees'
-  else if (cur === 'EUR') unit = 'Euro'
-  else unit = cur
-  return `${words} ${unit} Only`.replace(/\s+/g, ' ').trim()
+  const safe = Number.isFinite(amount) ? amount : 0
+
+  if (cur === 'INR') {
+    return formatAmountInWordsInr(safe)
+  }
+  if (cur === 'USD') {
+    return formatAmountInWordsUsd(safe)
+  }
+  if (cur === 'EUR' || cur === 'EURO') {
+    return formatAmountInWordsEur(safe)
+  }
+
+  const words = numberToWords(safe)
+  return `${words} ${cur} Only`.replace(/\s+/g, ' ').trim()
 }
 
 /** Stable key for merging WI_2_0 / WI_3_0 rows (same Line_Item_ref → one logical line) */
