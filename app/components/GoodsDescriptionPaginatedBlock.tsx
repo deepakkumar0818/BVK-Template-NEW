@@ -11,7 +11,7 @@ const MASTER_HEADER_OMIT_LAST_GOODS_SEGMENTS = 0
 export interface GoodsDescriptionPaginatedBlockProps {
   lineItems: QuotationLineItem[]
   /** When set, the last segment shows a goods-table tfoot (Performa). */
-  totalFoot?: { currency: string; amountFormatted: string }
+  totalFoot?: { currency: string; amountFormatted: string; /** omit → `Total {currency}` */ label?: string }
   /** Performa uses 8px cell padding; WI omits for default CSS. */
   cellPaddingPx?: number
   /**
@@ -222,7 +222,7 @@ export default function GoodsDescriptionPaginatedBlock({
                       className="goods-description-table-foot-cell text-right font-bold"
                       style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
                     >
-                      Total {totalFoot.currency}
+                      {totalFoot.label ?? `Total ${totalFoot.currency}`}
                     </td>
                     <td
                       className="goods-description-table-foot-cell text-right font-bold"
