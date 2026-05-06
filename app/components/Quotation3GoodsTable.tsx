@@ -3,8 +3,9 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const txBlue = '#000000' // Changed from blue per screenshot, though original had some blue. Keeping black to match screenshot where most text is black
 
@@ -142,7 +143,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                   mesh: li.mesh?.trim() || '',
                   wireDia: '',
                   size: li.size?.trim() || '',
-                  sqm: li.subQty?.trim() || '',
+                  sqm: sqmAreaFromSizeDisplayString(li.size?.trim() || ''),
                 },
               ],
             },
@@ -152,12 +153,12 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
 
   const displayBlocks = blocksFromLineItems ?? dummyBlocks
 
-  const baseLineTotal = displayBlocks.reduce((sum, b) => sum + b.amount, 0)
   const { discountTotal: q3DiscountTotal, discountLabel: q3DiscountLabel } = resolveWmwChargeTotals(
     rawQuotationData ?? null
   )
-  const q3DiscountDeduct = Math.max(0, q3DiscountTotal)
-  const totalAmount = baseLineTotal - q3DiscountDeduct
+  const grandTotalDisplay = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
   const q3ShowDiscountRow = Number.isFinite(q3DiscountTotal) && q3DiscountTotal !== 0
 
   return (
@@ -364,7 +365,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     </td>
                     <td style={{ ...bd, padding: '5px 6px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'bottom' }}>USD</td>
                     <td style={{ ...bd, padding: '5px 8px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'bottom' }}>
-                      <span className="quotation-grand-total-amount">{formatCurrency(totalAmount, currency)}</span>
+                      <span className="quotation-grand-total-amount">{formatCurrency(grandTotalDisplay, currency)}</span>
                     </td>
                   </tr>
                   <tr>
@@ -377,12 +378,12 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     </td>
                     <td colSpan={2} style={{ ...bd, padding: '6px 10px', fontSize: '12px', verticalAlign: 'middle' }}>
                       <div style={{ fontWeight: 'bold', color: '#444' }}>
-                        US Dollar : {numberToWords(totalAmount)} Only
+                        US Dollar : {numberToWords(grandTotalDisplay)} Only
                       </div>
                     </td>
                     <td style={{ ...bd, padding: '8px 10px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle', fontSize: '13px' }}>Total:-</td>
                     <td style={{ ...bd, padding: '8px 8px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle', fontSize: '13px' }}>
-                      <span className="quotation-grand-total-amount">{formatCurrency(totalAmount, currency)}</span>
+                      <span className="quotation-grand-total-amount">{formatCurrency(grandTotalDisplay, currency)}</span>
                     </td>
                   </tr>
                 </tbody>

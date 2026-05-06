@@ -3,12 +3,19 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
-import { formatCurrency, numberToWords, resolveQuotationValidity, meshInchFromProductCode } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveQuotationValidity,
+  meshInchFromProductCode,
+} from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -41,7 +48,7 @@ const descGrid: CSSProperties = {
   textAlign: 'left',
 }
 
-/** Qty / Rate / Amount cells — top-aligned; paddingTop matches left Item header band so figures line up with value row */
+/** HSN / Qty / Rate / Amount cells — aligned with description value rows (group sub-header is a separate table row). */
 const ekamasRightValueCell: CSSProperties = {
   ...bdSides,
   borderTop: 'none',
@@ -76,6 +83,8 @@ interface EkamasDisplayRow {
   product: string
   form: string
   quality: string
+  /** Same precedence as Adhunik/Everite: WMW 2_0 → WMW 3_0 → main product (`HSN_Code`). */
+  hsnCode: string
   mesh: string
   brand: string
   size: string
@@ -190,7 +199,15 @@ export default function EkamasGoodsTable({
       if (len && wid) size = `${len} x ${wid}`
     }
 
-    const sqmArea = productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || ''
+    const sqmArea = resolveGoodsSqmArea({
+      invoiceDimension1: item.Invoice_Dimension_1,
+      invoiceDimension2: item.Invoice_Dimension_2,
+      lengthField: productDetail.Length_field,
+      width: productDetail.Width,
+      supplyDimension1: productDetail.Supply_Dimension_1,
+      supplyDimension2: productDetail.Supply_Dimension_2,
+      sizeDisplay: size,
+    })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
@@ -225,6 +242,9 @@ export default function EkamasGoodsTable({
     const mesh = meshInchFromProductCode(productCodeForMesh)
     const brand = productDetail.Brand_Selling_Name?.trim() || ''
 
+    /** Same as Adhunik / Everite: `HSN_Code` on WMW 2_0 → 3_0 → main. */
+    const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
+
     const wiLine = data.lineItems?.[index]
     /** Product column: Zoho Blend_Category (WMW product / 2.0 line), then name fields / transformed line */
     const product =
@@ -246,6 +266,7 @@ export default function EkamasGoodsTable({
       product,
       form,
       quality,
+      hsnCode,
       mesh,
       brand,
       size,
@@ -267,10 +288,11 @@ export default function EkamasGoodsTable({
       product: item.product?.trim() || defaultProductLabel,
       form: item.form?.trim() || '',
       quality: item.quality?.trim() || '',
+      hsnCode: item.hsnCode?.trim() || '',
       mesh: '',
       brand: item.type || item.form || '',
       size: item.size || '',
-      sqmArea: item.subQty || '',
+      sqmArea: sqmAreaFromSizeDisplayString(item.size || ''),
       quantity,
       rate,
       amount,
@@ -287,6 +309,7 @@ export default function EkamasGoodsTable({
     product: f.product,
     form: f.form,
     quality: f.quality,
+    hsnCode: f.hsnCode,
     mesh: f.mesh || f.brandCategoryForMeshCol,
     brand: f.brand,
     size: f.size,
@@ -311,6 +334,7 @@ export default function EkamasGoodsTable({
         product: 'Stainless Steel Wire Cloth',
         form: 'Endless Diagonal Seam',
         quality: 'AISI 316L',
+        hsnCode: '7314',
         mesh: '50/Inch',
         brand: 'Formx-050',
         size: '3.941 x 3.100',
@@ -342,8 +366,10 @@ export default function EkamasGoodsTable({
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
-  const amountInWords = numberToWords(totalWithCharges)
+  const displayGrandTotal = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
+  const amountInWords = numberToWords(displayGrandTotal)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
   const offerValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | undefined, '3 Months')
@@ -381,10 +407,11 @@ export default function EkamasGoodsTable({
                 }}
               >
                 <colgroup>
-                  <col style={{ width: '52%' }} />
+                  <col style={{ width: '46%' }} />
+                  <col style={{ width: '10%' }} />
                   <col style={{ width: '12%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '18%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="ekamas-goods-title-row">
@@ -399,6 +426,19 @@ export default function EkamasGoodsTable({
                       }}
                     >
                       Description of Goods
+                    </td>
+                    <td
+                      style={{
+                        ...bdTitleRow,
+                        borderTop: '2px solid #000',
+                        padding: '8px',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        fontSize: '10px',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      HSN Code
                     </td>
                     <td
                       style={{
@@ -484,6 +524,32 @@ export default function EkamasGoodsTable({
                           <td style={ekamasRightPlaceholderCell} aria-hidden>
                             {'\u00a0'}
                           </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                        </tr>
+                        <tr className="ekamas-item-row ekamas-item-grid-header-row">
+                          <td style={{ ...bdProductBlock, borderTop: 'none', padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
+                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0, fontSize: '10px' }}>
+                              <span>Item</span>
+                              <span>MESH</span>
+                              <span>BRAND</span>
+                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span>Sqm Area / PC</span>
+                            </div>
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
                         </tr>
                         {groupRows.map((row, rowIdx) => {
                           const isLastProductRow =
@@ -503,17 +569,9 @@ export default function EkamasGoodsTable({
                               >
                                 <div
                                   style={{
-                                    paddingTop: '8px',
-                                    marginTop: '4px',
+                                    paddingTop: '6px',
                                   }}
                                 >
-                                  <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px', fontSize: '10px' }}>
-                                    <span>Item</span>
-                                    <span>MESH</span>
-                                    <span>BRAND</span>
-                                    <span>SIZE [Mtrs] (LxW)</span>
-                                    <span>Sqm Area / PC</span>
-                                  </div>
                                   <div style={{ ...descGrid, alignItems: 'start' }}>
                                     <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                     <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
@@ -538,11 +596,21 @@ export default function EkamasGoodsTable({
                                   </div>
                                 ) : null}
                               </td>
-                              <td style={ekamasRightValueCell}>{row.quantity} Pcs</td>
-                              <td style={ekamasRightValueCell}>
+                              <td
+                                style={{
+                                  ...ekamasRightValueCell,
+                                  paddingTop: '10px',
+                                  wordBreak: 'break-word',
+                                  fontSize: '10px',
+                                }}
+                              >
+                                {row.hsnCode || ''}
+                              </td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{row.quantity} Pcs</td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>
                                 {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                               </td>
-                              <td style={ekamasRightValueCell}>{formatCurrency(row.amount, '')}</td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{formatCurrency(row.amount, '')}</td>
                             </tr>
                           )
                         })}
@@ -555,7 +623,7 @@ export default function EkamasGoodsTable({
                       {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
                         <tr>
                           <td
-                            colSpan={3}
+                            colSpan={4}
                             style={{
                               borderLeft: '1px solid #000',
                               borderRight: '1px solid #000',
@@ -663,10 +731,21 @@ export default function EkamasGoodsTable({
                             verticalAlign: 'middle',
                           }}
                         />
+                        <td
+                          style={{
+                            borderLeft: '1px solid #000',
+                            borderRight: '1px solid #000',
+                            borderBottom: '1px solid #000',
+                            borderTop: 'none',
+                            padding: '6px',
+                            verticalAlign: 'middle',
+                          }}
+                        />
                       </tr>
 
                       <tr>
                         <td style={{ ...bd, borderTop: '2px solid #000', padding: '6px 10px', verticalAlign: 'middle' }} />
+                        <td style={{ ...bd, borderTop: '2px solid #000', padding: '6px', verticalAlign: 'middle' }} />
                         <td
                           colSpan={2}
                           style={{
@@ -692,12 +771,12 @@ export default function EkamasGoodsTable({
                             fontSize: '11px',
                           }}
                         >
-                          <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>
 
                       <tr>
-                        <td colSpan={4} style={{ ...bd, padding: 0, verticalAlign: 'middle' }}>
+                        <td colSpan={5} style={{ ...bd, padding: 0, verticalAlign: 'middle' }}>
                           <table
                             style={{
                               width: '100%',
@@ -761,7 +840,7 @@ export default function EkamasGoodsTable({
                                   }}
                                 >
                                   <span className="quotation-grand-total-amount">
-                                    {formatCurrency(totalWithCharges, '')}
+                                    {formatCurrency(displayGrandTotal, '')}
                                   </span>
                                 </td>
                               </tr>
@@ -774,7 +853,7 @@ export default function EkamasGoodsTable({
                         <td style={{ ...bd, padding: '6px 10px', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
                           Remarks
                         </td>
-                        <td colSpan={3} style={{ ...bd, padding: '6px 10px', fontSize: '11px', verticalAlign: 'middle' }}>
+                        <td colSpan={4} style={{ ...bd, padding: '6px 10px', fontSize: '11px', verticalAlign: 'middle' }}>
                           Offer Validity : {offerValidity}
                         </td>
                       </tr>
@@ -794,7 +873,7 @@ export default function EkamasGoodsTable({
                           6. All Foreign Bank charges on Purchaser Account.
                         </td>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           style={{
                             ...bd,
                             padding: '8px 10px',
@@ -810,7 +889,7 @@ export default function EkamasGoodsTable({
                       </tr>
                       <tr>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           style={{
                             ...bd,
                             padding: '18px 12px',
@@ -824,7 +903,7 @@ export default function EkamasGoodsTable({
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan={3} style={{ ...bd, padding: '10px 12px', verticalAlign: 'middle', fontSize: '11px' }}>
+                        <td colSpan={4} style={{ ...bd, padding: '10px 12px', verticalAlign: 'middle', fontSize: '11px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontWeight: 'bold' }}>Signature &amp; Date</span>
                             <span style={{ fontWeight: 'bold' }}>{signatureDate}</span>
@@ -832,7 +911,7 @@ export default function EkamasGoodsTable({
                         </td>
                       </tr>
                       <tr>
-                        <td colSpan={4} style={{ ...bd, padding: '4px 8px', fontSize: '9px' }}>
+                        <td colSpan={5} style={{ ...bd, padding: '4px 8px', fontSize: '9px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>Doc No.: WMW/MKT/F.1 (Rev.00)</span>
                             <span>Subject to enclosed terms &amp; conditions</span>

@@ -8,6 +8,7 @@ import {
   formatCurrency,
   formatAmountInWords,
   parseQuotationTaxForSummary,
+  parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
   DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
 } from '@/lib/quotation-utils'
@@ -101,7 +102,9 @@ export default function PerformaInvoiceContent({
     totalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, data.totalAmount)
 
-  const totalAmount = formatCurrency(data.totalAmount)
+  const totalAmount = formatCurrency(
+    parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined)
+  )
 
   const lineItems = data.lineItems ?? []
 

@@ -3,11 +3,17 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveQuotationDeliveryCell,
+} from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const txBlue = '#0000CD'
 
@@ -153,11 +159,16 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
           mesh: '',
           brand: '',
           size: row.size,
-          sqmArea: '',
+          sqmArea: sqmAreaFromSizeDisplayString(row.size?.trim() || ''),
           quantity: qtyLabel || row.quantity || '0',
           rate: parseMoney(row.ratePerSqmDisplay),
           amount: parseMoney(row.amountDisplay),
-          deliveryDate: row.deliveryDate || undefined,
+          deliveryDate:
+            resolveQuotationDeliveryCell(
+              row.deliveryApi,
+              row.deliveryDate,
+              rawQuotationData?.Delivery_Date_Control
+            ) || undefined,
           freightCharge: row.freightCharge || undefined,
           packingCharge: row.packingCharges || undefined,
           seamCharge: row.seamCharges || undefined,
@@ -183,7 +194,11 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
         : undefined) || rows3Linked[index]
 
     let size = ''
-    if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
+    const len = String(productDetail.Length_field ?? '').trim()
+    const wid = String(productDetail.Width ?? '').trim()
+    if (len && wid) {
+      size = `${len} x ${wid}`
+    } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
       const extractNumber = (str: string) => {
         const match = str.match(/(\d+\.?\d*)/)
         return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
@@ -193,11 +208,24 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
       size = `${dim1} x ${dim2}`
     }
 
-    const sqmArea = productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || ''
+    const sqmArea = resolveGoodsSqmArea({
+      invoiceDimension1: item.Invoice_Dimension_1,
+      invoiceDimension2: item.Invoice_Dimension_2,
+      lengthField: productDetail.Length_field,
+      width: productDetail.Width,
+      sizeDisplay: size,
+    })
     const quantity = productDetail.Qty?.trim() || item.Qty?.trim() || '0'
-    const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
-    const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
-    const amount = parseFloat(item.Net_Selling_Amount?.replace(/,/g, '') || item.Gross_Amount?.replace(/,/g, '') || '0')
+    const qtyNum = parseFloat(quantity.replace(/,/g, '')) || 0
+    let rateStr = String(item.Selling_Price ?? '').replace(/,/g, '').trim()
+    if (!rateStr) rateStr = String(productDetail.List_Price ?? item.List_Price ?? '').replace(/,/g, '').trim()
+    const rate = rateStr ? parseFloat(rateStr) : NaN
+    const computedAmount =
+      Number.isFinite(rate) && rate > 0 && qtyNum >= 0 ? qtyNum * rate : NaN
+    const amountFromZoho = parseFloat(
+      item.Net_Selling_Amount?.replace(/,/g, '') || item.Gross_Amount?.replace(/,/g, '') || '0'
+    )
+    const amount = Number.isFinite(computedAmount) ? computedAmount : amountFromZoho
 
     const mesh = productDetail.Brand_Category?.trim() || ''
     const brand = productDetail.Brand_Selling_Name?.trim() || ''
@@ -237,7 +265,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
       mesh: '',
       brand: item.type || item.form || '',
       size: item.size || '',
-      sqmArea: item.subQty || '',
+      sqmArea: sqmAreaFromSizeDisplayString(item.size || ''),
       quantity: item.qty || '0',
       rate,
       amount,
@@ -264,8 +292,10 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
-  const amountInWords = numberToWords(totalWithCharges)
+  const displayGrandTotal = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
+  const amountInWords = numberToWords(displayGrandTotal)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
   const destLabel = finalDestination || portOfDischarge || 'Jaipur'
@@ -389,17 +419,24 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                         </tr>
+                        <tr className="wmw-item-grid-row">
+                          <td colSpan={2} style={{ ...bdItemGrid, padding: '12px 10px 6px 10px', verticalAlign: 'middle' }}>
+                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                              <span style={{ textAlign: 'center' }}>Item</span>
+                              <span>Mesh</span>
+                              <span>Brand</span>
+                              <span>Size [m]</span>
+                              <span>(L x W)</span>
+                              <span>Sqm Area</span>
+                            </div>
+                          </td>
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                        </tr>
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`wmw-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="wmw-item-grid-row">
-                            <td colSpan={2} style={{ ...bdItemGrid, padding: '16px 10px 6px 10px', verticalAlign: 'middle' }}>
-                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                                <span style={{ textAlign: 'center' }}>Item</span>
-                                <span>Mesh</span>
-                                <span>Brand</span>
-                                <span>Size [m]</span>
-                                <span>(L x W)</span>
-                                <span>Sqm Area</span>
-                              </div>
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
                               <div style={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
@@ -581,7 +618,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>{currency}</td>
                         <td style={{ ...bd, padding: '6px', borderRight: 'none' }} />
                         <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, currency) || '-'}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
                         </td>
                       </tr>
 
@@ -600,7 +637,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                         <td style={{ ...bd, padding: '6px' }} />
                         <td style={{ ...bd, padding: '6px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle' }}>Total:-</td>
                         <td style={{ ...bd, padding: '6px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, currency) || '-'}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
                         </td>
                       </tr>
                     </>

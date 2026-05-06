@@ -21,7 +21,7 @@ export interface QuotationSummarySectionProps {
   /** “Total Amount Before Tax” — from Total_Cost_Before_Tax when set, else line-items total */
   totalBeforeTax: number
   totalAfterTax: number
-  /** From `Overall_Discount_Value` or `Total_Discount` (quotation scalars); shown above freight; defaults to 0 */
+  /** Sum of per-line discount subforms + overall discount scalars ({@link resolveWmwChargeTotals}); defaults to 0 */
   wmwDiscountTotal?: number
   /** From `Discount_Type` + " Discount" — right-hand label for the discount row; default `Discount` */
   wmwDiscountRowLabel?: string

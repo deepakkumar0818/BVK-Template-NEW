@@ -13,6 +13,7 @@ function hasQuotationShippingAddress(raw: any): boolean {
   if (!raw) return false
   return (
     hasText(raw.Shipping_Address_Name) ||
+    hasText(raw.Shipping_Contact_Name) ||
     hasText(raw.Contact_Name) ||
     hasText(raw.Shipping_Street) ||
     hasText(raw.Shipping_City) ||
@@ -24,7 +25,7 @@ function hasQuotationShippingAddress(raw: any): boolean {
 
 function quotationShippingAsMasterRow(raw: any): any {
   return {
-    Shipping_Address_Name: raw.Shipping_Address_Name || raw.Contact_Name,
+    Shipping_Address_Name: raw.Shipping_Address_Name || raw.Shipping_Contact_Name || raw.Contact_Name,
     Shipping_Street: raw.Shipping_Street,
     Shipping_City: raw.Shipping_City,
     Shipping_State: raw.Shipping_State,
@@ -71,7 +72,9 @@ function quotationBillingAsMasterRow(raw: any): any {
 function resolveShippingGstNo(shippingData: any, rawQuotationData?: any): string {
   return (
     trimGst(rawQuotationData?.Shipping_GST_No) ||
+    trimGst(rawQuotationData?.Shipping_GST_Number) ||
     trimGst(shippingData?.Shipping_GST_No) ||
+    trimGst(shippingData?.Shipping_GST_Number) ||
     ''
   )
 }
@@ -94,15 +97,31 @@ function stateCodeFromGstFirstTwoDigits(gstNo: string): string {
 }
 
 /** Master row first; quotation record fills gaps (Creator field names). */
-function withShippingStateFromQuotation(shippingData: any, rawQuotationData?: any) {
+/**
+ * When a Shipping Master row is present but sparse, fill blanks from quotation `Shipping_*`
+ * (same line layout as billing via `getAddrText`; mirrors billing’s quotation fill for state).
+ */
+function withShippingAddressFromQuotation(shippingData: any, rawQuotationData?: any) {
+  const r = rawQuotationData
+  const pick = (masterVal: unknown, quotationVal: unknown) =>
+    trimGst(masterVal) || trimGst(quotationVal) || ''
+
+  const qName =
+    trimGst(r?.Shipping_Address_Name) ||
+    trimGst(r?.Shipping_Contact_Name) ||
+    trimGst(r?.Contact_Name) ||
+    ''
+
   return {
     ...shippingData,
-    Shipping_State:
-      trimGst(shippingData?.Shipping_State) || trimGst(rawQuotationData?.Shipping_State) || '',
-    Shipping_State_Code:
-      trimGst(shippingData?.Shipping_State_Code) ||
-      trimGst(rawQuotationData?.Shipping_State_Code) ||
-      '',
+    Shipping_Address_Name: pick(shippingData?.Shipping_Address_Name, qName),
+    Shipping_Street: pick(shippingData?.Shipping_Street, r?.Shipping_Street),
+    Shipping_City: pick(shippingData?.Shipping_City, r?.Shipping_City),
+    Shipping_State: pick(shippingData?.Shipping_State, r?.Shipping_State),
+    Shipping_Postal_Code: pick(shippingData?.Shipping_Postal_Code, r?.Shipping_Postal_Code),
+    Shipping_Country: pick(shippingData?.Shipping_Country, r?.Shipping_Country),
+    Shipping_State_Code: pick(shippingData?.Shipping_State_Code, r?.Shipping_State_Code),
+    Shipping_GST_No: pick(shippingData?.Shipping_GST_No, r?.Shipping_GST_No || r?.Shipping_GST_Number),
   }
 }
 
@@ -164,7 +183,7 @@ export default function QuotationAddressPair({
     (hasQuotationBillingAddress(rawQuotationData) ? quotationBillingAsMasterRow(rawQuotationData) : null)
 
   const shippingMerged = shippingBase
-    ? withShippingStateFromQuotation(shippingBase, rawQuotationData)
+    ? withShippingAddressFromQuotation(shippingBase, rawQuotationData)
     : null
   const billingMerged = billingBase
     ? withBillingStateFromQuotation(billingBase, rawQuotationData)

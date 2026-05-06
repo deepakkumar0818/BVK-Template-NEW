@@ -3,9 +3,17 @@
 import { Fragment } from 'react'
 import { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { formatCurrency, numberToWords, formatDate, resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  formatDate,
+  resolveQuotationValidity,
+  parseOverallGrandTotalInclAccessories,
+  resolveQuotationDeliveryCell,
+} from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 import PrintButton from './PrintButton'
 
 interface ExportTableLine {
@@ -170,8 +178,10 @@ export default function ExportQuotationContent({
     rawQuotationData ?? null
   )
   const discountDeduct = Math.max(0, overallDiscountAmt)
-  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
-  const amountInWords = numberToWords(totalWithCharges)
+  const displayGrandTotal = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
+  const amountInWords = numberToWords(displayGrandTotal)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
   const splitQtyAndUom = (value: unknown): { qty: string; uom: string } => {
@@ -193,11 +203,16 @@ export default function ExportQuotationContent({
           mesh: row.productLabel?.trim() || '',
           brand: '',
           size: row.size?.trim() || '',
-          sqmArea: '',
+          sqmArea: sqmAreaFromSizeDisplayString(row.size?.trim() || ''),
           quantity: qtyLabel || row.quantity || '0',
           rate: parseMoneyField(row.ratePerSqmDisplay),
           amount: parseMoneyField(row.amountDisplay),
-          deliveryDate: row.deliveryDate || undefined,
+          deliveryDate:
+            resolveQuotationDeliveryCell(
+              row.deliveryApi,
+              row.deliveryDate,
+              rawQuotationData?.Delivery_Date_Control
+            ) || undefined,
           freightCharge: row.freightCharge || undefined,
           packingCharge: row.packingCharges || undefined,
           seamCharge: row.seamCharges || undefined,
@@ -215,7 +230,11 @@ export default function ExportQuotationContent({
         const brand = productDetail.Brand_Selling_Name || ''
 
         let size = ''
-        if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
+        const len = String(productDetail.Length_field ?? '').trim()
+        const wid = String(productDetail.Width ?? '').trim()
+        if (len && wid) {
+          size = `${len} x ${wid}`
+        } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
           const extractNumber = (str: string) => {
             const match = str.match(/(\d+\.?\d*)/)
             return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
@@ -225,7 +244,13 @@ export default function ExportQuotationContent({
           size = `${dim1} x ${dim2}`
         }
 
-        const sqmArea = productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || ''
+        const sqmArea = resolveGoodsSqmArea({
+          invoiceDimension1: item.Invoice_Dimension_1,
+          invoiceDimension2: item.Invoice_Dimension_2,
+          lengthField: productDetail.Length_field,
+          width: productDetail.Width,
+          sizeDisplay: size,
+        })
         const quantity = productDetail.Qty?.trim() || item.Qty?.trim() || '0'
         const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
         const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
@@ -569,7 +594,7 @@ export default function ExportQuotationContent({
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '8px' }}></td>
             </tr>
 
-            {/* ── Overall discount (Zoho: Discount_Type + Overall_Discount_Value) — above packing/freight ── */}
+            {/* ── Discount: sum of line Discount_Value/Discount (WI/WMW *_2_0) + quotation overall discount scalars ── */}
             {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
               <tr>
                 <td colSpan={7} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>
@@ -632,7 +657,7 @@ export default function ExportQuotationContent({
                 {currency}
               </td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
-                <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, currency)}</span>
+                <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
               </td>
             </tr>
 
@@ -648,7 +673,7 @@ export default function ExportQuotationContent({
                 Total:-
               </td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'right', fontWeight: 'bold' }}>
-                <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, currency)}</span>
+                <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
               </td>
             </tr>
 

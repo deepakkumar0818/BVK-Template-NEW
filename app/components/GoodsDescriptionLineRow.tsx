@@ -1,8 +1,8 @@
 'use client'
 
 import type { QuotationLineItem } from '@/lib/types'
-import { formatCurrency } from '@/lib/quotation-utils'
-import { lineText, normalizeQty } from '@/lib/quotation-line-item-display'
+import { formatQuantityDisplay } from '@/lib/quotation-utils'
+import { lineText } from '@/lib/quotation-line-item-display'
 
 interface GoodsDescriptionLineRowProps {
   row: QuotationLineItem
@@ -10,12 +10,15 @@ interface GoodsDescriptionLineRowProps {
   cellPaddingPx?: number
   /** WMWD1: HSN column after description */
   showHsnCodeColumn?: boolean
+  /** Document currency — drives qty grouping locale (same as Rate/Amount). */
+  currency?: string
 }
 
 export default function GoodsDescriptionLineRow({
   row,
   cellPaddingPx,
   showHsnCodeColumn = false,
+  currency = 'INR',
 }: GoodsDescriptionLineRowProps) {
   const pad = cellPaddingPx != null ? ({ padding: `${cellPaddingPx}px` } as const) : undefined
 
@@ -29,7 +32,7 @@ export default function GoodsDescriptionLineRow({
   const uom = lineText(row.uom)
   const subQty = lineText(row.subQty)
   const unit = lineText(row.unit)
-  const qtyLine = formatCurrency(normalizeQty(row.qty))
+  const qtyLine = formatQuantityDisplay(row.qty, currency)
   const rate = lineText(row.rate)
   const amount = lineText(row.amount)
   const qtyFirstLine = [uom, subQty].filter(Boolean).join(' ')

@@ -79,15 +79,6 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     data.lineItems ?? []
   )
 
-  const totalAmount =
-    bvkTableRows.length > 0
-      ? bvkTableRows.reduce((sum, row) => sum + row.totalPrice, 0)
-      : data.totalAmount ||
-        (data.lineItems ?? []).reduce((sum, item) => {
-          const amount = parseFloat(String(item.amount).replace(/,/g, '')) || 0
-          return sum + amount
-        }, 0)
-
   const { discountTotal: bvkDiscountAmount, discountLabel: bvkDiscountLabel } = resolveWmwChargeTotals(
     rawQuotationData ?? null
   )
