@@ -115,7 +115,15 @@ export default function PerformaInvoiceContent({
   if (useWmwd1StyleLayout) {
     const performaTitle = 'PERFORMA INVOICE'
     const cur = data.currency || 'INR'
-    const totalBeforeTaxFormatted = formatCurrency(totalBeforeTax, cur)
+    /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; fallback preserves prior grand-total behaviour if unset. */
+    const totalInrBandFormatted = (() => {
+      const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        const n = parseFloat(String(v).replace(/,/g, '').trim())
+        if (Number.isFinite(n)) return formatCurrency(n, cur)
+      }
+      return totalAmount
+    })()
     return (
       <>
         <div className="quotation-print-sheet">
@@ -137,10 +145,6 @@ export default function PerformaInvoiceContent({
                   <td colSpan={2} className="quotation-seamless-stack">
                     <GoodsDescriptionPaginatedBlock
                       lineItems={lineItems}
-                      totalFoot={{
-                        currency: data.currency,
-                        amountFormatted: totalBeforeTaxFormatted,
-                      }}
                       masterQuotationHeaderProps={{
                         title: performaTitle,
                         data,
@@ -164,7 +168,7 @@ export default function PerformaInvoiceContent({
                   <td colSpan={2} className="quotation-seamless-stack">
                     <QuotationSummarySection
                       data={data}
-                      totalAmountFormatted={totalAmount}
+                      totalAmountFormatted={totalInrBandFormatted}
                       cgstRate={cgstRate}
                       cgstAmount={cgstAmount}
                       sgstRate={sgstRate}
