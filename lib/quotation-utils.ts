@@ -1,9 +1,11 @@
 import { ZohoQuotation, QuotationData, QuotationLineItem, TemplateType } from './types'
-import { endTypeDisplayFromRecords } from './goods-description-form'
+import { deliveryDisplayFromRecords, endTypeDisplayFromRecords } from './goods-description-form'
 import {
   buildWmwJoinedLineRows,
+  desiredDateForRef,
   type WmwJoinedLineDisplayRow,
   normalizeLastItemRef,
+  numericSegmentFromInvoiceDimension,
   pickBlendCategoryFromWmw30Row,
   resolveCategory1WmwHsnCode,
 } from './wmw-subform-mapping'
@@ -49,6 +51,51 @@ export function formatDate(dateString?: string): string {
 }
 
 /**
+ * Line-item delivery cell: Zoho `Delivery` text (e.g. "1 Week") when present; otherwise formatted desired-date / header control.
+ */
+export function resolveQuotationDeliveryCell(
+  deliveryApiText: string | undefined,
+  desiredDateRaw: string | undefined,
+  deliveryDateControl: string | undefined
+): string {
+  const api = String(deliveryApiText ?? '').trim()
+  if (api !== '') return api
+  const desired = String(desiredDateRaw ?? '').trim()
+  if (desired !== '') return formatDate(desired)
+  return formatDate(deliveryDateControl)
+}
+
+function pickWmw30RowForKey(
+  zohoData: ZohoQuotation,
+  key: 'Category_1_MM_Database_WMW_3_0' | 'Category_2_MM_Database_WMW_3_0',
+  refNormalized: string
+): Record<string, unknown> | undefined {
+  const rows = ((zohoData as Record<string, unknown>)[key] as any[]) || []
+  const r = refNormalized.trim()
+  if (!r) return undefined
+  const found = rows.find(
+    (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === r
+  )
+  return found as Record<string, unknown> | undefined
+}
+
+function pickWi30Cat1Row(zohoData: ZohoQuotation, lineRef: string): Record<string, unknown> | undefined {
+  const rows = ((zohoData as any).Category_1_MM_Database_WI_3_0 as any[]) || []
+  const r = String(lineRef ?? '').trim()
+  if (!r) return undefined
+  const found = rows.find((x: any) => String(x.Line_Item_ref ?? '').trim() === r)
+  return found as Record<string, unknown> | undefined
+}
+
+function pickWi30Cat2Row(zohoData: ZohoQuotation, lineRef: string): Record<string, unknown> | undefined {
+  const rows = ((zohoData as any).Category_2_MM_Database_WI_3_0 as any[]) || []
+  const r = String(lineRef ?? '').trim()
+  if (!r) return undefined
+  const found = rows.find((x: any) => String(x.Line_Item_ref ?? '').trim() === r)
+  return found as Record<string, unknown> | undefined
+}
+
+/**
  * Formats a number with Indian number formatting (commas)
  */
 export function formatCurrency(value: string | number | undefined, currency: string = 'INR'): string {
@@ -58,6 +105,18 @@ export function formatCurrency(value: string | number | undefined, currency: str
   // Use en-US locale for USD, en-IN for INR
   const locale = currency === 'USD' ? 'en-US' : 'en-IN'
   return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** WMWD1 goods “Quantity” column: fixed 4 fractional digits; locale matches {@link formatCurrency}. */
+export function formatQuantityDisplay(value: unknown, currency: string = 'INR'): string {
+  if (value === null || value === undefined || value === '') return '0.0000'
+  const num =
+    typeof value === 'number' && !Number.isNaN(value)
+      ? value
+      : parseFloat(String(value).replace(/,/g, ''))
+  if (!Number.isFinite(num)) return '0.0000'
+  const locale = currency === 'USD' ? 'en-US' : 'en-IN'
+  return num.toLocaleString(locale, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
 }
 
 /**
@@ -175,6 +234,19 @@ export function parseQuotationTaxForSummary(raw: unknown, lineItemsTotalFallback
     totalBeforeTax: resolveTotalCostBeforeTax(r, lineItemsTotalFallback),
     totalAfterTax: resolveTotalAfterTax(r, lineItemsTotalFallback),
   }
+}
+
+/**
+ * Zoho document grand total: `Overall_Grand_Total_incl_Accessories` only (parse number; no derived fallback).
+ */
+export function parseOverallGrandTotalInclAccessories(
+  raw: Record<string, unknown> | null | undefined
+): number {
+  if (!raw) return NaN
+  const v = raw.Overall_Grand_Total_incl_Accessories
+  if (v === undefined || v === null || String(v).trim() === '') return NaN
+  const n = parseFloat(String(v).replace(/,/g, '').trim())
+  return Number.isFinite(n) ? n : NaN
 }
 
 /**
@@ -529,14 +601,16 @@ function addQuotationLineItemsFromWmwJoin(
 
     lineItems.push({
       product: row.productLabel?.trim() || 'N/A',
-      quality: '',
+      quality: row.materialCode?.trim() || '',
       form: row.supplyForm?.trim() || '',
       size: row.size?.trim() || '',
       type: row.seamType?.trim() || '',
       hsnCode: row.hsnCode?.trim() || '',
-      delivery: row.deliveryDate?.trim()
-        ? formatDate(row.deliveryDate)
-        : formatDate(zohoData.Delivery_Date_Control),
+      delivery: resolveQuotationDeliveryCell(
+        row.deliveryApi,
+        row.deliveryDate,
+        zohoData.Delivery_Date_Control
+      ),
       uom: row.uom?.trim() || 'SQMT',
       qty,
       subQty: '',
@@ -629,6 +703,10 @@ export function transformQuotationData(
   const bvkZohoSource: BvkZohoLineSource | null =
     templateType === 'BVK' ? resolveBvkLineSource(zohoData) : null
   const currency = zohoData.Currency || 'INR'
+  const wmwDesiredRows = ((zohoData as any).Category_1_MM_Database_WMW_Desired_Date as any[]) || []
+  const wiDesiredRowsCat1 = ((zohoData as any).Category_1_MM_Database_WI_Desired_Date as any[]) || []
+  const wiDesiredRowsCat2 = ((zohoData as any).Category_2_MM_Database_WI_Desired_Date as any[]) || []
+  const fitmentDesiredRows = ((zohoData as any).Product_Fitments_Desired_Date as any[]) || []
   /** Single WMW+Product_Fitment join for this quotation — used by WI, WMW/WMW2, and SLS/GKD when we prefer the same pipeline as Export. */
   const joinedWmwForTransform = buildWmwJoinedLineRows(zohoData)
 
@@ -707,10 +785,7 @@ export function transformQuotationData(
       
       // Type: Use Brand_Selling_Name or Brand_Category
       const type = productDetail.Brand_Selling_Name || productDetail.Brand_Category || item.Line_Item_ref || ''
-      
-      // Quality: Extract from Product_Code (second-to-last segment when split by '.')
-      const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
-      
+
       const wmw30Key =
         templateType === 'WMW2' ? 'Category_2_MM_Database_WMW_3_0' : 'Category_1_MM_Database_WMW_3_0'
       const wmw30Rows = ((zohoData as Record<string, unknown>)[wmw30Key] as any[]) || []
@@ -723,15 +798,33 @@ export function transformQuotationData(
           : undefined
       const ext30 = ext30Row ?? wmw30Rows[index]
       const form = endTypeDisplayFromRecords(ext30, item, productDetail)
-      
-      // Size: Use Length_field and Width, or dimensions
-      const size = productDetail.Length_field && productDetail.Width
-        ? `${productDetail.Length_field}x${productDetail.Width}`
-        : productDetail.Invoice_Dimension_1 && productDetail.Invoice_Dimension_2
-        ? `${productDetail.Invoice_Dimension_1}x${productDetail.Invoice_Dimension_2}`
-        : productDetail.Supply_Dimension_1 && productDetail.Supply_Dimension_2
-        ? `${productDetail.Supply_Dimension_1}x${productDetail.Supply_Dimension_2}`
-        : productDetail.Length_field || productDetail.Invoice_Dimension_1 || productDetail.Supply_Dimension_1 || ''
+
+      // Quality: Zoho `Material_Code` (3_0 → 2_0 → main), same precedence as join pipeline
+      const quality =
+        String(ext30?.Material_Code ?? item.Material_Code ?? productDetail.Material_Code ?? '').trim() ||
+        extractQualityFromProductCode(productDetail.Product_Code) ||
+        ''
+
+      // Size: Invoice Dimension 1 & 2 (3_0 → 2_0 → main), numeric token only (e.g. "4.1 Length" → "4.1")
+      const inv1 = numericSegmentFromInvoiceDimension(
+        ext30?.Invoice_Dimension_1 ?? item.Invoice_Dimension_1 ?? productDetail.Invoice_Dimension_1
+      )
+      const inv2 = numericSegmentFromInvoiceDimension(
+        ext30?.Invoice_Dimension_2 ?? item.Invoice_Dimension_2 ?? productDetail.Invoice_Dimension_2
+      )
+      const size =
+        inv1 && inv2
+          ? `${inv1} x ${inv2}`
+          : inv1 || inv2
+            ? inv1 || inv2
+            : productDetail.Length_field && productDetail.Width
+              ? `${productDetail.Length_field}x${productDetail.Width}`
+              : productDetail.Supply_Dimension_1 && productDetail.Supply_Dimension_2
+                ? `${productDetail.Supply_Dimension_1}x${productDetail.Supply_Dimension_2}`
+                : productDetail.Length_field ||
+                  numericSegmentFromInvoiceDimension(productDetail.Invoice_Dimension_1) ||
+                  productDetail.Supply_Dimension_1 ||
+                  ''
 
       // Map quantities and pricing for WMW
       const qty = item.Qty?.trim() || productDetail.Qty?.trim() || '0'
@@ -757,6 +850,9 @@ export function transformQuotationData(
             )
           : ''
 
+      const deliveryDesiredWmw =
+        templateType === 'WMW' ? desiredDateForRef(wmwDesiredRows, refNorm) : ''
+
       lineItems.push({
         product,
         quality,
@@ -764,7 +860,11 @@ export function transformQuotationData(
         size,
         type,
         ...(templateType === 'WMW' ? { hsnCode: hsnCodeForWmwTab } : {}),
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(ext30, item, productDetail),
+          deliveryDesiredWmw,
+          zohoData.Delivery_Date_Control
+        ),
         uom: item.UOM_Billing?.trim() || productDetail.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,
@@ -816,13 +916,28 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(productDetail.Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
+      const refDel =
+        productDetail.Line_Item_ref?.trim() ||
+        item.Line_Item_ref?.trim() ||
+        ''
+      const ext30c2 =
+        refDel !== ''
+          ? wi30Category2.find((x: any) => String(x.Line_Item_ref ?? '').trim() === refDel)
+          : undefined
+      const deliveryDesiredCat2 =
+        refDel !== '' ? desiredDateForRef(wiDesiredRowsCat2, normalizeLastItemRef(refDel)) : ''
+
       lineItems.push({
         product,
         quality,
         form,
         size,
         type,
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(ext30c2, item, productDetail),
+          deliveryDesiredCat2,
+          zohoData.Delivery_Date_Control
+        ),
         uom: item.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,
@@ -910,13 +1025,19 @@ export function transformQuotationData(
       const weave = String(row.Seam_Type ?? row.Weave ?? '').trim()
       const amountNum = parseFloat(amount.replace(/,/g, '')) || 0
       totalAmount += amountNum
+      const deliveryDesiredFit =
+        ref !== '' ? desiredDateForRef(fitmentDesiredRows, normalizeLastItemRef(ref)) : ''
       lineItems.push({
         product,
         quality,
         form,
         size,
         type,
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(row20, mainRow),
+          deliveryDesiredFit,
+          zohoData.Delivery_Date_Control
+        ),
         uom: String(row.UOM_Billing ?? 'SQMT').trim() || 'SQMT',
         qty,
         subQty,
@@ -977,13 +1098,24 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(productDetail.Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
+      const refForDesired =
+        wiProductRef(productDetail) || item.Line_Item_ref?.trim() || ''
+      const deliveryDesiredWi1 =
+        refForDesired !== ''
+          ? desiredDateForRef(wiDesiredRowsCat1, normalizeLastItemRef(refForDesired))
+          : ''
+
       lineItems.push({
         product,
         quality,
         form,
         size,
         type,
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(item),
+          deliveryDesiredWi1,
+          zohoData.Delivery_Date_Control
+        ),
         uom: item.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,
@@ -1026,13 +1158,23 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(item.Product_Code)
       const weave = String(item.Seam_Type ?? productDetail.Seam_Type ?? '').trim()
 
+      const refForDesiredOnly = item.Line_Item_ref?.trim() || ''
+      const deliveryDesiredWi1Only =
+        refForDesiredOnly !== ''
+          ? desiredDateForRef(wiDesiredRowsCat1, normalizeLastItemRef(refForDesiredOnly))
+          : ''
+
       lineItems.push({
         product,
         quality,
         form,
         size,
         type,
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(item),
+          deliveryDesiredWi1Only,
+          zohoData.Delivery_Date_Control
+        ),
         uom: item.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,
@@ -1089,13 +1231,29 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(productDetail.Product_Code || (item as any).Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
+      const refNormDel = normalizeLastItemRef(ref || '')
+      const refStrDel = String(ref ?? '').trim()
+      const extWmw30c1 = pickWmw30RowForKey(zohoData, 'Category_1_MM_Database_WMW_3_0', refNormDel)
+      const extWmw30c2 = pickWmw30RowForKey(zohoData, 'Category_2_MM_Database_WMW_3_0', refNormDel)
+      const extWi30c1 = pickWi30Cat1Row(zohoData, refStrDel)
+      const extWi30c2 = pickWi30Cat2Row(zohoData, refStrDel)
+      const deliveryDesiredGeneric =
+        refNormDel !== ''
+          ? desiredDateForRef(wiDesiredRowsCat1, refNormDel) ||
+            desiredDateForRef(wiDesiredRowsCat2, refNormDel)
+          : ''
+
       lineItems.push({
         product,
         quality,
         form,
         size,
         type,
-        delivery: formatDate(zohoData.Delivery_Date_Control),
+        delivery: resolveQuotationDeliveryCell(
+          deliveryDisplayFromRecords(extWmw30c1, extWmw30c2, extWi30c1, extWi30c2, item, productDetail),
+          deliveryDesiredGeneric,
+          zohoData.Delivery_Date_Control
+        ),
         uom: item.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,

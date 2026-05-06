@@ -1,7 +1,7 @@
 'use client'
 
 import { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
@@ -59,16 +59,9 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
   // Direct field mapping for IGST
   const igstPercent = parseFloat(rawQuotationData?.IGST_Percent || rawQuotationData?.IGST_Rate || '0') || 0
   const igstAmount = parseFloat(rawQuotationData?.IGST_Amount || '0') || 0
-  const totalAmount = (() => {
-    const overall = rawQuotationData?.Overall_Grand_Total_incl_Accessories
-    if (overall != null && String(overall).trim() !== '') {
-      const n = parseFloat(String(overall).replace(/,/g, ''))
-      if (Number.isFinite(n)) return n
-    }
-    const fallback =
-      parseFloat(String(rawQuotationData?.Total_After_Tax || rawQuotationData?.Total_Amount_After_GST || '0').replace(/,/g, '')) || 0
-    return fallback || data.totalAmount
-  })()
+  const totalAmount = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
   const amountInWords = numberToWords(totalAmount)
   const paymentTerms = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   

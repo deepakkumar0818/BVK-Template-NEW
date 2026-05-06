@@ -249,6 +249,8 @@ export interface ZohoQuotation {
   /** Zoho: kind of overall discount; shown in summary as `{Discount_Type} Discount` */
   Discount_Type?: string
   Total_Discount?: string
+  /** Zoho: additional overall discount scalar (e.g. paise-level); summed with line discounts when present */
+  Overall_Discount?: string
   /** Zoho: overall discount amount; preferred over `Total_Discount` when set */
   Overall_Discount_Value?: string
   Total_Freight_Charges?: string

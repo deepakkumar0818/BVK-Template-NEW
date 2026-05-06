@@ -11,14 +11,16 @@
  *    the first row in API order only (deterministic, avoids multiplying lines). Callers can change this policy
  *    in `pickFirstRowForRef` if they need merge rules later.
  *
- * 3. Scalar fields that the business considers “from linked detail” (supply form, size, seam type) are read
- *    with precedence: `WMW_2_0` → `WMW_3_0` → main row fallback, so missing linked rows stay blank but
- *    main-row values still surface when present.
+ * 3. Scalar fields that the business considers “from linked detail” (End_Type as form, Invoice_Dimension_1/2
+ *    as size for Cat 1 WMW, Material_Code for WMWD1 “Quality”, seam type) are read with precedence:
+ *    `WMW_2_0` → `WMW_3_0` → main row fallback, so missing linked rows stay blank but main-row values still surface when present.
  *
- * 4. UOM, Qty, Total_SQM (shown as rate/sqm column), Total_Price (amount) use precedence: main → `WMW_2_0`
- *    → `WMW_3_0`, matching how your payload stores those values on the main line today.
+ * 4. UOM, Qty, Total_SQM use precedence: main → `WMW_2_0` → `WMW_3_0`. The **rate** column uses `Selling_Price`
+ *    (same precedence). **Amount** on WMW lines is computed as `Qty × rate` (rate = `Selling_Price`, else `List_Price`);
+ *    if that cannot be computed, Zoho `Total_Price` is shown.
  *
- * 5. `Category_1_MM_Database_WMW_Desired_Date` joins on `last_item_ref` → `Date_field` (“Delivery Date”).
+ * 5. `Category_1_MM_Database_WMW_Desired_Date` joins on `last_item_ref` → `Date_field` (calendar delivery date).
+ *    Zoho `Delivery` on linked rows (e.g. `WMW_3_0`) is the preferred **delivery column** text when set (“1 Week”, etc.).
  *
  * 6. Other charges (`Category_1_MM_Database_WMW_Other_Charges`):
  *    - Primary match is charge `Name` (normalized trim / case-insensitive).
@@ -67,6 +69,8 @@ export interface WmwJoinedLineDisplayRow {
   mainRowId: string
 
   productLabel: string
+  /** Shown as “Quality” on WMWD1 description — Zoho `Material_Code` (2_0 → 3_0 → main). */
+  materialCode: string
   /** Shown as “Form” on quotation — Zoho `End_Type` only (2_0 → 3_0 → main). */
   supplyForm: string
   size: string
@@ -82,6 +86,8 @@ export interface WmwJoinedLineDisplayRow {
   ratePerSqmDisplay: string
   /** Source field Total_Price — displayed as “Amount INR” (or invoice currency in UI) */
   amountDisplay: string
+  /** Zoho `Delivery` text from linked rows (`WMW_2_0` → `WMW_3_0` → main). */
+  deliveryApi: string
   deliveryDate: string
 
   freightCharge: string
@@ -127,6 +133,14 @@ export function stringifyField(value: unknown): string {
   if (typeof value === 'number' && Number.isFinite(value)) return String(value)
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   return String(value).trim()
+}
+
+/** First numeric token in Zoho invoice dimension strings (e.g. `4.1 Length` → `4.1`). */
+export function numericSegmentFromInvoiceDimension(value: unknown): string {
+  const s = stringifyField(value)
+  if (!s) return ''
+  const match = s.match(/(\d+\.?\d*)/)
+  return match ? match[1] : ''
 }
 
 function normalizeChargeName(value: unknown): string {
@@ -283,7 +297,7 @@ export function pickOtherChargePrice(
   return ''
 }
 
-function desiredDateForRef(
+export function desiredDateForRef(
   desiredRows: UnknownRecord[],
   refNormalized: string
 ): string {
@@ -360,6 +374,8 @@ function buildJoinedLineRowsForSubformBundle(
     /** “Form” column: `End_Type` only (linked 2_0 → 3_0 → main), same as branded goods tables. */
     const supplyForm = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
 
+    const materialCode = coalesceLinkedFirst(ext2, ext3, main, 'Material_Code')
+
     const size = isProductFitment
       ? (
           [stringifyField(main.Length_field || ext2?.Length_field), stringifyField(main.Width || ext2?.Width)]
@@ -367,7 +383,17 @@ function buildJoinedLineRowsForSubformBundle(
             .join(' x ') ||
           coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type')
         )
-      : coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type')
+      : (() => {
+          const inv1 = numericSegmentFromInvoiceDimension(
+            coalesceLinkedFirst(ext2, ext3, main, 'Invoice_Dimension_1')
+          )
+          const inv2 = numericSegmentFromInvoiceDimension(
+            coalesceLinkedFirst(ext2, ext3, main, 'Invoice_Dimension_2')
+          )
+          if (inv1 !== '' && inv2 !== '') return `${inv1} x ${inv2}`
+          if (inv1 !== '' || inv2 !== '') return inv1 || inv2
+          return coalesceLinkedFirst(ext2, ext3, main, 'Supply_Dimension_Type')
+        })()
 
     const seamType = isProductFitment
       ? (
@@ -389,15 +415,23 @@ function buildJoinedLineRowsForSubformBundle(
         if (netSales) return netSales
         const ga = coalesceMainFirst(main, ext2, ext3, 'Gross_Amount')
         if (ga) return ga
+        const qtyPf = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
+        const ratePf = parseNumeric(
+          coalesceMainFirst(main, ext2, ext3, 'Total_SQM') ||
+            coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
+        )
+        const computedPf = qtyPf * ratePf
+        if (Number.isFinite(computedPf)) return computedPf.toFixed(2)
+        return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
       }
-      const qty = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
-      const rate = parseNumeric(
-        isProductFitment
-          ? coalesceMainFirst(main, ext2, ext3, 'Total_SQM') || coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
-          : coalesceMainFirst(main, ext2, ext3, 'Total_SQM')
-      )
-      const computed = qty * rate
-      if (Number.isFinite(computed)) return computed.toFixed(2)
+      // WMW: amount = quantity × unit rate (same basis as the rate column), not Qty × Total_SQM.
+      const qtyNum = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
+      let unitRate = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Selling_Price'))
+      if (!Number.isFinite(unitRate) || unitRate <= 0) {
+        unitRate = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'List_Price'))
+      }
+      const computed = qtyNum * unitRate
+      if (Number.isFinite(computed) && computed >= 0) return computed.toFixed(2)
       return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
     })()
 
@@ -408,6 +442,7 @@ function buildJoinedLineRowsForSubformBundle(
       mainRowId: mainId,
 
       productLabel: blendProductLabel,
+      materialCode,
       supplyForm,
       size,
       seamType,
@@ -418,6 +453,7 @@ function buildJoinedLineRowsForSubformBundle(
       ratePerSqmDisplay,
       amountDisplay,
 
+      deliveryApi: coalesceLinkedFirst(ext2, ext3, main, 'Delivery'),
       deliveryDate: desiredDateForRef(desiredRows, lastItemRef),
 
       freightCharge: pickOtherChargePrice(chargeRows, WMW_STANDARD_CHARGE_NAMES.FREIGHT, lastItemRef),
@@ -521,12 +557,49 @@ export function formatOverallDiscountRowLabel(discountType: unknown): string {
   return `${t} Discount`
 }
 
+/** Rows in these subforms may carry per-line discount (`Discount_Value` preferred, else `Discount`). */
+const LINE_ITEM_DISCOUNT_SUBFORM_KEYS = [
+  'Category_1_MM_Database_WMW_2_0',
+  'Category_2_MM_Database_WMW_2_0',
+  'Category_1_MM_Database_WI_2_0',
+  'Category_2_MM_Database_WI_2_0',
+] as const
+
+function sumPerLineDiscountFromQuotation(raw: ZohoQuotation | null | undefined): number {
+  if (!raw) return 0
+  let sum = 0
+  for (const key of LINE_ITEM_DISCOUNT_SUBFORM_KEYS) {
+    for (const row of toRowArray(raw, key)) {
+      const discountValue = parseChargeNumber(stringifyField(row.Discount_Value))
+      if (discountValue !== 0) {
+        sum += discountValue
+        continue
+      }
+      sum += parseChargeNumber(stringifyField(row.Discount))
+    }
+  }
+  return sum
+}
+
+function resolveOverallDiscountScalar(r: Record<string, unknown>): number {
+  if (quotationScalarFieldPresent(r.Overall_Discount_Value)) {
+    return parseChargeNumber(String(r.Overall_Discount_Value))
+  }
+  if (quotationScalarFieldPresent(r.Total_Discount)) {
+    return parseChargeNumber(String(r.Total_Discount))
+  }
+  if (quotationScalarFieldPresent(r.Overall_Discount)) {
+    return parseChargeNumber(String(r.Overall_Discount))
+  }
+  return 0
+}
+
 /**
- * Freight / discount / packing / seam from quotation scalars only.
- * Discount amount: `Overall_Discount_Value` if set, else `Total_Discount` (legacy).
+ * Freight / discount / packing / seam from quotation scalars + line-item discount subforms.
+ * Discount amount: sum of each line’s `Discount_Value` (else `Discount`) across Cat1/Cat2 **WI_2_0** and **WMW_2_0**,
+ * plus quotation **`Overall_Discount_Value`** (else **`Total_Discount`**, else **`Overall_Discount`**).
  * Discount label: from `Discount_Type` via {@link formatOverallDiscountRowLabel}.
  * Other charges: `Total_Freight_Charges`, `Total_Packing_Charges`, `Total_Seam_Charges`.
- * No subform sum — empty/missing field → 0 (UI hides the row when amount is 0).
  */
 export function resolveWmwChargeTotals(raw: ZohoQuotation | null | undefined): {
   discountTotal: number
@@ -540,12 +613,8 @@ export function resolveWmwChargeTotals(raw: ZohoQuotation | null | undefined): {
     return { discountTotal: 0, discountLabel: 'Discount', freightTotal: 0, packingTotal: 0, seamTotal: 0 }
   }
 
-  let discountTotal = 0
-  if (quotationScalarFieldPresent(r.Overall_Discount_Value)) {
-    discountTotal = parseChargeNumber(String(r.Overall_Discount_Value))
-  } else if (quotationScalarFieldPresent(r.Total_Discount)) {
-    discountTotal = parseChargeNumber(String(r.Total_Discount))
-  }
+  const discountTotal =
+    sumPerLineDiscountFromQuotation(raw) + resolveOverallDiscountScalar(r)
 
   return {
     discountTotal,

@@ -4,7 +4,7 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
-import { formatCurrency, numberToWords } from '@/lib/quotation-utils'
+import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
 import {
   filterNonZeroWmwChargeRows,
   quotationScalarFieldPresent,
@@ -13,6 +13,7 @@ import {
 } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -267,14 +268,6 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
     const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
 
-    const parseDimNumber = (value: unknown): number => {
-      const s = String(value ?? '').trim()
-      if (!s) return 0
-      const match = s.match(/(\d+(\.\d+)?)/)
-      const n = match ? parseFloat(match[1]) : NaN
-      return Number.isFinite(n) ? n : 0
-    }
-
     let size = ''
     // Size (Mtrs) — prefer Category_1_MM_Database_WMW.Length_field + Width (per requirement).
     // Fallback to Invoice_Dimension_1/2 from line items if length/width are missing.
@@ -292,13 +285,13 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
       size = `${dim1} x ${dim2}`
     }
 
-    const lenNum = parseDimNumber(productDetail.Length_field)
-    const widNum = parseDimNumber(productDetail.Width)
-    const computedSqmArea = lenNum > 0 && widNum > 0 ? (lenNum * widNum) : 0
-    const sqmArea =
-      computedSqmArea > 0
-        ? computedSqmArea.toFixed(4)
-        : (productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || '')
+    const sqmArea = resolveGoodsSqmArea({
+      invoiceDimension1: item.Invoice_Dimension_1,
+      invoiceDimension2: item.Invoice_Dimension_2,
+      lengthField: productDetail.Length_field,
+      width: productDetail.Width,
+      sizeDisplay: size,
+    })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
@@ -383,7 +376,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
       mesh: '',
       brand: item.type || item.form || '',
       size: item.size || '',
-      sqmArea: item.subQty || '',
+      sqmArea: sqmAreaFromSizeDisplayString(item.size || ''),
       quantity,
       delivery: item.delivery?.trim() || '',
       rate,
@@ -433,15 +426,9 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + chargesSum + transaction
-  const overallGrandRaw = rawQuotationData?.Overall_Grand_Total_incl_Accessories
-  const overallGrandParsed =
-    overallGrandRaw !== undefined &&
-    overallGrandRaw !== null &&
-    String(overallGrandRaw).trim() !== ''
-      ? parseFloat(String(overallGrandRaw).replace(/,/g, ''))
-      : NaN
-  const displayGrandTotal = Number.isFinite(overallGrandParsed) ? overallGrandParsed : totalWithCharges
+  const displayGrandTotal = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
   const amountInWords = numberToWords(displayGrandTotal)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 

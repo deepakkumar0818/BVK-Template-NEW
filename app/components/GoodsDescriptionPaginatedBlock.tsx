@@ -37,6 +37,8 @@ export default function GoodsDescriptionPaginatedBlock({
   showHsnCodeColumn = false,
 }: GoodsDescriptionPaginatedBlockProps) {
   const items = lineItems ?? []
+  const documentCurrency =
+    totalFoot?.currency ?? masterQuotationHeaderProps?.data?.currency ?? 'INR'
   const chunks = chunkLineItems(items, GOODS_ROWS_PER_PRINT_PAGE)
   const colCount = showHsnCodeColumn ? 7 : 6
   /** WI+HSN: keep total width 100% aligned with quotation-summary-block */
@@ -197,6 +199,7 @@ export default function GoodsDescriptionPaginatedBlock({
                       row={row}
                       cellPaddingPx={cellPaddingPx}
                       showHsnCodeColumn={showHsnCodeColumn}
+                      currency={documentCurrency}
                     />
                   ))
                 ) : (

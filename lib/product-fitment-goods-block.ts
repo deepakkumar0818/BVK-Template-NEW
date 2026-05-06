@@ -13,6 +13,7 @@ import {
   stringifyField,
   normalizeLastItemRef,
 } from './wmw-subform-mapping'
+import { resolveGoodsSqmArea } from './goods-sqm-area'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -74,13 +75,6 @@ function parseNumericValue(value: unknown): number {
   if (!s) return NaN
   const n = parseFloat(s)
   return Number.isFinite(n) ? n : NaN
-}
-
-function parseDimNumber(value: unknown): number {
-  const s = String(value ?? '').trim()
-  if (!s) return 0
-  const m = s.match(/(\d+(\.\d+)?)/)
-  return m && Number.isFinite(parseFloat(m[1])) ? parseFloat(m[1]) : 0
 }
 
 function firstFieldString(records: (UnknownRecord | null | undefined)[], field: string): string {
@@ -174,14 +168,11 @@ export function buildProductFitmentBrandedGoodsBlock(
       if (sd) size = sd
     }
 
-    const lenNum = parseDimNumber((main as UnknownRecord).Length_field ?? (ext2 as UnknownRecord | undefined)?.Length_field)
-    const widNum = parseDimNumber((main as UnknownRecord).Width ?? (ext2 as UnknownRecord | undefined)?.Width)
-    const computedSqm = lenNum > 0 && widNum > 0 ? lenNum * widNum : 0
-    const totalSqmOrList =
-      coalesceMainFirst(main, ext2, ext3, 'SQM') ||
-      coalesceMainFirst(main, ext2, ext3, 'Total_SQM')
-    const sqmArea =
-      computedSqm > 0 ? computedSqm.toFixed(4) : (totalSqmOrList || '')
+    const sqmArea = resolveGoodsSqmArea({
+      lengthField: (main as UnknownRecord).Length_field ?? (ext2 as UnknownRecord | undefined)?.Length_field,
+      width: (main as UnknownRecord).Width ?? (ext2 as UnknownRecord | undefined)?.Width,
+      sizeDisplay: size,
+    })
 
     const productCode = firstFieldString([ext2, main], 'Product_Code')
     const mesh = meshInchFromProductCode(productCode)
@@ -236,9 +227,9 @@ export function buildProductFitmentBrandedGoodsBlock(
     const totalWeight = perPcN * quantity
 
     const delivery =
+      coalesceLinkedFirst(ext2, ext3, main, 'Delivery') ||
       desiredDateForRef(desiredRows, lastItemRef) ||
-      firstFieldString([ext2, main], 'delivery') ||
-      firstFieldString([ext2, main], 'Delivery')
+      firstFieldString([ext2, main], 'delivery')
 
     return {
       product: blendProductLabel,

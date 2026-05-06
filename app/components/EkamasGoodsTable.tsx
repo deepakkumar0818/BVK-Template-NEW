@@ -3,12 +3,19 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
-import { formatCurrency, numberToWords, resolveQuotationValidity, meshInchFromProductCode } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveQuotationValidity,
+  meshInchFromProductCode,
+} from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -192,7 +199,15 @@ export default function EkamasGoodsTable({
       if (len && wid) size = `${len} x ${wid}`
     }
 
-    const sqmArea = productDetail.Total_SQM?.trim() || productDetail.SQM?.trim() || ''
+    const sqmArea = resolveGoodsSqmArea({
+      invoiceDimension1: item.Invoice_Dimension_1,
+      invoiceDimension2: item.Invoice_Dimension_2,
+      lengthField: productDetail.Length_field,
+      width: productDetail.Width,
+      supplyDimension1: productDetail.Supply_Dimension_1,
+      supplyDimension2: productDetail.Supply_Dimension_2,
+      sizeDisplay: size,
+    })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
@@ -277,7 +292,7 @@ export default function EkamasGoodsTable({
       mesh: '',
       brand: item.type || item.form || '',
       size: item.size || '',
-      sqmArea: item.subQty || '',
+      sqmArea: sqmAreaFromSizeDisplayString(item.size || ''),
       quantity,
       rate,
       amount,
@@ -351,8 +366,10 @@ export default function EkamasGoodsTable({
           ? lineSum
           : data.totalAmount
 
-  const totalWithCharges = baseAmount + packingFreight + transaction - discountDeduct
-  const amountInWords = numberToWords(totalWithCharges)
+  const displayGrandTotal = parseOverallGrandTotalInclAccessories(
+    rawQuotationData as Record<string, unknown> | null | undefined
+  )
+  const amountInWords = numberToWords(displayGrandTotal)
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
   const offerValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | undefined, '3 Months')
@@ -754,7 +771,7 @@ export default function EkamasGoodsTable({
                             fontSize: '11px',
                           }}
                         >
-                          <span className="quotation-grand-total-amount">{formatCurrency(totalWithCharges, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>
 
@@ -823,7 +840,7 @@ export default function EkamasGoodsTable({
                                   }}
                                 >
                                   <span className="quotation-grand-total-amount">
-                                    {formatCurrency(totalWithCharges, '')}
+                                    {formatCurrency(displayGrandTotal, '')}
                                   </span>
                                 </td>
                               </tr>
