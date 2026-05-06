@@ -41,7 +41,7 @@ const descGrid: CSSProperties = {
   textAlign: 'left',
 }
 
-/** Qty / Rate / Amount cells — top-aligned; paddingTop matches left Item header band so figures line up with value row */
+/** HSN / Qty / Rate / Amount cells — aligned with description value rows (group sub-header is a separate table row). */
 const ekamasRightValueCell: CSSProperties = {
   ...bdSides,
   borderTop: 'none',
@@ -511,6 +511,29 @@ export default function EkamasGoodsTable({
                             {'\u00a0'}
                           </td>
                         </tr>
+                        <tr className="ekamas-item-row ekamas-item-grid-header-row">
+                          <td style={{ ...bdProductBlock, borderTop: 'none', padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
+                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0, fontSize: '10px' }}>
+                              <span>Item</span>
+                              <span>MESH</span>
+                              <span>BRAND</span>
+                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span>Sqm Area / PC</span>
+                            </div>
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                          <td style={ekamasRightPlaceholderCell} aria-hidden>
+                            {'\u00a0'}
+                          </td>
+                        </tr>
                         {groupRows.map((row, rowIdx) => {
                           const isLastProductRow =
                             isLastChunk &&
@@ -529,17 +552,9 @@ export default function EkamasGoodsTable({
                               >
                                 <div
                                   style={{
-                                    paddingTop: '8px',
-                                    marginTop: '4px',
+                                    paddingTop: '6px',
                                   }}
                                 >
-                                  <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px', fontSize: '10px' }}>
-                                    <span>Item</span>
-                                    <span>MESH</span>
-                                    <span>BRAND</span>
-                                    <span>SIZE [Mtrs] (LxW)</span>
-                                    <span>Sqm Area / PC</span>
-                                  </div>
                                   <div style={{ ...descGrid, alignItems: 'start' }}>
                                     <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                     <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
@@ -567,17 +582,18 @@ export default function EkamasGoodsTable({
                               <td
                                 style={{
                                   ...ekamasRightValueCell,
+                                  paddingTop: '10px',
                                   wordBreak: 'break-word',
                                   fontSize: '10px',
                                 }}
                               >
                                 {row.hsnCode || ''}
                               </td>
-                              <td style={ekamasRightValueCell}>{row.quantity} Pcs</td>
-                              <td style={ekamasRightValueCell}>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{row.quantity} Pcs</td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>
                                 {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                               </td>
-                              <td style={ekamasRightValueCell}>{formatCurrency(row.amount, '')}</td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{formatCurrency(row.amount, '')}</td>
                             </tr>
                           )
                         })}

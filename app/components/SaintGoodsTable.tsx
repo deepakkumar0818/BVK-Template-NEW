@@ -473,25 +473,24 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                         <td style={contentBdSides} />
                         <td style={contentBdSides} />
                       </tr>
+                      <tr>
+                        <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
+                          <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
+                            <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
+                            <span style={descGridCell}>Mesh</span>
+                            <span style={descGridCell}>Brand</span>
+                            <span style={{ ...descGridCell, lineHeight: 1.25 }}>Size [m] (L x W)</span>
+                            <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
+                          </div>
+                        </td>
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                      </tr>
                       {groupRows.map((row, rowIdx) => (
-                        <Fragment key={`saint-line-${groupIdx}-${rowIdx}`}>
-                          <tr>
-                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
-                              <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
-                                <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
-                                <span style={descGridCell}>Mesh</span>
-                                <span style={descGridCell}>Brand</span>
-                                <span style={{ ...descGridCell, lineHeight: 1.25 }}>Size [m] (L x W)</span>
-                                <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
-                              </div>
-                            </td>
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                          </tr>
-                          <tr>
-                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '4px 10px' }}>
+                        <tr key={`saint-line-${groupIdx}-${rowIdx}`}>
+                          <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '4px 10px' }}>
                               {quotationScalarFieldPresent(row.remarks) ? (
                                 <div
                                   style={{
@@ -594,8 +593,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
                               {formatCurrency(row.amount, currency)}
                             </td>
-                          </tr>
-                        </Fragment>
+                        </tr>
                       ))}
                     </Fragment>
                   )

@@ -523,16 +523,26 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                         </tr>
+                        <tr className="adhunik-item-grid-row">
+                          <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                              <span>Item</span>
+                              <span>MESH</span>
+                              <span>BRAND</span>
+                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span>Sqm Area / PC</span>
+                            </div>
+                          </td>
+                          <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                        </tr>
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`adhunik-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="adhunik-item-grid-row">
                             <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                                <span>Item</span>
-                                <span>MESH</span>
-                                <span>BRAND</span>
-                                <span>SIZE [Mtrs] (LxW)</span>
-                                <span>Sqm Area / PC</span>
-                              </div>
                               <div style={{ ...descGrid, alignItems: 'start' }}>
                                 <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                 <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>

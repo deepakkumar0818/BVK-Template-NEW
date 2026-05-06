@@ -389,17 +389,24 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                         </tr>
+                        <tr className="wmw-item-grid-row">
+                          <td colSpan={2} style={{ ...bdItemGrid, padding: '12px 10px 6px 10px', verticalAlign: 'middle' }}>
+                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                              <span style={{ textAlign: 'center' }}>Item</span>
+                              <span>Mesh</span>
+                              <span>Brand</span>
+                              <span>Size [m]</span>
+                              <span>(L x W)</span>
+                              <span>Sqm Area</span>
+                            </div>
+                          </td>
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                        </tr>
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`wmw-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="wmw-item-grid-row">
-                            <td colSpan={2} style={{ ...bdItemGrid, padding: '16px 10px 6px 10px', verticalAlign: 'middle' }}>
-                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: '6px' }}>
-                                <span style={{ textAlign: 'center' }}>Item</span>
-                                <span>Mesh</span>
-                                <span>Brand</span>
-                                <span>Size [m]</span>
-                                <span>(L x W)</span>
-                                <span>Sqm Area</span>
-                              </div>
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
                               <div style={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
