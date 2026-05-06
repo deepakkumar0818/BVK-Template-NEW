@@ -26,6 +26,28 @@ interface PerformaInvoiceContentProps {
    * Keeps legacy Performa “Remarks :” list + bank details + DOC NO after the summary.
    */
   useWmwd1StyleLayout?: boolean
+  /** When `useWmwd1StyleLayout`: master thead title (default “PERFORMA INVOICE”). */
+  wmwd1DocumentTitle?: string
+  /**
+   * `/quotation/[id]` only: left merged column shows **Notes** from Zoho `Please_Note`
+   * (replacing static performa remarks). `/wmw/[id]` omits this prop.
+   */
+  wmwd1NotesRemarksFromApi?: boolean
+}
+
+/** Left column for wmwd1 when {@link PerformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — Zoho `Please_Note` only. */
+function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null | undefined }) {
+  const pleaseNote =
+    raw?.Please_Note !== undefined && raw?.Please_Note !== null ? String(raw.Please_Note).trim() : ''
+
+  return (
+    <>
+      <div style={{ borderTop: '1px solid #000', padding: '6px 8px', fontWeight: 'bold' }}>Notes</div>
+      <div style={{ padding: '4px 8px 8px 8px', minHeight: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
+        {pleaseNote || '\u00A0'}
+      </div>
+    </>
+  )
 }
 
 /** Static Performa remarks (unchanged copy) — left column beside tax rows (original WMW position). */
@@ -40,6 +62,60 @@ const performaStaticRemarksBlock: ReactNode = (
     </ol>
   </>
 )
+
+/** `/quotation/[id]` footer: same grid as bank block, left column = Zoho `Remarks`. */
+function performaRemarksFooterBlock(
+  data: QuotationData,
+  raw: Record<string, unknown> | null | undefined
+): ReactNode {
+  const remarksRaw =
+    raw?.Remarks !== undefined && raw?.Remarks !== null ? String(raw.Remarks).trim() : ''
+  const remarkLines = remarksRaw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+
+  return (
+    <>
+      <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td
+              style={{ width: '61%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
+            >
+              Remarks
+            </td>
+            <td
+              style={{ width: '39%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
+            >
+              For WMW Metal Fabrics Ltd.
+            </td>
+          </tr>
+          <tr>
+            <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 8px', lineHeight: 1.35 }}>
+              {remarkLines.length > 0 ? (
+                <ol style={{ margin: 0, paddingLeft: '22px' }}>
+                  {remarkLines.map((line, idx) => (
+                    <li key={idx}>{line}</li>
+                  ))}
+                </ol>
+              ) : (
+                <div style={{ minHeight: '1em' }}>{'\u00A0'}</div>
+              )}
+            </td>
+            <td style={{ width: '39%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
+              <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
+                <div>Computer Generated Document</div>
+                <div>No Signature Needed</div>
+              </div>
+              <div style={{ borderTop: '1px solid #000', padding: '4px 8px' }}>Dated: {data.date}</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
+        DOC NO. WMW/MKT/F.1 (Rev.00)
+      </div>
+    </>
+  )
+}
 
 function performaBankDetailsBlock(data: QuotationData): ReactNode {
   return (
@@ -89,6 +165,8 @@ export default function PerformaInvoiceContent({
   billingData,
   rawQuotationData,
   useWmwd1StyleLayout = false,
+  wmwd1DocumentTitle,
+  wmwd1NotesRemarksFromApi = false,
 }: PerformaInvoiceContentProps) {
   const {
     cgstRate,
@@ -113,7 +191,7 @@ export default function PerformaInvoiceContent({
   )
 
   if (useWmwd1StyleLayout) {
-    const performaTitle = 'PERFORMA INVOICE'
+    const performaTitle = wmwd1DocumentTitle ?? 'PERFORMA INVOICE'
     const cur = data.currency || 'INR'
     /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; fallback preserves prior grand-total behaviour if unset. */
     const totalInrBandFormatted = (() => {
@@ -184,10 +262,21 @@ export default function PerformaInvoiceContent({
                       wmwPackingChargeTotal={packingTotal}
                       wmwSeamChargeTotal={seamTotal}
                       sevenColumnGoodsLayout
-                      notesMergedSlot={performaStaticRemarksBlock}
+                      notesMergedSlot={
+                        wmwd1NotesRemarksFromApi ? (
+                          <Wmwd1ApiNotesRemarksSlot raw={rawQuotationData as Record<string, unknown> | null | undefined} />
+                        ) : (
+                          performaStaticRemarksBlock
+                        )
+                      }
                       rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
                     />
-                    {performaBankDetailsBlock(data)}
+                    {wmwd1NotesRemarksFromApi
+                      ? performaRemarksFooterBlock(
+                          data,
+                          rawQuotationData as Record<string, unknown> | null | undefined
+                        )
+                      : performaBankDetailsBlock(data)}
                   </td>
                 </tr>
               </tbody>

@@ -20,9 +20,18 @@ export interface ForcedTemplatePageContentProps {
   templateType: TemplateType
   /** Shown in loading / error UI */
   documentLabel: string
+  /** WMW wmwd1 route only: document title in master header (default unchanged when omitted). */
+  wmwd1DocumentTitle?: string
+  /** WMW `/quotation/[id]` only: Notes from API (`Please_Note`). */
+  wmwd1NotesRemarksFromApi?: boolean
 }
 
-export default function ForcedTemplatePageContent({ templateType, documentLabel }: ForcedTemplatePageContentProps) {
+export default function ForcedTemplatePageContent({
+  templateType,
+  documentLabel,
+  wmwd1DocumentTitle,
+  wmwd1NotesRemarksFromApi,
+}: ForcedTemplatePageContentProps) {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : ''
 
@@ -133,6 +142,8 @@ export default function ForcedTemplatePageContent({ templateType, documentLabel 
           rawQuotationData={rawQuotationData}
           shippingData={shippingData}
           billingData={billingData}
+          wmwd1DocumentTitle={wmwd1DocumentTitle}
+          wmwd1NotesRemarksFromApi={wmwd1NotesRemarksFromApi}
         />
       )}
     </main>
