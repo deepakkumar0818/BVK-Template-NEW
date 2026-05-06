@@ -104,6 +104,10 @@ export interface QuotationTemplateByTypeProps {
   rawQuotationData: ZohoQuotation
   shippingData?: unknown
   billingData?: unknown
+  /** WMW wmwd1 layout only: overrides header title (default “PERFORMA INVOICE”). */
+  wmwd1DocumentTitle?: string
+  /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Please_Note`. */
+  wmwd1NotesRemarksFromApi?: boolean
 }
 
 /**
@@ -115,6 +119,8 @@ export default function QuotationTemplateByType({
   rawQuotationData,
   shippingData,
   billingData,
+  wmwd1DocumentTitle,
+  wmwd1NotesRemarksFromApi,
 }: QuotationTemplateByTypeProps) {
   return (
     <div className="print-container">
@@ -164,6 +170,8 @@ export default function QuotationTemplateByType({
                   billingData={billingData}
                   rawQuotationData={rawQuotationData}
                   useWmwd1StyleLayout
+                  wmwd1DocumentTitle={wmwd1DocumentTitle}
+                  wmwd1NotesRemarksFromApi={wmwd1NotesRemarksFromApi}
                 />
               </td>
             </tr>
