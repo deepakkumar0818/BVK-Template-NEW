@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay, resolveConsigneePhone } from '@/lib/consignee-display'
-import { quotationRichText } from '@/lib/quotation-rich-text'
+import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
@@ -40,9 +40,6 @@ export default function Quotation3InvoiceContent({
         Panel-3 98ED30000123
       </>
     );
-
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const consigneePhone = resolveConsigneePhone(shippingData, rawQuotationData)
 
   const countryOfOrigin = 'India';
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'USA');
@@ -140,13 +137,7 @@ export default function Quotation3InvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '4px' }}>Consignee</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{consignee.name}</div>
-                    <div style={{ fontSize: '12px', lineHeight: 1.3, whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                    <div style={{ fontSize: '12px', lineHeight: 1.3 }}>{consignee.country}</div>
-                    {consigneePhone ? (
-                      <div style={{ fontSize: '12px', marginTop: '6px' }}>Phone: {consigneePhone}</div>
-                    ) : null}
+                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', height: '100%' }}>
@@ -166,17 +157,7 @@ export default function Quotation3InvoiceContent({
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px', color: '#555' }}>Terms of Payment</div>
                             <div>{termsOfPayment}</div>
                             {ourBankDetails ? (
-                              <div
-                                style={{
-                                  marginTop: '8px',
-                                  fontWeight: 'normal',
-                                  fontSize: '10px',
-                                  lineHeight: 1.35,
-                                  whiteSpace: 'pre-wrap',
-                                }}
-                              >
-                                {ourBankDetails}
-                              </div>
+                              <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
                           </td>
                         </tr>

@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
   resolveTransportDisplayLine,
@@ -13,7 +13,12 @@ import {
 } from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
-import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import {
+  filterNonZeroWmwChargeRows,
+  quotationScalarFieldPresent,
+  resolveWmwChargeTotals,
+  WMW_STANDARD_CHARGE_NAMES,
+} from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import {
   GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
@@ -150,12 +155,25 @@ export default function EkamasGoodsTable({
   const subformTotalSaleValue = parseFloat(activeSubform?.Total_Sale_Value || '0') || 0
   const subformCostBeforeTax = parseFloat(activeSubform?.Cost_Before_Tax || '0') || 0
 
-  const packingFreight = parseFloat(String(rawQuotationData?.Packing_Freight || '0')) || 0
-  const transaction = parseFloat(String(rawQuotationData?.Transaction_Charges || '0')) || 0
-  const { discountTotal: overallDiscountAmt, discountLabel: overallDiscountLabel } = resolveWmwChargeTotals(
-    (rawQuotationData ?? null) as ZohoQuotation | null
-  )
-  const discountDeduct = Math.max(0, overallDiscountAmt)
+  const chargeTotalsResolved = resolveWmwChargeTotals((rawQuotationData ?? null) as ZohoQuotation | null)
+  const discountRowLabel = chargeTotalsResolved.discountLabel
+  const discountChargeAmt = chargeTotalsResolved.discountTotal
+  const freightChargeAmt = chargeTotalsResolved.freightTotal
+  const packingChargeAmt = chargeTotalsResolved.packingTotal
+  const seamChargeAmt = chargeTotalsResolved.seamTotal
+  const otherChargesAmt = quotationScalarFieldPresent(rawQuotationData?.Other_Charges)
+    ? parseFloat(String(rawQuotationData?.Other_Charges).replace(/,/g, '').trim()) || 0
+    : 0
+  const typeOfOtherCharges = String(rawQuotationData?.Type_of_Other_Charges ?? '').trim()
+  const otherChargesLabel = typeOfOtherCharges ? `Other Charges (${typeOfOtherCharges})` : 'Other Charges'
+
+  const ekamasChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
+    [discountRowLabel, discountChargeAmt],
+    [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
+    [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
+    [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
+    [otherChargesLabel, otherChargesAmt],
+  ])
 
   const portOfDischarge = String(rawQuotationData?.Port_of_Discharge || '')
   const finalDestination = String(rawQuotationData?.Final_Destination || portOfDischarge || '')
@@ -405,8 +423,7 @@ export default function EkamasGoodsTable({
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const offerValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | undefined, '3 Months')
 
@@ -666,41 +683,17 @@ export default function EkamasGoodsTable({
 
                   {isLastChunk && (
                     <>
-                      {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            style={{
-                              borderLeft: '1px solid #000',
-                              borderRight: '1px solid #000',
-                              borderBottom: '1px solid #000',
-                              borderTop: '1px solid #000',
-                              padding: '6px 10px',
-                              textAlign: 'right',
-                              fontWeight: 'bold',
-                              fontSize: '10px',
-                              verticalAlign: 'middle',
-                            }}
-                          >
-                            {overallDiscountLabel}
-                          </td>
-                          <td
-                            style={{
-                              borderLeft: '1px solid #000',
-                              borderRight: '1px solid #000',
-                              borderBottom: '1px solid #000',
-                              borderTop: '1px solid #000',
-                              padding: '6px 10px',
-                              textAlign: 'right',
-                              fontWeight: 'bold',
-                              fontSize: '10px',
-                              verticalAlign: 'middle',
-                            }}
-                          >
-                            {formatCurrency(overallDiscountAmt, '')}
+                      {ekamasChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
+                        <tr key={`ekamas-charge-${chargeIdx}`}>
+                          <td style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>{chargeLabel}</td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            {formatCurrency(chargeAmt, currency)}
                           </td>
                         </tr>
-                      ) : null}
+                      ))}
                       <tr>
                         <td
                           style={{
@@ -871,7 +864,7 @@ export default function EkamasGoodsTable({
                                     }}
                                   >
                                     <span style={{ textAlign: 'left', flex: '1 1 auto', minWidth: 0 }}>
-                                      {currencyWords} {amountInWords} Only
+                                      {amountChargeableInWords}
                                     </span>
                                     <span style={{ fontSize: '11px', flexShrink: 0, whiteSpace: 'nowrap' }}>Total:-</span>
                                   </div>

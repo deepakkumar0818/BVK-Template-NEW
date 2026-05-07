@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   parseOverallGrandTotalInclAccessories,
   resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
@@ -404,8 +404,7 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const bashundharaWeightTolerance = ' (± 5%)'
   const formatSaintgobainKgDisplay = (raw: unknown): string => {
@@ -656,7 +655,7 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
                           <span style={{ fontWeight: 'bold', display: 'block', lineHeight: 1.2 }}>Amount Chargeable<br />(In words) :</span>
                         </td>
                         <td colSpan={3} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
-                          {currencyWords} {amountInWords} Only
+                          {amountChargeableInWords}
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-

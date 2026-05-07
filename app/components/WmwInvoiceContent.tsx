@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { quotationRichText } from '@/lib/quotation-rich-text'
+import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
@@ -31,9 +31,6 @@ export default function WmwInvoiceContent({
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || 'Mr. Anthony'
-
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Indonesia')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Sea'
@@ -46,11 +43,6 @@ export default function WmwInvoiceContent({
     'One week time from the date of confirm PO & Advance.'
   )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance'
-  const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
-  const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'
-  const swiftCode = rawQuotationData?.Swift_Code || 'IOBAINBB158'
-  const accountNumber = rawQuotationData?.Account_Number || '015802000003059'
-  const accountName = rawQuotationData?.Account_Name || 'WMW METAL FABRICS LTD.'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (
@@ -132,13 +124,7 @@ export default function WmwInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{consignee.name}</div>
-                    <div style={{ fontSize: '12px', lineHeight: 1.15, whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.15 }}>{consignee.country}</div>
-                    <div style={{ marginTop: '16px', color: '#3b82f6', fontWeight: 'bold', fontSize: '12px' }}>
-                      Attn : {kindAttn}
-                    </div>
+                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -158,29 +144,8 @@ export default function WmwInvoiceContent({
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
                             <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
                             {ourBankDetails ? (
-                              <div
-                                style={{
-                                  marginTop: '8px',
-                                  fontWeight: 'normal',
-                                  fontSize: '10px',
-                                  lineHeight: 1.35,
-                                  whiteSpace: 'pre-wrap',
-                                }}
-                              >
-                                {ourBankDetails}
-                              </div>
+                              <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td colSpan={2} style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Payment Account Details</div>
-                            <div style={{ lineHeight: '1.4' }}>
-                              Care of: {accountName}, Jaipur INDIA<br />
-                              Bank: {bankName}, {bankBranch}<br />
-                              Swift: {swiftCode}<br />
-                              Account: {accountNumber}
-                            </div>
                           </td>
                         </tr>
                       </tbody>

@@ -1,7 +1,7 @@
 'use client'
 
 import { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
+import { formatAmountInWords, formatCurrency, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
@@ -62,7 +62,8 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
   const totalAmount = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(totalAmount)
+  const quoteCurrency = String(rawQuotationData?.Currency ?? data.currency ?? 'INR').trim()
+  const amountInWords = formatAmountInWords(totalAmount, quoteCurrency)
   const paymentTerms = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   
   const bankDetails = {

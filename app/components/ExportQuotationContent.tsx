@@ -2,10 +2,10 @@
 
 import { Fragment } from 'react'
 import { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay } from '@/lib/consignee-display'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   formatDate,
   resolveQuotationValidity,
   parseOverallGrandTotalInclAccessories,
@@ -107,11 +107,6 @@ export default function ExportQuotationContent({
     ''
   )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
-  const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
-  const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'
-  const swiftCode = rawQuotationData?.Swift_Code || 'IOBA0000102'
-  const accountNumber = rawQuotationData?.Account_Number || '010200003059'
-  const accountName = rawQuotationData?.Account_Name || 'WMW METAL FABRICS LTD'
   // Get HSN Code from subform breakdown or line items, fallback to root level
  
   const offerValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | undefined)
@@ -200,8 +195,7 @@ export default function ExportQuotationContent({
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const splitQtyAndUom = (value: unknown): { qty: string; uom: string } => {
     const s = String(value ?? '').trim()
@@ -294,8 +288,6 @@ export default function ExportQuotationContent({
   const totalNetWeight = rawQuotationData?.Total_Net_Weight || ''
   const totalGrossWeight = rawQuotationData?.Total_Gross_Weight || ''
   
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || ''
   const remarks = data.remarks || rawQuotationData?.Remarks || ''
 
   return (
@@ -409,15 +401,7 @@ export default function ExportQuotationContent({
                     <tr>
                       {/* Left Column - Consignee */}
                       <td style={{ width: '50%', verticalAlign: 'top', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '12px', margin: 0 }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Consignee:</div>
-                        <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>{consignee.name}</div>
-                        <div style={{ marginBottom: '2px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                        <div style={{ marginBottom: '4px', fontSize: '10px' }}>{consignee.country}</div>
-                        {kindAttn && (
-                          <div style={{ marginTop: '4px', marginBottom: '15px', fontWeight: 'bold', fontSize: '10px' }}>
-                            Kind Attn: {kindAttn}
-                          </div>
-                        )}
+                        <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', marginTop: '15px' }}>
                           <tbody>
                             <tr>
@@ -457,17 +441,6 @@ export default function ExportQuotationContent({
                             </tr>
                             <tr>
                               <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 8px', fontSize: '10px' }}>{termsOfPayment}</td>
-                            </tr>
-                            <tr>
-                              <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 8px', fontWeight: 'bold', fontSize: '10px', backgroundColor: '#1e40af', color: '#fff' }}>OUR BANKER:</td>
-                            </tr>
-                            <tr>
-                              <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 8px', fontSize: '9px' }}>
-                                <div style={{ marginBottom: '2px' }}><strong>Care of:</strong> {accountName}, Jaipur INDIA</div>
-                                <div style={{ marginBottom: '2px' }}><strong>Bank:</strong> {bankName}, {bankBranch}</div>
-                                {swiftCode && <div style={{ marginBottom: '2px' }}><strong>Swift:</strong> {swiftCode}</div>}
-                                {accountNumber && <div><strong>Account:</strong> {accountNumber}</div>}
-                              </td>
                             </tr>
                             <tr>
                               <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '8px', fontWeight: 'bold' }}>Dispatch Ex-Works:</td>
@@ -707,7 +680,7 @@ export default function ExportQuotationContent({
                 Amount<br />Chargeable<br />(In words) :
               </td>
               <td colSpan={5} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', fontSize: '9px', fontWeight: 'bold' }}>
-                {currencyWords} {amountInWords} Only
+                {amountChargeableInWords}
               </td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', fontWeight: 'bold', textAlign: 'right' }}>
                 Total:-
