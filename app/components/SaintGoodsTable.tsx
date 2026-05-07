@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   parseOverallGrandTotalInclAccessories,
   resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
@@ -361,9 +361,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords =
-    currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency === 'EUR' ? 'Euro' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const renderQtyUomCell = (qty: unknown, uom: unknown) => {
     const qtyText = String(qty ?? '').trim()
@@ -690,7 +688,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                       }}
                     >
                       <span style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                        {currencyWords} {amountInWords} Only
+                        {amountChargeableInWords}
                       </span>
                       <span style={{ fontWeight: 'bold', fontSize: '13px' }}>Total:-</span>
                     </div>

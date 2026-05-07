@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { quotationRichText } from '@/lib/quotation-rich-text'
+import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
@@ -31,9 +31,6 @@ export default function BashundharaInvoiceContent({
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || 'Mr. Rahamat Ali'
-
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Bangladesh')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
@@ -42,11 +39,6 @@ export default function BashundharaInvoiceContent({
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
   const dispatchExWorks = resolveDispatchExWorksDisplay(rawQuotationData, data.deliveryDate, '')
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
-  const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
-  const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'
-  const swiftCode = rawQuotationData?.Swift_Code || 'IOBAINBB158'
-  const accountNumber = rawQuotationData?.Account_Number || '015802000003059'
-  const accountName = rawQuotationData?.Account_Name || 'WMW METAL FABRICS LTD.'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (
@@ -128,13 +120,7 @@ export default function BashundharaInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{consignee.name}</div>
-                    <div style={{ fontSize: '11px', lineHeight: 1.15, whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.15 }}>{consignee.country}</div>
-                    <div style={{ marginTop: '10px', color: '#1d4ed8', fontWeight: 'bold', fontSize: '11px' }}>
-                      Kind Attn.: {kindAttn}
-                    </div>
+                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -154,21 +140,8 @@ export default function BashundharaInvoiceContent({
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
                             <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
                             {ourBankDetails ? (
-                              <div
-                                style={{
-                                  marginTop: '8px',
-                                  fontWeight: 'normal',
-                                  fontSize: '10px',
-                                  lineHeight: 1.35,
-                                  whiteSpace: 'pre-wrap',
-                                }}
-                              >
-                                {ourBankDetails}
-                              </div>
+                              <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
-                            <div>
-                              OUR BANKER - {bankName}, {bankBranch} (Swift no. {swiftCode}) for credit to CC A/c no {accountNumber} of {accountName}, Jaipur INDIA.
-                            </div>
                           </td>
                         </tr>
                       </tbody>

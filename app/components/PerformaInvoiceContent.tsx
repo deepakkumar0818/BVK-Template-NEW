@@ -123,26 +123,12 @@ function performaBankDetailsBlock(data: QuotationData): ReactNode {
       <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
           <tr>
-            <td
-              style={{ width: '61%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
-            >
-              Bank Details :-
-            </td>
-            <td
-              style={{ width: '39%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
-            >
+            <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}>
               For WMW Metal Fabrics Ltd.
             </td>
           </tr>
           <tr>
-            <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 8px', lineHeight: 1.2 }}>
-              <div>Bank Name: Indian Overseas Bank</div>
-              <div>Account Number: 015802000003059</div>
-              <div>Branch Code: 0158</div>
-              <div>IFSC Code: IOBA0000158</div>
-              <div>Swift Code: IOBAINBB158</div>
-            </td>
-            <td style={{ width: '39%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
+            <td style={{ verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
               <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
                 <div>Computer Generated Document</div>
                 <div>No Signature Needed</div>

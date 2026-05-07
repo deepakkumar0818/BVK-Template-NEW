@@ -6,7 +6,7 @@ import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   parseOverallGrandTotalInclAccessories,
   resolveCountryOfFinalDestination,
   resolveTransportDisplayLine,
@@ -418,8 +418,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const chunks = [];
   for (let i = 0; i < displayLineItems.length; i += 5) {
@@ -614,7 +613,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                           <span style={{ fontWeight: 'bold', display: 'block', lineHeight: 1.2 }}>Amount Chargeable<br />(In words) :</span>
                         </td>
                         <td colSpan={3} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
-                          {currencyWords} {amountInWords} Only
+                          {amountChargeableInWords}
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-

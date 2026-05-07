@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { quotationRichText } from '@/lib/quotation-rich-text'
+import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
@@ -30,8 +30,6 @@ export default function AdhunikInvoiceContent({
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
-
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
 
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(
@@ -130,10 +128,7 @@ export default function AdhunikInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{consignee.name}</div>
-                    <div style={{ fontSize: '11px', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '13px', lineHeight: 1.4, marginTop: '2px' }}>{consignee.country}</div>
+                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -153,17 +148,7 @@ export default function AdhunikInvoiceContent({
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
                             <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
                             {ourBankDetails ? (
-                              <div
-                                style={{
-                                  marginTop: '8px',
-                                  fontWeight: 'normal',
-                                  fontSize: '10px',
-                                  lineHeight: 1.35,
-                                  whiteSpace: 'pre-wrap',
-                                }}
-                              >
-                                {ourBankDetails}
-                              </div>
+                              <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
                           </td>
                         </tr>

@@ -1,3 +1,14 @@
+import type { CSSProperties } from 'react'
+
+/** Wrapper for {@link quotationRichText} `Our_Bank_Details` — bold across quotation templates. */
+export const ourBankDetailsBlockStyle: CSSProperties = {
+  marginTop: '8px',
+  fontWeight: 'bold',
+  fontSize: '10px',
+  lineHeight: 1.35,
+  whiteSpace: 'pre-wrap',
+}
+
 /** Zoho Creator may return plain string or lookup-style `{ zc_display_value }`. */
 export function quotationRichText(raw: unknown, key: string): string {
   if (raw == null || typeof raw !== 'object') return ''

@@ -394,44 +394,118 @@ function numberToWordsInternationalInteger(num: number): string {
   return parts.reverse().join(' ').replace(/\s+/g, ' ').trim()
 }
 
-function formatAmountInWordsUsd(amount: number): string {
+/** Lowercase words + hyphenated tens-one (e.g. eighty-seven) for USD/EUR sentence-style lines. */
+function convertBelowThousandSentence(n: number): string {
+  const ones = [
+    '',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'nine',
+    'ten',
+    'eleven',
+    'twelve',
+    'thirteen',
+    'fourteen',
+    'fifteen',
+    'sixteen',
+    'seventeen',
+    'eighteen',
+    'nineteen',
+  ]
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+
+  let x = Math.floor(Math.abs(n)) % 1000
+  const parts: string[] = []
+  if (x >= 100) {
+    parts.push(`${ones[Math.floor(x / 100)]} hundred`)
+    x %= 100
+  }
+  if (x >= 20) {
+    const t = Math.floor(x / 10)
+    const o = x % 10
+    parts.push(o > 0 ? `${tens[t]}-${ones[o]}` : tens[t])
+  } else if (x > 0) {
+    parts.push(ones[x])
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+function capitalizeFirstLetterSentence(s: string): string {
+  const t = s.trim()
+  if (!t) return ''
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+/** Integer only: international grouping in lowercase (thousand, million, …). */
+function numberToWordsInternationalSentence(num: number): string {
+  if (!Number.isFinite(num)) return 'zero'
+  const n = Math.floor(Math.abs(num))
+  if (n === 0) return 'zero'
+
+  const scales = ['', 'thousand', 'million', 'billion', 'trillion', 'quadrillion', 'quintillion']
+  const parts: string[] = []
+  let x = n
+  let scaleIdx = 0
+  while (x > 0 && scaleIdx < scales.length) {
+    const chunk = x % 1000
+    if (chunk > 0) {
+      const chunkWords = convertBelowThousandSentence(chunk)
+      const suffix = scales[scaleIdx]
+      parts.push(suffix ? `${chunkWords} ${suffix}` : chunkWords)
+    }
+    x = Math.floor(x / 1000)
+    scaleIdx++
+  }
+  if (x > 0) {
+    parts.push(String(x))
+  }
+
+  return parts.reverse().join(' ').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Body only (no “US Dollars” prefix): e.g. `Sixteen thousand five hundred eighty-seven dollars and fourteen cents only`.
+ */
+function formatUsdEurDecimalAmountSentence(
+  amount: number,
+  singularMainUnit: string,
+  pluralMainUnit: string
+): string {
   const safe = Number.isFinite(amount) ? amount : 0
   const negative = safe < 0
   const abs = Math.abs(safe)
   const totalCents = Math.round(abs * 100 + Number.EPSILON)
-  const dollars = Math.floor(totalCents / 100)
+  const mainAmount = Math.floor(totalCents / 100)
   const cents = totalCents % 100
 
-  let main = numberToWordsInternationalInteger(dollars)
-  if (negative) main = `Minus ${main}`
+  const intLower = numberToWordsInternationalSentence(mainAmount)
+  let phrase = capitalizeFirstLetterSentence(intLower)
+  const mainUnitLabel = mainAmount === 1 ? singularMainUnit : pluralMainUnit
 
-  const dUnit = dollars === 1 ? 'Dollar' : 'Dollars'
   if (cents === 0) {
-    return `${main} ${dUnit} Only`.replace(/\s+/g, ' ').trim()
+    phrase = `${phrase} ${mainUnitLabel} only`
+  } else {
+    const centsWords = convertBelowThousandSentence(cents)
+    const centLabel = cents === 1 ? 'cent' : 'cents'
+    phrase = `${phrase} ${mainUnitLabel} and ${centsWords} ${centLabel} only`
   }
-  const cw = convertBelowThousand(cents).trim()
-  const cUnit = cents === 1 ? 'Cent' : 'Cents'
-  return `${main} ${dUnit} and ${cw} ${cUnit} Only`.replace(/\s+/g, ' ').trim()
+
+  phrase = phrase.replace(/\s+/g, ' ').trim()
+  return negative ? `Minus ${phrase}` : phrase
+}
+
+function formatAmountInWordsUsd(amount: number): string {
+  return `US Dollars ${formatUsdEurDecimalAmountSentence(amount, 'dollar', 'dollars')}`
 }
 
 function formatAmountInWordsEur(amount: number): string {
-  const safe = Number.isFinite(amount) ? amount : 0
-  const negative = safe < 0
-  const abs = Math.abs(safe)
-  const totalCents = Math.round(abs * 100 + Number.EPSILON)
-  const euros = Math.floor(totalCents / 100)
-  const cents = totalCents % 100
-
-  let main = numberToWordsInternationalInteger(euros)
-  if (negative) main = `Minus ${main}`
-
-  const eUnit = euros === 1 ? 'Euro' : 'Euros'
-  if (cents === 0) {
-    return `${main} ${eUnit} Only`.replace(/\s+/g, ' ').trim()
-  }
-  const cw = convertBelowThousand(cents).trim()
-  const cUnit = cents === 1 ? 'Cent' : 'Cents'
-  return `${main} ${eUnit} and ${cw} ${cUnit} Only`.replace(/\s+/g, ' ').trim()
+  return `Euros ${formatUsdEurDecimalAmountSentence(amount, 'euro', 'euros')}`
 }
 
 /**
@@ -501,6 +575,28 @@ export function formatAmountInWords(amount: number, currency: string = 'INR'): s
 
   const words = numberToWords(safe)
   return `${words} ${cur} Only`.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Goods-table “Amount Chargeable (In words)” line: USD/EUR use cents spelled out (sentence style);
+ * other currencies keep `{currencyWords} {numberToWords} Only` (e.g. INR).
+ */
+export function formatGoodsTableAmountChargeableInWords(amount: number, currency: string): string {
+  const cur = (currency || '').trim().toUpperCase()
+  const safe = Number.isFinite(amount) ? amount : 0
+  if (cur === 'USD') return formatAmountInWordsUsd(safe)
+  if (cur === 'EUR' || cur === 'EURO') return formatAmountInWordsEur(safe)
+  const cw = cur === 'INR' ? 'Indian Rupees' : currency
+  return `${cw} ${numberToWords(safe)} Only`
+}
+
+/** USD/EUR body only (no “US Dollars” prefix) — for captions like `US Dollar : …`. */
+export function formatUsdEurAmountBodyInWords(amount: number, currency: string): string {
+  const cur = (currency || '').trim().toUpperCase()
+  const safe = Number.isFinite(amount) ? amount : 0
+  if (cur === 'USD') return formatUsdEurDecimalAmountSentence(safe, 'dollar', 'dollars')
+  if (cur === 'EUR' || cur === 'EURO') return formatUsdEurDecimalAmountSentence(safe, 'euro', 'euros')
+  return numberToWords(safe)
 }
 
 /** Stable key for merging WI_2_0 / WI_3_0 rows (same Line_Item_ref → one logical line) */

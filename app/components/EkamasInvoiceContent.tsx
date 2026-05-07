@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { resolveBillingDisplay } from '@/lib/billing-display'
-import { quotationRichText } from '@/lib/quotation-rich-text'
+import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
+import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
 import {
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
@@ -35,13 +35,6 @@ export default function EkamasInvoiceContent({
   const buyerEnquiryDate =
     data.customerReferenceDate || (rawQuotationData?.Customer_Reference_Date as string) || ''
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
-
-  const billing = resolveBillingDisplay(billingData, rawQuotationData)
-  const billingHasContent =
-    Boolean(billing.name) ||
-    Boolean(billing.addressBlock) ||
-    Boolean(billing.country) ||
-    Boolean(billing.gstNo)
 
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Indonesia')
@@ -157,25 +150,7 @@ export default function EkamasInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '50%', verticalAlign: 'top', ...cellBorder, padding: '8px' }}>
-                    {billingHasContent ? (
-                      <>
-                        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee </div>
-                        {billing.name ? (
-                          <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>{billing.name}</div>
-                        ) : null}
-                        {billing.addressBlock ? (
-                          <div style={{ fontSize: '11px', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                            {billing.addressBlock}
-                          </div>
-                        ) : null}
-                        {billing.country ? (
-                          <div style={{ fontWeight: 'bold', fontSize: '11px', marginTop: '4px' }}>{billing.country}</div>
-                        ) : null}
-                        {billing.gstNo ? (
-                          <div style={{ fontSize: '11px', marginTop: '8px' }}>GST Number: {billing.gstNo}</div>
-                        ) : null}
-                      </>
-                    ) : null}
+                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
                   <td style={{ width: '50%', verticalAlign: 'top', ...cellBorder, padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -195,17 +170,7 @@ export default function EkamasInvoiceContent({
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>Terms of Payment</div>
                             <div>{termsOfPayment}</div>
                             {ourBankDetails ? (
-                              <div
-                                style={{
-                                  marginTop: '8px',
-                                  fontWeight: 'normal',
-                                  fontSize: '10px',
-                                  lineHeight: 1.35,
-                                  whiteSpace: 'pre-wrap',
-                                }}
-                              >
-                                {ourBankDetails}
-                              </div>
+                              <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
                           </td>
                         </tr>

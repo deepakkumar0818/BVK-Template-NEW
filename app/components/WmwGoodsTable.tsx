@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
-  numberToWords,
+  formatGoodsTableAmountChargeableInWords,
   parseOverallGrandTotalInclAccessories,
   resolveCountryOfFinalDestination,
   resolveQuotationDeliveryCell,
@@ -305,8 +305,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountInWords = numberToWords(displayGrandTotal)
-  const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const destLabel = finalDestination || portOfDischarge || 'Jaipur'
   const transportSummaryLine = resolveTransportDisplayLine(
@@ -644,9 +643,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           </div>
                         </td>
                         <td style={{ ...bd, borderLeft: 'none', padding: '6px 10px', fontSize: '10px', verticalAlign: 'middle', width: '40%' }}>
-                          <div style={{ fontWeight: 'bold' }}>
-                            {/* Wait, the screenshot shows blank here for the word text */}
-                          </div>
+                          <div style={{ fontWeight: 'bold' }}>{amountChargeableInWords}</div>
                         </td>
                         <td style={{ ...bd, padding: '6px' }} />
                         <td style={{ ...bd, padding: '6px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle' }}>Total:-</td>

@@ -5,6 +5,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
+  formatUsdEurAmountBodyInWords,
   numberToWords,
   parseOverallGrandTotalInclAccessories,
   resolveTransportDisplayLine,
@@ -165,6 +166,13 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
   const grandTotalDisplay = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
+  const curUp = (currency || '').trim().toUpperCase()
+  const quotation3AmountChargeableWords =
+    curUp === 'USD'
+      ? `US Dollar : ${formatUsdEurAmountBodyInWords(grandTotalDisplay, currency)}`
+      : curUp === 'EUR' || curUp === 'EURO'
+        ? `Euro : ${formatUsdEurAmountBodyInWords(grandTotalDisplay, currency)}`
+        : `${curUp === 'INR' ? 'Indian Rupees' : currency} : ${numberToWords(grandTotalDisplay)} Only`
   const q3ShowDiscountRow = Number.isFinite(q3DiscountTotal) && q3DiscountTotal !== 0
   const quotation3TransportLine = resolveTransportDisplayLine(
     rawQuotationData as Record<string, unknown> | undefined,
@@ -388,7 +396,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     </td>
                     <td colSpan={2} style={{ ...bd, padding: '6px 10px', fontSize: '12px', verticalAlign: 'middle' }}>
                       <div style={{ fontWeight: 'bold', color: '#444' }}>
-                        US Dollar : {numberToWords(grandTotalDisplay)} Only
+                        {quotation3AmountChargeableWords}
                       </div>
                     </td>
                     <td style={{ ...bd, padding: '8px 10px', fontWeight: 'bold', textAlign: 'right', verticalAlign: 'middle', fontSize: '13px' }}>Total:-</td>
