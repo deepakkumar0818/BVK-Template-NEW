@@ -447,8 +447,8 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
               >
                 <colgroup>
                   <col style={{ width: '20%' }} />
-                  <col style={{ width: '36%' }} />
-                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '32%' }} />
+                  <col style={{ width: '14%' }} />
                   <col style={{ width: '11%' }} />
                   <col style={{ width: '9%' }} />
                   <col style={{ width: '14%' }} />
