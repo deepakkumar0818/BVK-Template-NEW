@@ -52,7 +52,11 @@ export interface ZohoQuotation {
   Method_of_Payment?: string
   Invoice_Account?: string
   Mode_of_Delivery?: string
+  /** Full line under the “Transport” header on WMW / export style layouts (when set, replaces template-built text). */
+  Transport?: string
   Delivery_Date_Control?: string
+  /** Shown as “Dispatch Ex-Works” when set (preferred over `Delivery_Date_Control` in templates). */
+  Sales_Proposed_Date_Dispatch_Ex_Works?: string
   Delivery_Terms?: string
   Term_of_Payment?: string
   /** Bank / payment instructions shown under Terms of Payment when mapped in templates */
@@ -66,6 +70,9 @@ export interface ZohoQuotation {
   Customer_Zone?: string
   Currency?: string
   Remarks?: string
+  /** “Other Reference (s)” in export / WMW-style headers; preferred over `Additional_info`. */
+  Other_Reference?: string
+  Additional_info?: string
   /** Quotation-level tolerances text (Zoho API name: Tolerances) */
   Tolerances?: string
   /** Quotation-level note under tolerances (Zoho API name: Please_Note) */

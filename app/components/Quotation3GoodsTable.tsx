@@ -3,9 +3,15 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveTransportDisplayLine,
+} from '@/lib/quotation-utils'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
+import { GOODS_DESC_GRID_TEMPLATE_COLUMNS_QUOTATION3, goodsDescGridSizeSpanOneLine } from '@/lib/goods-desc-grid-styles'
 
 const txBlue = '#000000' // Changed from blue per screenshot, though original had some blue. Keeping black to match screenshot where most text is black
 
@@ -39,7 +45,7 @@ interface Quotation3GoodsTableProps {
 
 const descGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '1fr 2fr 2fr 3fr 3fr',
+  gridTemplateColumns: GOODS_DESC_GRID_TEMPLATE_COLUMNS_QUOTATION3,
   columnGap: '8px',
   rowGap: '2px',
   alignItems: 'center',
@@ -160,6 +166,10 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
     rawQuotationData as Record<string, unknown> | null | undefined
   )
   const q3ShowDiscountRow = Number.isFinite(q3DiscountTotal) && q3DiscountTotal !== 0
+  const quotation3TransportLine = resolveTransportDisplayLine(
+    rawQuotationData as Record<string, unknown> | undefined,
+    'Ex-work Jaipur Price'
+  )
 
   return (
     <div className="quotation-goods-pages-stack">
@@ -262,7 +272,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                               <span>Item</span>
                               <span>MESH</span>
                               <span>Wire Dia.</span>
-                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
                               <span>Sqm Area / PC</span>
                             </div>
                           </td>
@@ -285,7 +295,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                                     <span style={{ textAlign: 'center' }}>{item.id}</span>
                                     <span>{item.mesh}</span>
                                     <span>{item.wireDia}</span>
-                                    <span>{item.size}</span>
+                                    <span style={goodsDescGridSizeSpanOneLine}>{item.size}</span>
                                     <span>{item.sqm}</span>
                                   </div>
                                 </td>
@@ -352,7 +362,7 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     <td style={{ ...bd, padding: '5px 6px', borderTop: 'none', borderBottom: 'none' }} />
                   </tr>
                   <tr>
-                    <td colSpan={3} style={{ ...bd, padding: '5px 10px', textAlign: 'center', borderRight: '1px solid #000' }}>Ex-work Jaipur Price</td>
+                    <td colSpan={3} style={{ ...bd, padding: '5px 10px', textAlign: 'center', borderRight: '1px solid #000' }}>{quotation3TransportLine}</td>
                     <td style={{ ...bd, padding: '5px 6px', borderTop: 'none', borderBottom: 'none' }} />
                     <td style={{ ...bd, padding: '5px 6px', borderTop: 'none', borderBottom: 'none' }} />
                   </tr>

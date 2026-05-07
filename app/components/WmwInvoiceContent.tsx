@@ -4,7 +4,12 @@ import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
-import { resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import WmwGoodsTable from './WmwGoodsTable'
 
 interface WmwInvoiceContentProps {
@@ -24,18 +29,22 @@ export default function WmwInvoiceContent({
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
-  const otherReference = rawQuotationData?.Additional_info || ''
+  const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || 'Mr. Anthony'
 
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India'
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || 'Indonesia'
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Indonesia')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Sea'
   const portOfLoading = rawQuotationData?.Port_of_Loading || 'Nhava Sheva'
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || 'Jakarta'
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || 'Indonesia'
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || 'One week time from the date of confirm PO & Advance.'
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData,
+    data.deliveryDate,
+    'One week time from the date of confirm PO & Advance.'
+  )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance'
   const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
   const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'

@@ -4,7 +4,12 @@ import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
-import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveTransportDisplayLine,
+} from '@/lib/quotation-utils'
 import {
   filterNonZeroWmwChargeRows,
   quotationScalarFieldPresent,
@@ -12,7 +17,11 @@ import {
   WMW_STANDARD_CHARGE_NAMES,
 } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
-import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import {
+  GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
+  goodsDescGridSizeSpanOneLine,
+  goodsDescGridValueSpan,
+} from '@/lib/goods-desc-grid-styles'
 import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const bd: CSSProperties = { border: '1px solid #000' }
@@ -68,7 +77,7 @@ interface BashundharaGoodsTableProps {
 
 const descGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+  gridTemplateColumns: GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
   columnGap: '10px',
   rowGap: '2px',
   alignItems: 'center',
@@ -217,6 +226,10 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
 
   const destLabel = finalDestination || portOfDischarge || 'Benapole'
   const transportMethod = modeOfDelivery || 'Road'
+  const transportSummaryLine = resolveTransportDisplayLine(
+    rawQuotationData as Record<string, unknown> | undefined,
+    `Total CFR Price upto ${destLabel} By ${transportMethod}`
+  )
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -234,17 +247,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
           )
         : undefined) || rows3Linked[index]
 
-    const wi20Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WI_2_0)
     const lineItemRef = String(index + 1)
-    const wi20Line =
-      (itemRef
-        ? wi20Rows.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
-        : undefined) ||
-      wi20Rows.find((x: any) => String(x?.Line_Item_ref ?? '').trim() === lineItemRef) ||
-      wi20Rows[index]
-
     const rows3Cat2Linked = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW_3_0)
     const ext3Cat2 =
       (itemRef
@@ -255,6 +258,13 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
       rows3Cat2Linked.find((x: any) => String(x?.Line_Item_ref ?? '').trim() === lineItemRef) ||
       rows3Cat2Linked[index]
 
+    const cat2WmwMainRows = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW)
+    const cat2ProductDetail = itemRef
+      ? cat2WmwMainRows.find(
+          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+        ) || cat2WmwMainRows[index] || {}
+      : cat2WmwMainRows[index] || {}
+
     /** Delivery: WMW 3.0 linked row — Cat 1 vs Cat 2 by template (API `delivery` / `Delivery`). */
     const delivery = isCategory2Selected
       ? firstField([ext3Cat2], 'delivery') || firstField([ext3Cat2], 'Delivery')
@@ -263,8 +273,8 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
     // Bashundhara: same as Seamp — product from WMW 2.0 Blend_Category only.
     const blendCategory = firstField([item], 'Blend_Category')
     const endType = firstField([ext3, item, productDetail], 'End_Type')
-    const materialCode =
-      firstField([wi20Line], 'Material_Code') || firstField([wi20Line], 'Material')
+    /** Zoho `Material_Code` only — WMW 2_0 → Cat1/Cat2 3_0 → main rows (same idea as HSN + Cat2 main). */
+    const materialCode = firstField([item, ext3, ext3Cat2, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
     const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
 
@@ -305,13 +315,6 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
     const amount = Number.isFinite(computedAmount)
       ? computedAmount
       : (Number.isFinite(totalPriceParsed) ? totalPriceParsed : amountFromLine)
-
-    const cat2WmwMainRows = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW)
-    const cat2ProductDetail = itemRef
-      ? cat2WmwMainRows.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || cat2WmwMainRows[index] || {}
-      : cat2WmwMainRows[index] || {}
 
     const fitmentRows = toRowArray((rawQuotationData as any)?.Product_Fitments2_0)
     const fitmentRow =
@@ -556,7 +559,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                               <span>Item</span>
                               <span>MESH</span>
                               <span>BRAND</span>
-                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
                               <span>Sqm Area / PC</span>
                             </div>
                           </td>
@@ -572,7 +575,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                                 <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                 <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
                                 <span style={goodsDescGridValueSpan}>{row.brand}</span>
-                                <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                <span style={{ ...goodsDescGridValueSpan, ...goodsDescGridSizeSpanOneLine }}>{row.size}</span>
                                 <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                               </div>
                             </td>
@@ -657,7 +660,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
 
                       <tr>
                         <td colSpan={6} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                          Total CFR Price upto {destLabel} By {transportMethod}
+                          {transportSummaryLine}
                         </td>
                       </tr>
 

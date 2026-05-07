@@ -4,38 +4,43 @@ import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
-import { resolveQuotationValidity } from '@/lib/quotation-utils'
-import BashundharaGoodsTable from './BashundharaGoodsTable'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
+import SaintgobainGoodsTable from './SaintgobainGoodsTable'
 
-interface BashundharaInvoiceContentProps {
+interface SaintgobainInvoiceContentProps {
   data: QuotationData
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
 }
 
-export default function BashundharaInvoiceContent({
+export default function SaintgobainInvoiceContent({
   data,
   shippingData,
   billingData,
   rawQuotationData,
-}: BashundharaInvoiceContentProps) {
+}: SaintgobainInvoiceContentProps) {
   const quotationNumber = data.quotationNumber || rawQuotationData?.Name || ''
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
-  const otherReference = rawQuotationData?.Additional_info || ''
+  const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || 'Mr. Rahamat Ali'
 
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India'
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || 'Bangladesh'
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Bangladesh')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
   const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || ''
+  const dispatchExWorks = resolveDispatchExWorksDisplay(rawQuotationData, data.deliveryDate, '')
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
   const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
   const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'
@@ -47,7 +52,7 @@ export default function BashundharaInvoiceContent({
   return (
     <>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
-        <BashundharaGoodsTable
+        <SaintgobainGoodsTable
           data={data}
           rawQuotationData={rawQuotationData}
           shippingData={shippingData}

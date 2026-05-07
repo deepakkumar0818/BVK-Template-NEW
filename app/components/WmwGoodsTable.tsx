@@ -7,12 +7,18 @@ import {
   formatCurrency,
   numberToWords,
   parseOverallGrandTotalInclAccessories,
+  resolveCountryOfFinalDestination,
   resolveQuotationDeliveryCell,
+  resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwFormTotalsDisplay, buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
-import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import {
+  GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_SIX,
+  goodsDescGridSizeSpanOneLine,
+  goodsDescGridValueSpan,
+} from '@/lib/goods-desc-grid-styles'
 import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const txBlue = '#0000CD'
@@ -104,7 +110,7 @@ function toRowArray(v: unknown): Record<string, unknown>[] {
 
 const descGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+  gridTemplateColumns: GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_SIX,
   columnGap: '10px',
   rowGap: '2px',
   alignItems: 'center',
@@ -140,7 +146,11 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
   )
   const discountDeduct = Math.max(0, overallDiscountAmt)
 
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || ''
+  const countryOfDestination = resolveCountryOfFinalDestination(
+    rawQuotationData as Record<string, unknown> | null | undefined,
+    shippingData as Record<string, unknown> | null | undefined,
+    ''
+  )
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
 
@@ -299,6 +309,10 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
   const currencyWords = currency === 'USD' ? 'US Dollars' : currency === 'INR' ? 'Indian Rupees' : currency
 
   const destLabel = finalDestination || portOfDischarge || 'Jaipur'
+  const transportSummaryLine = resolveTransportDisplayLine(
+    rawQuotationData as Record<string, unknown> | undefined,
+    `Total EXW Price upto ${destLabel}`
+  )
 
   const splitQtyAndUom = (value: unknown): { qty: string; uom: string } => {
     const s = String(value ?? '').trim()
@@ -425,7 +439,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                               <span style={{ textAlign: 'center' }}>Item</span>
                               <span>Mesh</span>
                               <span>Brand</span>
-                              <span>Size [m]</span>
+                              <span style={goodsDescGridSizeSpanOneLine}>Size [m]</span>
                               <span>(L x W)</span>
                               <span>Sqm Area</span>
                             </div>
@@ -439,7 +453,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                             <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
                               <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+                                gridTemplateColumns: GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_SIX,
                                 columnGap: '10px',
                                 rowGap: '2px',
                                 alignItems: 'start',
@@ -449,7 +463,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                                 <span style={{ fontWeight: 'bold', textAlign: 'center', ...goodsDescGridValueSpan }}>{row.item}</span>
                                 <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
                                 <span style={goodsDescGridValueSpan}>{row.brand}</span>
-                                <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                <span style={{ ...goodsDescGridValueSpan, ...goodsDescGridSizeSpanOneLine }}>{row.size}</span>
                                 <span style={{ opacity: 0, ...goodsDescGridValueSpan }}>(L x W)</span>
                                 <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                               </div>
@@ -601,7 +615,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
 
                       <tr>
                         <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: '1px solid #000', padding: '10px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                          Total EXW Price upto {destLabel}
+                          {transportSummaryLine}
                         </td>
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '5px 6px' }} />
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '5px 6px' }} />

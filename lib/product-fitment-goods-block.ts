@@ -128,8 +128,6 @@ export function buildProductFitmentBrandedGoodsBlock(
   const rows2 = toRowArray(raw, keys.LINK_2_0)
   const byRef2 = groupRowsByLastItemRef(rows2)
   const desiredRows = toRowArray(raw, keys.DESIRED_DATE)
-  const wi20 = toRowArray(raw, 'Category_1_MM_Database_WI_2_0')
-
   return mainRows.map((main, idx) => {
     const lastItemRef = refFromRow(main)
     const ext2 = pickFirstRowForRef(byRef2, lastItemRef)
@@ -146,14 +144,7 @@ export function buildProductFitmentBrandedGoodsBlock(
     /** Form: `End_Type` from `Product_Fitments2_0` (linked row) first, then main `Product_Fitments`. */
     const form = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
 
-    const sr = lastItemRef || String(idx + 1)
-    const wiLineBySr =
-      wi20.find(
-        (x) =>
-          String(x?.Line_Item_ref ?? '').trim() === sr || String(x?.S_No ?? '').trim() === sr
-      ) || wi20[idx]
-    const materialCode =
-      firstFieldString([wiLineBySr], 'Material_Code') || firstFieldString([wiLineBySr], 'Material')
+    const materialCode = firstFieldString([ext2, main], 'Material_Code')
     const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
 
     const hsnCode = coalesceLinkedFirst(ext2, ext3, main, 'HSN_Code')
@@ -178,7 +169,14 @@ export function buildProductFitmentBrandedGoodsBlock(
     const mesh = meshInchFromProductCode(productCode)
     const brandCategoryForMeshCol = firstFieldString([main, ext2], 'Brand_Category')
 
+    /** Same rule as Ekamas goods: `UOM_Billing` === SQM → quantity from `Pieces` on `Product_Fitments` / 2_0 (main first). */
     const quantity = (() => {
+      const uomBilling = coalesceMainFirst(main, ext2, ext3, 'UOM_Billing').trim().toUpperCase()
+      const piecesStr = firstFieldString([main, ext2, ext3 as UnknownRecord | undefined], 'Pieces')
+      if (uomBilling === 'SQM' && piecesStr.trim() !== '') {
+        const qp = parseNumericValue(piecesStr)
+        if (Number.isFinite(qp)) return qp
+      }
       const q = parseNumericValue(coalesceMainFirst(main, ext2, ext3, 'Qty'))
       if (Number.isFinite(q) && q > 0) return q
       const p = parseNumericValue(coalesceMainFirst(main, ext2, ext3, 'Pieces'))

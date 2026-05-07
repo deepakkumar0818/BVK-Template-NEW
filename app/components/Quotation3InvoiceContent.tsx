@@ -4,7 +4,12 @@ import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay, resolveConsigneePhone } from '@/lib/consignee-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
-import { resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import Quotation3GoodsTable from './Quotation3GoodsTable'
 
 interface Quotation3InvoiceContentProps {
@@ -25,19 +30,22 @@ export default function Quotation3InvoiceContent({
   const buyerEnquiryNo = data.buyerEnquiryNo || rawQuotationData?.customer_Reference || 'Email';
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || '10-Nov-2022';
   
-  const otherReference = rawQuotationData?.Additional_info || (
-    <>
-      Panel-1 98PXL17000231<br />
-      Panel-2 98PXL20000231<br />
-      Panel-3 98ED30000123
-    </>
-  );
+  const otherRefStr = resolveOtherReferenceDisplay(rawQuotationData, '')
+  const otherReference =
+    otherRefStr ||
+    (
+      <>
+        Panel-1 98PXL17000231<br />
+        Panel-2 98PXL20000231<br />
+        Panel-3 98ED30000123
+      </>
+    );
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const consigneePhone = resolveConsigneePhone(shippingData, rawQuotationData)
 
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India';
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || 'USA';
+  const countryOfOrigin = 'India';
+  const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'USA');
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance';
   
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || '';
@@ -45,7 +53,11 @@ export default function Quotation3InvoiceContent({
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || '';
   const finalDestination = rawQuotationData?.Final_Destination || 'USA';
   
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || '1st 1000 panels each type -  14-15 weeks from date of PO and advance.Then on, as per schedule ( 1000 panels each type, every 2 months).';
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData,
+    data.deliveryDate,
+    '1st 1000 panels each type -  14-15 weeks from date of PO and advance.Then on, as per schedule ( 1000 panels each type, every 2 months).'
+  );
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (

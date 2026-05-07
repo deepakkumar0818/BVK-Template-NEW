@@ -13,9 +13,9 @@ import type {
 import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData, determineTemplateType } from '@/lib/quotation-utils'
 import PrintButton from './PrintButton'
-import BashundharaInvoiceContent from './BashundharaInvoiceContent'
+import SaintgobainInvoiceContent from './SaintgobainInvoiceContent'
 
-export default function BashundharaPageContent() {
+export default function SaintgobainPageContent() {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : ''
 
@@ -105,13 +105,13 @@ export default function BashundharaPageContent() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-          <div>Loading Bashundhara Invoice...</div>
+          <div>Loading Saint-Gobain quotation...</div>
         </div>
       )}
 
       {error && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#d32f2f' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading Bashundhara Invoice</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading Saint-Gobain quotation</div>
           <div>{error}</div>
           <div style={{ marginTop: '16px', fontSize: '14px' }}>
             <Link href="/" style={{ color: '#1e40af', textDecoration: 'underline' }}>
@@ -127,7 +127,7 @@ export default function BashundharaPageContent() {
             <tbody>
               <tr>
                 <td colSpan={2} style={{ verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <BashundharaInvoiceContent
+                  <SaintgobainInvoiceContent
                     data={quotationData}
                     shippingData={shippingData}
                     billingData={billingData}

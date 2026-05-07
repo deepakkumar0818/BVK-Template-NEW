@@ -8,6 +8,7 @@ import {
   numericSegmentFromInvoiceDimension,
   pickBlendCategoryFromWmw30Row,
   resolveCategory1WmwHsnCode,
+  wmwMaterialCodeForDescriptionQuality,
 } from './wmw-subform-mapping'
 
 /**
@@ -95,6 +96,16 @@ function pickWi30Cat2Row(zohoData: ZohoQuotation, lineRef: string): Record<strin
   return found as Record<string, unknown> | undefined
 }
 
+/** Zoho `Material_Code` only: WI line (2_0) → WI tax/detail (3_0) → product main row. */
+function wiMaterialCodeForQualityChain(wi20Like: unknown, wi30Like: unknown, productMain: unknown): string {
+  const one = (r: unknown) => {
+    if (r == null || typeof r !== 'object') return ''
+    const v = (r as Record<string, unknown>).Material_Code
+    return v == null ? '' : String(v).trim()
+  }
+  return one(wi20Like) || one(wi30Like) || one(productMain)
+}
+
 /**
  * Formats a number with Indian number formatting (commas)
  */
@@ -137,6 +148,69 @@ export function resolveQuotationValidity(
 
 /** WMW WMWD1 / Performa summary row when Zoho `Quotation_Validity` and `Offer_Validity` are absent. */
 export const DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE = '07 Days from the date of Quotation'
+
+/**
+ * “Country of Final Destination” label: Zoho `Final_Destination` on the quotation first,
+ * then `Shipping_Country` on quotation / shipping master, then `fallback` when all absent.
+ */
+export function resolveCountryOfFinalDestination(
+  rawQuotationData?: Record<string, unknown> | null,
+  shippingData?: Record<string, unknown> | null,
+  fallback = ''
+): string {
+  const fromFinal = String(rawQuotationData?.Final_Destination ?? '').trim()
+  if (fromFinal) return fromFinal
+  const fromShip =
+    String(rawQuotationData?.Shipping_Country ?? '').trim() ||
+    String(shippingData?.Shipping_Country ?? '').trim()
+  if (fromShip) return fromShip
+  return String(fallback ?? '').trim()
+}
+
+/**
+ * Header “Dispatch Ex-Works”: Zoho `Sales_Proposed_Date_Dispatch_Ex_Works`, then
+ * `Delivery_Date_Control`, then transformed `deliveryDate`, then `fallback`.
+ */
+export function resolveDispatchExWorksDisplay(
+  rawQuotationData?: Record<string, unknown> | null,
+  deliveryDateFromTransform?: string | null,
+  fallback = ''
+): string {
+  const sales = String(rawQuotationData?.Sales_Proposed_Date_Dispatch_Ex_Works ?? '').trim()
+  if (sales) return sales
+  const deliveryControl = String(rawQuotationData?.Delivery_Date_Control ?? '').trim()
+  if (deliveryControl) return deliveryControl
+  const d = String(deliveryDateFromTransform ?? '').trim()
+  if (d) return d
+  return String(fallback ?? '').trim()
+}
+
+/**
+ * “Other Reference (s)” header: Zoho `Other_Reference`, then legacy `Additional_info`, then `fallback`.
+ */
+export function resolveOtherReferenceDisplay(
+  rawQuotationData?: Record<string, unknown> | null,
+  fallback = ''
+): string {
+  const primary = String(rawQuotationData?.Other_Reference ?? '').trim()
+  if (primary) return primary
+  const legacy = String(rawQuotationData?.Additional_info ?? '').trim()
+  if (legacy) return legacy
+  return String(fallback ?? '').trim()
+}
+
+/**
+ * Line under the “Transport” header: Zoho `Transport` when non-empty; otherwise `fallback`
+ * (the template’s existing incoterm / destination / mode sentence).
+ */
+export function resolveTransportDisplayLine(
+  rawQuotationData: Record<string, unknown> | null | undefined,
+  fallback: string
+): string {
+  const r = rawQuotationData ?? {}
+  const t = String(r.Transport ?? (r as { transport?: unknown }).transport ?? '').trim()
+  return t || fallback
+}
 
 /** Mesh column: first numeric segment after the 4th dot in Product_Code, shown as `value/Inch` (BVK / WMW-style codes). */
 export function meshInchFromProductCode(productCode?: string): string {
@@ -811,20 +885,6 @@ export function transformQuotationData(
   const joinedWmwForTransform = buildWmwJoinedLineRows(zohoData)
 
   /**
-   * Extracts Quality from Product_Code by splitting on '.' and getting second-to-last segment
-   * Example: FG.PM.OER.PDW.30x150.SSxSS.316L.V01 -> 316L
-   */
-  const extractQualityFromProductCode = (productCode?: string): string => {
-    if (!productCode) return ''
-    const parts = productCode.split('.')
-    if (parts.length >= 2) {
-      // Get second-to-last element
-      return parts[parts.length - 2] || ''
-    }
-    return ''
-  }
-
-  /**
    * WI quotation layout, but line data lives in Category 1 WMW + linked subforms (last_item_ref)
    * and Product Fitment — same join as Export/WMW quotation tab.
    */
@@ -899,11 +959,12 @@ export function transformQuotationData(
       const ext30 = ext30Row ?? wmw30Rows[index]
       const form = endTypeDisplayFromRecords(ext30, item, productDetail)
 
-      // Quality: Zoho `Material_Code` (3_0 → 2_0 → main), same precedence as join pipeline
-      const quality =
-        String(ext30?.Material_Code ?? item.Material_Code ?? productDetail.Material_Code ?? '').trim() ||
-        extractQualityFromProductCode(productDetail.Product_Code) ||
-        ''
+      // Quality: Zoho `Material_Code` only (WMW_2_0 → WMW_3_0 → main), same as join pipeline
+      const quality = wmwMaterialCodeForDescriptionQuality(
+        item as Record<string, unknown>,
+        ext30 as Record<string, unknown> | undefined,
+        productDetail as Record<string, unknown>
+      )
 
       // Size: Invoice Dimension 1 & 2 (3_0 → 2_0 → main), numeric token only (e.g. "4.1 Length" → "4.1")
       const inv1 = numericSegmentFromInvoiceDimension(
@@ -987,12 +1048,17 @@ export function transformQuotationData(
     const productDetailsCat2 = (zohoData.Category_2_MM_Database_WI as any[]) || []
     const usedLineKeysCat2 = new Set<string>()
     const pushCat2WiRow = (productDetail: any, item: any) => {
+      const refDel =
+        productDetail.Line_Item_ref?.trim() ||
+        item.Line_Item_ref?.trim() ||
+        ''
+      const ext30c2 =
+        refDel !== ''
+          ? wi30Category2.find((x: any) => String(x.Line_Item_ref ?? '').trim() === refDel)
+          : undefined
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
-      const quality =
-        extractQualityFromProductCode(productDetail.Product_Code) ||
-        String(productDetail.Material ?? '').trim() ||
-        ''
+      const quality = wiMaterialCodeForQualityChain(item, ext30c2, productDetail)
       const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
@@ -1016,14 +1082,6 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(productDetail.Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
-      const refDel =
-        productDetail.Line_Item_ref?.trim() ||
-        item.Line_Item_ref?.trim() ||
-        ''
-      const ext30c2 =
-        refDel !== ''
-          ? wi30Category2.find((x: any) => String(x.Line_Item_ref ?? '').trim() === refDel)
-          : undefined
       const deliveryDesiredCat2 =
         refDel !== '' ? desiredDateForRef(wiDesiredRowsCat2, normalizeLastItemRef(refDel)) : ''
 
@@ -1074,18 +1132,6 @@ export function transformQuotationData(
     const rows1 = (zohoData.Product_Fitments as any[]) || []
     const fitRows = rows2.length > 0 ? rows2 : rows1
     fitRows.forEach((row: any, idx: number) => {
-      const product =
-        String(
-          row.Product_Name ??
-            row.Product_Group ??
-            row.Description ??
-            row.Item_Name ??
-            row.zc_display_value ??
-            ''
-        ).trim() || 'N/A'
-      const pc = String(row.Product_Code ?? '').trim()
-      const quality =
-        extractQualityFromProductCode(pc) || String(row.Material ?? row.Material_Code ?? '').trim() || ''
       const ref =
         String(row.Last_item_ref ?? row.last_item_ref ?? '').trim() ||
         String(row.S_No ?? row.Sr_No ?? '').trim()
@@ -1105,6 +1151,22 @@ export function transformQuotationData(
                 String(m.S_No ?? m.Sr_No ?? '').trim() === ref
             )
           : undefined) || rows1[idx]
+      const product =
+        String(
+          row.Product_Name ??
+            row.Product_Group ??
+            row.Description ??
+            row.Item_Name ??
+            row.zc_display_value ??
+            ''
+        ).trim() || 'N/A'
+      const pc = String(row.Product_Code ?? '').trim()
+      const quality =
+        wmwMaterialCodeForDescriptionQuality(
+          row20 as Record<string, unknown> | undefined,
+          undefined,
+          mainRow as Record<string, unknown> | undefined
+        ) || String(row.Material_Code ?? '').trim()
       const form = endTypeDisplayFromRecords(row20, mainRow)
       const type = String(row.Brand_Category ?? '').trim()
       const size =
@@ -1172,9 +1234,19 @@ export function transformQuotationData(
         usedLineKeys
       )
 
+      const refWi = wiProductRef(productDetail) || String(item.Line_Item_ref ?? '').trim() || ''
+      const wi30Row =
+        refWi !== ''
+          ? wi30Category1.find((x: any) => String(x.Line_Item_ref ?? '').trim() === refWi)
+          : undefined
+      const wi20Row =
+        refWi !== ''
+          ? wi20Category1.find((x: any) => String(x.Line_Item_ref ?? '').trim() === refWi)
+          : undefined
+
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
-      const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
+      const quality = wiMaterialCodeForQualityChain(wi20Row || item, wi30Row, productDetail)
       const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
@@ -1236,7 +1308,7 @@ export function transformQuotationData(
       const productDetail: any = {}
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
-      const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
+      const quality = String(item.Material_Code ?? '').trim()
       const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
@@ -1305,9 +1377,17 @@ export function transformQuotationData(
           ) || productDetails[index] || {}
         : productDetails[index] || {}
 
+      const refNormDel = normalizeLastItemRef(ref || '')
+      const refStrDel = String(ref ?? '').trim()
+      const extWmw30c1 = pickWmw30RowForKey(zohoData, 'Category_1_MM_Database_WMW_3_0', refNormDel)
+      const extWmw30c2 = pickWmw30RowForKey(zohoData, 'Category_2_MM_Database_WMW_3_0', refNormDel)
+      const extWi30c1 = pickWi30Cat1Row(zohoData, refStrDel)
+      const extWi30c2 = pickWi30Cat2Row(zohoData, refStrDel)
+      const wi30ForQuality = extWi30c1 || extWi30c2
+
       const product = productDetail.Product_Name || productDetail.Product_Group || 'N/A'
       const type = productDetail.Brand_Category || item.Line_Item_ref || ''
-      const quality = extractQualityFromProductCode(productDetail.Product_Code) || ''
+      const quality = wiMaterialCodeForQualityChain(item, wi30ForQuality, productDetail)
       const form = endTypeDisplayFromRecords(item, productDetail)
       const size =
         item.Invoice_Dimension_1 && item.Invoice_Dimension_2
@@ -1331,12 +1411,6 @@ export function transformQuotationData(
       const mesh = meshInchFromProductCode(productDetail.Product_Code || (item as any).Product_Code)
       const weave = String(productDetail.Seam_Type ?? '').trim()
 
-      const refNormDel = normalizeLastItemRef(ref || '')
-      const refStrDel = String(ref ?? '').trim()
-      const extWmw30c1 = pickWmw30RowForKey(zohoData, 'Category_1_MM_Database_WMW_3_0', refNormDel)
-      const extWmw30c2 = pickWmw30RowForKey(zohoData, 'Category_2_MM_Database_WMW_3_0', refNormDel)
-      const extWi30c1 = pickWi30Cat1Row(zohoData, refStrDel)
-      const extWi30c2 = pickWi30Cat2Row(zohoData, refStrDel)
       const deliveryDesiredGeneric =
         refNormDel !== ''
           ? desiredDateForRef(wiDesiredRowsCat1, refNormDel) ||
