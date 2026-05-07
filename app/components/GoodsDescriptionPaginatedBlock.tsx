@@ -43,7 +43,7 @@ export default function GoodsDescriptionPaginatedBlock({
   const colCount = showHsnCodeColumn ? 7 : 6
   /** WI+HSN: keep total width 100% aligned with quotation-summary-block */
   const w = showHsnCodeColumn
-    ? { d: '32%', h: '8%', del: '12%', u: '8%', q: '15%', r: '12%', a: '13%' }
+    ? { d: '28%', h: '12%', del: '12%', u: '8%', q: '15%', r: '12%', a: '13%' }
     : { d: '40%', h: '0%', del: '12%', u: '8%', q: '15%', r: '12%', a: '13%' }
 
   const showInjectedMasterHeader = (pageIdx: number) => {

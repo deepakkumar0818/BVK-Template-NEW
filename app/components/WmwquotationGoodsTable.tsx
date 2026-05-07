@@ -464,8 +464,8 @@ export default function WmwquotationGoodsTable({
               >
                 <colgroup>
                   <col style={{ width: '20%' }} />
-                  <col style={{ width: '26%' }} />
-                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '13%' }} />
                   <col style={{ width: '11%' }} />
                   <col style={{ width: '10%' }} />
                   <col style={{ width: '24%' }} />

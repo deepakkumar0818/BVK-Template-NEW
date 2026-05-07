@@ -30,7 +30,7 @@ export interface QuotationSummarySectionProps {
   wmwPackingChargeTotal?: number
   wmwSeamChargeTotal?: number
   /**
-   * WMWD1: match goods table with HSN column (7 cols: 32/8/12/8/15/12/13).
+   * WMWD1: match goods table with HSN column (7 cols: 28/12/12/8/15/12/13).
    * Freight/Insurance/Packing rows use wide label cells (no static HSN / product codes in summary).
    */
   sevenColumnGoodsLayout?: boolean
@@ -148,8 +148,8 @@ export default function QuotationSummarySection({
     <table className="quotation-stack-table quotation-summary-block">
       {sevenColumnGoodsLayout ? (
         <colgroup>
-          <col style={{ width: '32%' }} />
-          <col style={{ width: '8%' }} />
+          <col style={{ width: '28%' }} />
+          <col style={{ width: '12%' }} />
           <col style={{ width: '12%' }} />
           <col style={{ width: '8%' }} />
           <col style={{ width: '15%' }} />
