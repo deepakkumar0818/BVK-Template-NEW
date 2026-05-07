@@ -10,6 +10,10 @@ import {
   resolveQuotationValidity,
   parseOverallGrandTotalInclAccessories,
   resolveQuotationDeliveryCell,
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildWmwJoinedLineRows, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
@@ -79,14 +83,29 @@ export default function ExportQuotationContent({
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
   const buyerEnquiryDate = formatExportDate(data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date)
   const email = rawQuotationData?.Invoice_Sent_Via === 'Email' ? (shippingData?.Email || billingData?.Email || '') : ''
-  const otherReference = rawQuotationData?.Additional_info || ''
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India'
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || ''
+  const otherReference = resolveOtherReferenceDisplay(
+    rawQuotationData as Record<string, unknown> | undefined,
+    ''
+  )
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(
+    rawQuotationData as Record<string, unknown> | undefined,
+    shippingData as Record<string, unknown> | undefined,
+    ''
+  )
   const portOfLoading = rawQuotationData?.Port_of_Loading || ''
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
   const finalDestination = rawQuotationData?.Final_Destination || ''
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || ''
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || ''
+  const exportTransportTotalLine = resolveTransportDisplayLine(
+    rawQuotationData as Record<string, unknown> | undefined,
+    `Total ${priceHeaderIncoterm} Price upto ${finalDestination || portOfDischarge || 'Benapole'} By ${modeOfDelivery}:`
+  )
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData as Record<string, unknown> | undefined,
+    data.deliveryDate,
+    ''
+  )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   const bankName = rawQuotationData?.Bank_Name || 'Indian Overseas Bank'
   const bankBranch = rawQuotationData?.Bank_Branch || 'Jaipur Branch'
@@ -290,10 +309,10 @@ export default function ExportQuotationContent({
         <table className="export-print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', fontSize: '10px' }}>
           <colgroup>
             <col style={{ width: '5%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '1%' }} />
-            <col style={{ width: '19%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '3%' }} />
+            <col style={{ width: '23%' }} />
+            <col style={{ width: '9%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '23%' }} />
@@ -500,7 +519,18 @@ export default function ExportQuotationContent({
             <tr>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold' }}>Item</td>
               <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>MESH BRAND</td>
-              <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>SIZE [Mtrs] (LxW)</td>
+              <td
+                style={{
+                  borderTop: '1px solid #000',
+                  borderBottom: '1px solid #000',
+                  padding: '4px 6px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                }}
+              >
+                SIZE [Mtrs] (LxW)
+              </td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>Sqm Area / PC</td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px' }}></td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px' }}></td>
@@ -520,7 +550,17 @@ export default function ExportQuotationContent({
                   <tr>
                     <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'center' }}>{item.item}</td>
                     <td colSpan={2} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>{meshBrand}</td>
-                    <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>{item.size || ''}</td>
+                    <td
+                      style={{
+                        borderTop: '1px solid #000',
+                        borderBottom: '1px solid #000',
+                        padding: '6px',
+                        whiteSpace: 'nowrap',
+                        minWidth: 0,
+                      }}
+                    >
+                      {item.size || ''}
+                    </td>
                     <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>{item.sqmArea || ''}</td>
                     <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'center' }}>
                       {(() => {
@@ -641,7 +681,7 @@ export default function ExportQuotationContent({
             {/* ── Total CFR / CPT ── */}
             <tr>
               <td colSpan={7} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 6px', textAlign: 'center', fontWeight: 'bold' }}>
-                Total {priceHeaderIncoterm} Price upto {finalDestination || portOfDischarge || 'Benapole'} By {modeOfDelivery}:
+                {exportTransportTotalLine}
               </td>
               <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '5px 6px' }}></td>
             </tr>

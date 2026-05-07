@@ -3,10 +3,16 @@
 import { Fragment } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { formatCurrency, numberToWords, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  numberToWords,
+  parseOverallGrandTotalInclAccessories,
+  resolveTransportDisplayLine,
+} from '@/lib/quotation-utils'
 import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
+import { GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED, goodsDescGridSizeSpanOneLine } from '@/lib/goods-desc-grid-styles'
 
 const bd: CSSProperties = { border: '1px solid #000' }
 
@@ -162,6 +168,10 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Air'
+  const saintTransportSummaryLine = resolveTransportDisplayLine(
+    rawQuotationData as Record<string, unknown> | undefined,
+    `Total DAP Price upto Saint-Gobain, Willich - by ${modeOfDelivery} & Then Road`
+  )
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -179,17 +189,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
           )
         : undefined) || rows3Linked[index]
 
-    const wi20Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WI_2_0)
     const lineItemRef = String(index + 1)
-    const wi20Line =
-      (itemRef
-        ? wi20Rows.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
-        : undefined) ||
-      wi20Rows.find((x: any) => String(x?.Line_Item_ref ?? '').trim() === lineItemRef) ||
-      wi20Rows[index]
-
     const rows3Cat2Linked = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW_3_0)
     const ext3Cat2 =
       (itemRef
@@ -200,10 +200,17 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       rows3Cat2Linked.find((x: any) => String(x?.Line_Item_ref ?? '').trim() === lineItemRef) ||
       rows3Cat2Linked[index]
 
+    const cat2WmwMainRows = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW)
+    const cat2ProductDetail = itemRef
+      ? cat2WmwMainRows.find(
+          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+        ) || cat2WmwMainRows[index] || {}
+      : cat2WmwMainRows[index] || {}
+
     const blendCategory = firstField([item], 'Blend_Category')
     const endType = firstField([ext3, item, productDetail], 'End_Type')
-    const materialCode =
-      firstField([wi20Line], 'Material_Code') || firstField([wi20Line], 'Material')
+    /** Zoho `Material_Code` only — same row precedence as HSN on this template. */
+    const materialCode = firstField([item, ext3, ext3Cat2, productDetail, cat2ProductDetail], 'Material_Code')
 
     let size = ''
     const len = String(productDetail.Length_field ?? '').trim()
@@ -240,13 +247,6 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const amount = Number.isFinite(computedAmount)
       ? computedAmount
       : (Number.isFinite(totalPriceParsed) ? totalPriceParsed : amountFromLine)
-
-    const cat2WmwMainRows = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW)
-    const cat2ProductDetail = itemRef
-      ? cat2WmwMainRows.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || cat2WmwMainRows[index] || {}
-      : cat2WmwMainRows[index] || {}
 
     /** Same precedence as Bashundhara / Seamp: WMW 2_0 → WMW 3_0 (Cat1 & Cat2) → main WMW rows */
     const hsnCode = firstField([item, ext3, ext3Cat2, productDetail, cat2ProductDetail], 'HSN_Code')
@@ -466,7 +466,9 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
                             <span style={descGridCell}>Mesh</span>
                             <span style={descGridCell}>Brand</span>
-                            <span style={{ ...descGridCell, lineHeight: 1.25 }}>Size [m] (L x W)</span>
+                            <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, lineHeight: 1.25 }}>
+                              Size [m] (L x W)
+                            </span>
                             <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
                           </div>
                         </td>
@@ -519,7 +521,9 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                                   >
                                     {row.brand || '\u00A0'}
                                   </span>
-                                  <span style={{ ...descGridCell, gridColumn: 4, gridRow: 1 }}>{row.size || '\u00A0'}</span>
+                                  <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, gridColumn: 4, gridRow: 1 }}>
+                                    {row.size || '\u00A0'}
+                                  </span>
                                   <span
                                     style={{
                                       ...descGridCell,
@@ -552,7 +556,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                                   <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
                                   <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
                                   <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '13px' }}>{row.brand || '\u00A0'}</span>
-                                  <span style={descGridCell}>{row.size || '\u00A0'}</span>
+                                  <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine }}>{row.size || '\u00A0'}</span>
                                   <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
                                 </div>
                               )}
@@ -640,9 +644,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
               <tr>
                 <td style={{ ...bd, padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
-                  <div>
-                    Total DAP Price upto Saint-Gobain, Willich - by {modeOfDelivery} &amp; Then Road
-                  </div>
+                  <div>{saintTransportSummaryLine}</div>
                   <div style={{ marginTop: '6px', fontSize: '12px' }}>( Transport Time Estimated between 13 - 16 days )</div>
                 </td>
                 <td style={bd} />

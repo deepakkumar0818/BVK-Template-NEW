@@ -4,7 +4,12 @@ import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
-import { resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import WmwquotationGoodsTable from './WmwquotationGoodsTable'
 
 interface WmwquotationInvoiceContentProps {
@@ -24,17 +29,25 @@ export default function WmwquotationInvoiceContent({
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
-  const otherReference = rawQuotationData?.Additional_info || ''
+  const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
 
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India'
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || 'Benapole, Bangladesh'
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(
+    rawQuotationData,
+    shippingData,
+    'Benapole, Bangladesh'
+  )
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
   const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || 'Benapole Border'
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || 'Benapole, Bangladesh'
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || '3-4 Weeks after receipt of confirm PO'
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData,
+    data.deliveryDate,
+    '3-4 Weeks after receipt of confirm PO'
+  )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Payment against at sight LC'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 

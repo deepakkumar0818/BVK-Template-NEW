@@ -202,6 +202,19 @@ export function pickFirstRowForRef(grouped: Map<string, UnknownRecord[]>, refNor
   return list[0]
 }
 
+/**
+ * Zoho `Material_Code` only for WMW “Quality” (linked `WMW_2_0` → `WMW_3_0` → main WMW row).
+ * No `Material` field and no Product_Code parsing.
+ */
+export function wmwMaterialCodeForDescriptionQuality(
+  line20: UnknownRecord | null | undefined,
+  ext3: UnknownRecord | null | undefined,
+  mainWmw: UnknownRecord | null | undefined
+): string {
+  const s = (r: UnknownRecord | null | undefined) => stringifyField(r?.Material_Code)
+  return s(line20) || s(ext3) || s(mainWmw)
+}
+
 const WMW_3_0_KEYS = {
   CAT1: 'Category_1_MM_Database_WMW_3_0',
   CAT2: 'Category_2_MM_Database_WMW_3_0',
@@ -374,7 +387,7 @@ function buildJoinedLineRowsForSubformBundle(
     /** “Form” column: `End_Type` only (linked 2_0 → 3_0 → main), same as branded goods tables. */
     const supplyForm = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
 
-    const materialCode = coalesceLinkedFirst(ext2, ext3, main, 'Material_Code')
+    const materialCode = wmwMaterialCodeForDescriptionQuality(ext2, ext3, main)
 
     const size = isProductFitment
       ? (

@@ -5,6 +5,11 @@ import type { CSSProperties } from 'react'
 import type { QuotationData } from '@/lib/types'
 import { resolveBillingDisplay } from '@/lib/billing-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+} from '@/lib/quotation-utils'
 import EkamasGoodsTable from './EkamasGoodsTable'
 
 interface EkamasInvoiceContentProps {
@@ -29,7 +34,7 @@ export default function EkamasInvoiceContent({
     data.buyerEnquiryNo || data.customerReference || (rawQuotationData?.customer_Reference as string) || ''
   const buyerEnquiryDate =
     data.customerReferenceDate || (rawQuotationData?.Customer_Reference_Date as string) || ''
-  const otherReference = (rawQuotationData?.Additional_info as string) || ''
+  const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const billing = resolveBillingDisplay(billingData, rawQuotationData)
   const billingHasContent =
@@ -38,9 +43,8 @@ export default function EkamasInvoiceContent({
     Boolean(billing.country) ||
     Boolean(billing.gstNo)
 
-  const countryOfOrigin = (rawQuotationData?.Billing_Country as string) || 'India'
-  const countryOfDestination =
-    (rawQuotationData?.Shipping_Country as string) || (shippingData?.Shipping_Country as string) || 'Indonesia'
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Indonesia')
 
   const modeOfDelivery =
     (rawQuotationData?.Mode_of_Delivery as string) || data.termsOfDelivery || 'Sea'
@@ -49,10 +53,11 @@ export default function EkamasInvoiceContent({
   const finalDestination =
     (rawQuotationData?.Final_Destination as string) || portOfDischarge || 'Indonesia'
 
-  const dispatchExWorks =
-    (rawQuotationData?.Delivery_Date_Control as string) ||
-    data.deliveryDate ||
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData,
+    data.deliveryDate,
     '2-3 Weeks after receipt of Confirm PO'
+  )
 
   const termsOfPayment =
     data.termsOfPayment || (rawQuotationData?.Term_of_Payment as string) || '30 days from the date of Invoice'

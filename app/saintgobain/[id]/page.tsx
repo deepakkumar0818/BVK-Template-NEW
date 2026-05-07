@@ -1,16 +1,16 @@
 import { Suspense } from 'react'
-import BashundharaPageContent from '../../components/BashundharaPageContent'
+import SaintgobainPageContent from '../../components/SaintgobainPageContent'
 
-export default function BashundharaPage() {
+export default function SaintgobainPage() {
   return (
     <Suspense
       fallback={
         <main style={{ padding: '20px', textAlign: 'center' }}>
-          <div>Loading Bashundhara Invoice...</div>
+          <div>Loading Saint-Gobain quotation...</div>
         </main>
       }
     >
-      <BashundharaPageContent />
+      <SaintgobainPageContent />
     </Suspense>
   )
 }

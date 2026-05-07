@@ -8,13 +8,18 @@ import {
   numberToWords,
   parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
+  resolveTransportDisplayLine,
   meshInchFromProductCode,
 } from '@/lib/quotation-utils'
 import { endTypeDisplayFromRecords } from '@/lib/goods-description-form'
 import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '@/lib/product-fitment-goods-block'
-import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
-import { goodsDescGridValueSpan } from '@/lib/goods-desc-grid-styles'
+import {
+  GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
+  goodsDescGridSizeSpanOneLine,
+  goodsDescGridValueSpan,
+} from '@/lib/goods-desc-grid-styles'
 import { resolveGoodsSqmArea, sqmAreaFromSizeDisplayString } from '@/lib/goods-sqm-area'
 
 const bd: CSSProperties = { border: '1px solid #000' }
@@ -40,7 +45,7 @@ const bdTitleRow: CSSProperties = {
 
 const descGrid: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+  gridTemplateColumns: GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
   columnGap: '10px',
   rowGap: '2px',
   alignItems: 'center',
@@ -92,7 +97,7 @@ interface EkamasDisplayRow {
   quantity: number
   rate: number
   amount: number
-  /** Per-line kg (Net_Weight_Per_Pcs × Qty); summed for document total when Zoho has no Total_Gross_Weight */
+  /** Per-line kg (Net_Weight_Per_Pcs × Qty); summed when quotation has no `Gross_Weight` / `Total_Gross_Weight`. */
   lineGrossKg: number
 }
 
@@ -159,12 +164,17 @@ export default function EkamasGoodsTable({
 
   const destPortLabel = portOfDischarge || finalDestination || 'Surabaya'
   const transportLabel = modeOfDelivery || 'Sea'
+  const transportSummaryFallback = `Total C&F Price upto ${destPortLabel} By ${transportLabel}`
+  const transportSummaryLine = resolveTransportDisplayLine(
+    (rawQuotationData ?? null) as Record<string, unknown> | null,
+    transportSummaryFallback
+  )
 
-  const defaultWarranty =
-    'Warranty: 3 Months from date of received goods against manufacturing defects only.'
-  const defaultPacking =
-    'Packing: One corrugated box, box size as per standard export packing suitable for sea shipment.'
-  const grossFromRaw = rawQuotationData?.Total_Gross_Weight as string | undefined
+  /** Description “Total gross weight”: Zoho `Gross_Weight` first, then `Total_Gross_Weight` (quotation root). */
+  const grossFromRaw = quotationScalarFieldPresent(rawQuotationData?.Gross_Weight)
+    ? String(rawQuotationData?.Gross_Weight ?? '').trim()
+    : String(rawQuotationData?.Total_Gross_Weight ?? '').trim() || undefined
+  const insideQuotationText = String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()
 
   const lineItemsFromZoho: EkamasDisplayRow[] = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -183,6 +193,33 @@ export default function EkamasGoodsTable({
               String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
           )
         : undefined) || rows3Linked[index]
+
+    const cat2ProductDetail = itemRef
+      ? cat2WmwMainRows.find(
+          (pd: Record<string, unknown>) =>
+            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
+        ) || cat2WmwMainRows[index] || {}
+      : cat2WmwMainRows[index] || {}
+    const cat1ProductDetail = itemRef
+      ? cat1WmwMainRows.find(
+          (pd: Record<string, unknown>) =>
+            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
+        ) || cat1WmwMainRows[index] || {}
+      : cat1WmwMainRows[index] || {}
+
+    const fitmentRows = toRowArray((rawQuotationData as Record<string, unknown> | null)?.Product_Fitments2_0)
+    const fitmentRow =
+      fitmentRows.find(
+        (x: Record<string, unknown>) => String(x?.S_No ?? '').trim() === String(index + 1)
+      ) || fitmentRows[index]
+
+    /** `UOM_Billing` / `Pieces` often live on `Product_Fitments` (main), not `Product_Fitments2_0` — match by Sr_No / S_No. */
+    const fitmentMainRows = toRowArray((rawQuotationData as Record<string, unknown> | null)?.Product_Fitments)
+    const fitmentMain =
+      fitmentMainRows.find(
+        (x: Record<string, unknown>) =>
+          String(x?.Sr_No ?? x?.S_No ?? '').trim() === String(index + 1)
+      ) || fitmentMainRows[index]
 
     let size = ''
     if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
@@ -208,35 +245,32 @@ export default function EkamasGoodsTable({
       supplyDimension2: productDetail.Supply_Dimension_2,
       sizeDisplay: size,
     })
-    const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    /** Quantity column: when `UOM_Billing` is SQM, use `Pieces`. Order: WMW chain → Cat mains → Product_Fitments2_0 → Product_Fitments (main). */
+    const qtyUomRecords: unknown[] = [
+      item,
+      ext3,
+      productDetail,
+      cat1ProductDetail,
+      cat2ProductDetail,
+      fitmentRow,
+      fitmentMain,
+    ]
+    const uomBilling = firstField(qtyUomRecords, 'UOM_Billing')
+    const piecesStr = firstField(qtyUomRecords, 'Pieces')
+    const qtyFromStandard = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    const usePiecesForQty = uomBilling.trim().toUpperCase() === 'SQM' && piecesStr.trim() !== ''
+    const qtyFromPieces = parseFloat(String(piecesStr).replace(/,/g, '').trim())
+    const quantity =
+      usePiecesForQty && Number.isFinite(qtyFromPieces) ? qtyFromPieces : qtyFromStandard
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
     const amountFromLine = parseFloat(item.Net_Selling_Amount?.replace(/,/g, '') || item.Gross_Amount?.replace(/,/g, '') || '0')
     const computedAmount = quantity * rate
     const amount = Number.isFinite(computedAmount) ? computedAmount : amountFromLine
 
-    const cat2ProductDetail = itemRef
-      ? cat2WmwMainRows.find(
-          (pd: Record<string, unknown>) =>
-            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
-        ) || cat2WmwMainRows[index] || {}
-      : cat2WmwMainRows[index] || {}
-    const cat1ProductDetail = itemRef
-      ? cat1WmwMainRows.find(
-          (pd: Record<string, unknown>) =>
-            String(pd.last_item_ref ?? pd.Last_item_ref ?? '').trim() === itemRef
-        ) || cat1WmwMainRows[index] || {}
-      : cat1WmwMainRows[index] || {}
-
-    const fitmentRows = toRowArray((rawQuotationData as Record<string, unknown> | null)?.Product_Fitments2_0)
-    const fitmentRow =
-      fitmentRows.find(
-        (x: Record<string, unknown>) => String(x?.S_No ?? '').trim() === String(index + 1)
-      ) || fitmentRows[index]
-
     /** MESH: same as other WMW goods tables — first non-empty `Product_Code` across main / Cat2 / Cat1 / fitment rows. */
     const productCodeForMesh = firstField(
-      [productDetail, cat2ProductDetail, cat1ProductDetail, fitmentRow],
+      [productDetail, cat2ProductDetail, cat1ProductDetail, fitmentMain, fitmentRow],
       'Product_Code'
     )
     const mesh = meshInchFromProductCode(productCodeForMesh)
@@ -256,7 +290,9 @@ export default function EkamasGoodsTable({
       defaultProductLabel
     /** Form column: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
     const form = endTypeDisplayFromRecords(ext3 as Record<string, unknown>, item as Record<string, unknown>, productDetail as Record<string, unknown>)
-    const quality = wiLine?.quality?.trim() || ''
+    /** Quality: Zoho `Material_Code` only (WMW 2_0 → 3_0 → mains); same AISI prefix as other WMW goods tables. */
+    const materialCode = firstField([item, ext3, productDetail, cat1ProductDetail, cat2ProductDetail], 'Material_Code')
+    const quality = materialCode ? `AISI ${materialCode}` : wiLine?.quality?.trim() || ''
 
     const perPc = parseFloat(productDetail.Net_Weight_Per_Pcs || '0') || (index === 0 ? 50 : 50)
     const totalWeight = perPc * quantity
@@ -534,7 +570,7 @@ export default function EkamasGoodsTable({
                               <span>Item</span>
                               <span>MESH</span>
                               <span>BRAND</span>
-                              <span>SIZE [Mtrs] (LxW)</span>
+                              <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
                               <span>Sqm Area / PC</span>
                             </div>
                           </td>
@@ -576,7 +612,7 @@ export default function EkamasGoodsTable({
                                     <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                     <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
                                     <span style={goodsDescGridValueSpan}>{row.brand}</span>
-                                    <span style={goodsDescGridValueSpan}>{row.size}</span>
+                                    <span style={{ ...goodsDescGridValueSpan, ...goodsDescGridSizeSpanOneLine }}>{row.size}</span>
                                     <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                                   </div>
                                 </div>
@@ -590,8 +626,18 @@ export default function EkamasGoodsTable({
                                       lineHeight: 1.45,
                                     }}
                                   >
-                                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{defaultWarranty}</div>
-                                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{defaultPacking}</div>
+                                    {insideQuotationText ? (
+                                      <div
+                                        style={{
+                                          fontWeight: 'bold',
+                                          fontSize: '10px',
+                                          marginBottom: '8px',
+                                          whiteSpace: 'pre-wrap',
+                                        }}
+                                      >
+                                        {insideQuotationText}
+                                      </div>
+                                    ) : null}
                                     <div style={{ fontWeight: 'bold' }}>{documentGrossWeightLine}</div>
                                   </div>
                                 ) : null}
@@ -686,7 +732,7 @@ export default function EkamasGoodsTable({
                               fontSize: '11px',
                             }}
                           >
-                            Total C&amp;F Price upto {destPortLabel} By {transportLabel}
+                            {transportSummaryLine}
                           </div>
                           <div
                             style={{

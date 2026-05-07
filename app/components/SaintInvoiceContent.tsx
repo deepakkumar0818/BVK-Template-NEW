@@ -2,7 +2,12 @@ import Link from 'next/link'
 import type { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
-import { resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  resolveCountryOfFinalDestination,
+  resolveDispatchExWorksDisplay,
+  resolveOtherReferenceDisplay,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import SaintGoodsTable from './SaintGoodsTable'
 
 interface SaintInvoiceContentProps {
@@ -22,18 +27,25 @@ export default function SaintInvoiceContent({
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || 'Ref Meeting dt. 7th May 2024'
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
-  const otherReference = rawQuotationData?.Additional_info || 'Document: E012 150 & Appendix 1'
+  const otherReference = resolveOtherReferenceDisplay(
+    rawQuotationData,
+    'Document: E012 150 & Appendix 1'
+  )
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const kindAttn = shippingData?.Contact_Name || rawQuotationData?.Contact_Name || 'Mr. Krushit Shah / Mr. Rohan Ghumare'
 
-  const countryOfOrigin = rawQuotationData?.Billing_Country || 'India'
-  const countryOfDestination = rawQuotationData?.Shipping_Country || shippingData?.Shipping_Country || 'Germany'
+  const countryOfOrigin = 'India'
+  const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Germany')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Air'
   const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
   const portOfDischarge = rawQuotationData?.Port_of_Discharge || 'Dusseldorf'
   const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || 'Germany'
-  const dispatchExWorks = rawQuotationData?.Delivery_Date_Control || data.deliveryDate || '14-16 Weeks from the date of receipt of Confirm PO & Advance'
+  const dispatchExWorks = resolveDispatchExWorksDisplay(
+    rawQuotationData,
+    data.deliveryDate,
+    '14-16 Weeks from the date of receipt of Confirm PO & Advance'
+  )
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
