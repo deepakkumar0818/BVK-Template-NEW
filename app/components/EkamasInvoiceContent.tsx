@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { CSSProperties } from 'react'
 import type { QuotationData } from '@/lib/types'
-import { resolveConsigneeDisplay, resolveConsigneePhone } from '@/lib/consignee-display'
+import { resolveBillingDisplay } from '@/lib/billing-display'
 import { quotationRichText } from '@/lib/quotation-rich-text'
 import EkamasGoodsTable from './EkamasGoodsTable'
 
@@ -20,6 +20,7 @@ const cellBorder: CSSProperties = { border: '1px solid #000' }
 export default function EkamasInvoiceContent({
   data,
   shippingData,
+  billingData,
   rawQuotationData,
 }: EkamasInvoiceContentProps) {
   const quotationNumber = data.quotationNumber || (rawQuotationData?.Name as string) || ''
@@ -30,8 +31,12 @@ export default function EkamasInvoiceContent({
     data.customerReferenceDate || (rawQuotationData?.Customer_Reference_Date as string) || ''
   const otherReference = (rawQuotationData?.Additional_info as string) || ''
 
-  const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const consigneePhone = resolveConsigneePhone(shippingData, rawQuotationData)
+  const billing = resolveBillingDisplay(billingData, rawQuotationData)
+  const billingHasContent =
+    Boolean(billing.name) ||
+    Boolean(billing.addressBlock) ||
+    Boolean(billing.country) ||
+    Boolean(billing.gstNo)
 
   const countryOfOrigin = (rawQuotationData?.Billing_Country as string) || 'India'
   const countryOfDestination =
@@ -147,14 +152,24 @@ export default function EkamasInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '50%', verticalAlign: 'top', ...cellBorder, padding: '8px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>{consignee.name}</div>
-                    <div style={{ fontSize: '11px', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{consignee.addressBlock}</div>
-                    {consignee.country ? (
-                      <div style={{ fontWeight: 'bold', fontSize: '11px', marginTop: '4px' }}>{consignee.country}</div>
-                    ) : null}
-                    {consigneePhone ? (
-                      <div style={{ fontSize: '11px', marginTop: '8px' }}>Phone: {consigneePhone}</div>
+                    {billingHasContent ? (
+                      <>
+                        <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee </div>
+                        {billing.name ? (
+                          <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>{billing.name}</div>
+                        ) : null}
+                        {billing.addressBlock ? (
+                          <div style={{ fontSize: '11px', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                            {billing.addressBlock}
+                          </div>
+                        ) : null}
+                        {billing.country ? (
+                          <div style={{ fontWeight: 'bold', fontSize: '11px', marginTop: '4px' }}>{billing.country}</div>
+                        ) : null}
+                        {billing.gstNo ? (
+                          <div style={{ fontSize: '11px', marginTop: '8px' }}>GST Number: {billing.gstNo}</div>
+                        ) : null}
+                      </>
                     ) : null}
                   </td>
                   <td style={{ width: '50%', verticalAlign: 'top', ...cellBorder, padding: 0 }}>
