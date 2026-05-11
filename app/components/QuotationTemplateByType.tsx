@@ -106,7 +106,7 @@ export interface QuotationTemplateByTypeProps {
   billingData?: unknown
   /** WMW wmwd1 layout only: overrides header title (default “PERFORMA INVOICE”). */
   wmwd1DocumentTitle?: string
-  /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Please_Note`. */
+  /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Inside_Quotation_Text`, then `Please_Note`. */
   wmwd1NotesRemarksFromApi?: boolean
 }
 

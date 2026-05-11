@@ -67,41 +67,12 @@ function strVal(v: unknown): string {
   return s
 }
 
-/** Line / product fields listed in Product column using exact Zoho API names (SLS-aligned + common WI detail). */
-const BVK_MERGED_LINE_KEYS: readonly string[] = [
-  'Remarks',
-  'Invoice_Dimension_Type',
-  'SQM',
-  'Pieces',
-  'UOM_Billing',
-]
-
-/** Product subform fields for BVK product column — not Line_Item_ref; Mesh/Material/Weave are separate rows. */
-const BVK_PRODUCT_SUBFORM_KEYS: readonly string[] = [
-  'Product_Name',
-  'Product_Group',
-  'Brand_Category',
-  'Supply_Form',
-  'Invoice_Form',
-  'Supply_Dimension_Type',
-  'Conversion_Factor',
-  'End_Type',
-  'Status',
-  'Product_Status',
-]
-
-const BVK_FITMENT_DETAIL_KEYS: readonly string[] = [
-  'S_No',
-  'Product_Name',
-  'Product_Group',
-  'Description',
-  'Item_Name',
-  'Brand_Category',
-  'Invoice_Dimension_Type',
-  'SQM',
-  'Pieces',
-  'UOM_Billing',
-]
+/**
+ * BVK Product column shows only **Remarks** per template:
+ * - WI: `Category_*_MM_Database_WI_2_0.Remarks`
+ * - Product Fitment: `Product_Fitments2_0.Remarks` (else `Product_Fitments.Remarks`)
+ * Mesh / Material / Weave render as separate rows beside Remarks.
+ */
 
 /** First numeric token in Product_Code (e.g. mesh count from code string). */
 export function bvkMeshFirstNumericFromProductCode(productCode?: string): string {
@@ -149,14 +120,6 @@ function bvkMeshMaterialWeaveFromWiRows(
   }
 }
 
-/** Never show internal line keys in the Product column. */
-function stripLineRefLines(lines: Array<{ apiName: string; value: string }>): void {
-  const drop = new Set(['Line_Item_ref', 'Last_item_ref', 'last_item_ref'])
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (drop.has(lines[i].apiName)) lines.splice(i, 1)
-  }
-}
-
 export interface BvkQuotationTableRow {
   /** Upper product column: API name + value (excludes Line_Item_ref; Mesh/Material/Weave are below). */
   productColumnLines: Array<{ apiName: string; value: string }>
@@ -174,24 +137,9 @@ export interface BvkQuotationTableRow {
   totalPrice: number
 }
 
-function pushDetailLines(
-  out: Array<{ apiName: string; value: string }>,
-  row: Record<string, unknown>,
-  keys: readonly string[]
-): void {
-  for (const k of keys) {
-    const value = strVal(row[k])
-    if (value) out.push({ apiName: k, value })
-  }
-}
-
-function amountFromLine(merged: Record<string, unknown>): number {
-  const tsv = strVal(merged.Total_Sale_Value).replace(/,/g, '')
-  if (tsv) return parseFloat(tsv) || 0
-  const ns = strVal(merged.Net_Selling_Amount).replace(/,/g, '')
-  if (ns) return parseFloat(ns) || 0
-  const ga = strVal(merged.Gross_Amount).replace(/,/g, '')
-  return parseFloat(ga) || 0
+function buildRemarksOnlyProductLines(remarks: string): Array<{ apiName: string; value: string }> {
+  const v = remarks.trim()
+  return v ? [{ apiName: 'Remarks', value: v }] : []
 }
 
 function unitPriceFromLine(merged: Record<string, unknown>): number {
@@ -230,25 +178,7 @@ export function buildBvkQuotationTableRows(
         const pd: Record<string, unknown> =
           (ref ? products.find((p) => lineRef(p) === ref) : undefined) ?? products[index] ?? {}
 
-        const productColumnLines: Array<{ apiName: string; value: string }> = []
-        pushDetailLines(productColumnLines, merged, BVK_MERGED_LINE_KEYS)
-        pushDetailLines(productColumnLines, pd, BVK_PRODUCT_SUBFORM_KEYS)
-
-        const inv1 = strVal(merged.Invoice_Dimension_1)
-        const inv2 = strVal(merged.Invoice_Dimension_2)
-        const invSize = inv1 && inv2 ? `${inv1}x${inv2}` : inv1 || inv2
-        const s1 = strVal(pd.Supply_Dimension_1)
-        const s2 = strVal(pd.Supply_Dimension_2)
-        const supplySize = s1 && s2 ? `${s1}x${s2}` : s1 || s2
-        const sizeLine = invSize || supplySize
-        if (sizeLine) {
-          const headIdx = productColumnLines.findIndex(
-            (l) => l.apiName === 'Remarks' || l.apiName === 'Product_Name' || l.apiName === 'Product_Group'
-          )
-          productColumnLines.splice(headIdx >= 0 ? headIdx + 1 : 0, 0, { apiName: 'Size', value: sizeLine })
-        }
-
-        stripLineRefLines(productColumnLines)
+        const productColumnLines = buildRemarksOnlyProductLines(strVal(row20.Remarks))
 
         const { mesh: meshDisplay, material: materialDisplay, weave: weaveDisplay } = bvkMeshMaterialWeaveFromWiRows(
           bundle,
@@ -266,7 +196,7 @@ export function buildBvkQuotationTableRows(
           weaveDisplay,
           qty,
           unitPrice: unitPriceFromLine(merged),
-          totalPrice: amountFromLine(merged),
+          totalPrice: slsLineTotalFromRow(merged),
         }
       })
     }
@@ -274,39 +204,27 @@ export function buildBvkQuotationTableRows(
 
   const fit2 = subformRows(raw, 'Product_Fitments2_0')
   const fit1 = subformRows(raw, 'Product_Fitments')
-  const fitRows = fit2.length > 0 ? fit2 : fit1
+  const fit3 = subformRows(raw, 'Product_Fitments3_0')
+  const useFit2 = fit2.length > 0
+  const fitRows = useFit2 ? fit2 : fit1
   if (fitRows.length > 0) {
-    return fitRows.map((row) => {
-      const productColumnLines: Array<{ apiName: string; value: string }> = []
-      pushDetailLines(productColumnLines, row, BVK_FITMENT_DETAIL_KEYS)
-      const len = strVal(row.Length_field)
-      const wid = strVal(row.Width)
-      const fitSize =
-        len && wid
-          ? `${len}x${wid}`
-          : strVal(row.Invoice_Dimension_1) && strVal(row.Invoice_Dimension_2)
-            ? `${strVal(row.Invoice_Dimension_1)}x${strVal(row.Invoice_Dimension_2)}`
-            : ''
-      if (fitSize) {
-        const nameIdx = productColumnLines.findIndex(
-          (l) => l.apiName === 'Remarks' || l.apiName === 'Product_Name' || l.apiName === 'Description'
-        )
-        productColumnLines.splice(nameIdx >= 0 ? nameIdx + 1 : 0, 0, { apiName: 'Size', value: fitSize })
-      }
-      const pc = strVal(row.Product_Code)
-      const meshDisplay = bvkMeshFirstNumericFromProductCode(pc)
-      const materialDisplay = strVal(row.Material_Code)
-      const weaveDisplay = strVal(row.Weave) || strVal(row.Seam_Type)
+    return fitRows.map((row, index) => {
+      const productColumnLines = buildRemarksOnlyProductLines(strVal(row.Remarks))
 
-      const qty = strVal(row.Qty ?? row.Quantity ?? row.Pieces)
-      const unitPrice = parseFloat(strVal(row.Selling_Price).replace(/,/g, '')) || 0
-      const totalPrice =
-        parseFloat(
-          strVal(row.Total_Sale_Value ?? row.Net_Selling_Amount ?? row.Gross_Amount ?? row.Total_Price).replace(
-            /,/g,
-            ''
-          )
-        ) || 0
+      const mainRow = useFit2 ? matchProductFitmentsMainRow(fit1, row, index) : row
+      const fit3Row = useFit2 ? matchProductFitments3Row(fit3, row, index) : undefined
+
+      const productCode = strVal(mainRow?.Product_Code) || strVal(row.Product_Code)
+      const meshDisplay = bvkMeshFirstNumericFromProductCode(productCode)
+      const materialDisplay =
+        strVal(row.Material_Code) || (mainRow ? strVal(mainRow.Material_Code) : '')
+      const weaveDisplay =
+        strVal(fit3Row?.Weave) || strVal(row.Weave) || strVal(row.Seam_Type)
+
+      const qty = useFit2
+        ? qtyFromProductFitmentsMainRow(fit1, row, index) || strVal(row.Qty) || strVal(row.Pieces)
+        : strVal(row.Qty) || strVal(row.Pieces)
+      const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit2, fit1, row, index)
       return {
         productColumnLines,
         meshDisplay,
@@ -324,11 +242,7 @@ export function buildBvkQuotationTableRows(
 
 function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[] {
   return items.map((item) => {
-    const productColumnLines: Array<{ apiName: string; value: string }> = []
-    if (item.product) productColumnLines.push({ apiName: 'Remarks', value: item.product })
-    if (item.size) productColumnLines.push({ apiName: 'Size', value: item.size })
-    if (item.form) productColumnLines.push({ apiName: 'End_Type (display as Form)', value: item.form })
-    if (item.type) productColumnLines.push({ apiName: 'Brand_Category (display)', value: item.type })
+    const productColumnLines = buildRemarksOnlyProductLines(item.product ?? '')
     const meshDisplay = item.mesh?.trim() || ''
     const materialDisplay = item.quality || ''
     const weaveDisplay = item.weave?.trim() || ''
@@ -347,6 +261,91 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
   })
 }
 
+/**
+ * Product Fitment: align `Product_Fitments2_0` lines with `Product_Fitments` by `S_No` ↔ `Sr_No` (or `S_No`),
+ * else same index.
+ */
+function matchProductFitmentsMainRow(
+  fitMain: Record<string, unknown>[],
+  fit20Row: Record<string, unknown>,
+  index: number
+): Record<string, unknown> | undefined {
+  if (fitMain.length === 0) return undefined
+  const serial = strVal(fit20Row.S_No)
+  const match =
+    serial !== ''
+      ? fitMain.find((r) => {
+          const sr = strVal(r.Sr_No)
+          const sn = strVal(r.S_No)
+          return sr === serial || sn === serial
+        })
+      : undefined
+  return match ?? fitMain[index]
+}
+
+/** Align `Product_Fitments3_0` rows to `Product_Fitments2_0` by `S_No`; falls back to same index. */
+function matchProductFitments3Row(
+  fit3: Record<string, unknown>[],
+  fit20Row: Record<string, unknown>,
+  index: number
+): Record<string, unknown> | undefined {
+  if (fit3.length === 0) return undefined
+  const serial = strVal(fit20Row.S_No)
+  const match =
+    serial !== ''
+      ? fit3.find((r) => strVal(r.S_No) === serial || strVal(r.Sr_No) === serial)
+      : undefined
+  return match ?? fit3[index]
+}
+
+function qtyFromProductFitmentsMainRow(
+  fitMain: Record<string, unknown>[],
+  fit20Row: Record<string, unknown>,
+  index: number
+): string {
+  const mainRow = matchProductFitmentsMainRow(fitMain, fit20Row, index)
+  if (!mainRow) return ''
+  return strVal(mainRow.Qty) || strVal(mainRow.Pieces)
+}
+
+/** Prefer non-empty `Gross_Amount`, then legacy line-total fields (older WI / fitment payloads). */
+function slsLineTotalFromRow(row: Record<string, unknown>): number {
+  const ga = strVal(row.Gross_Amount).replace(/,/g, '')
+  if (ga !== '') {
+    const n = parseFloat(ga)
+    if (Number.isFinite(n)) return n
+  }
+  for (const k of ['Total_Sale_Value', 'Net_sales_value', 'Net_Selling_Amount', 'Total_Price'] as const) {
+    const v = strVal(row[k]).replace(/,/g, '')
+    if (v === '') continue
+    const n = parseFloat(v)
+    if (Number.isFinite(n)) return n
+  }
+  return 0
+}
+
+/** Unit / line total for Product Fitment: `Selling_Price` and `Gross_Amount` on matched `Product_Fitments` row. */
+function slsProductFitmentUnitAndTotal(
+  useFit20: boolean,
+  fitMain: Record<string, unknown>[],
+  row: Record<string, unknown>,
+  index: number
+): { unitPrice: number; totalPrice: number } {
+  const mainRow = useFit20 ? matchProductFitmentsMainRow(fitMain, row, index) : row
+  const primary = mainRow ?? row
+  const unitPrice = parseFloat(strVal(primary.Selling_Price).replace(/,/g, '')) || 0
+  let totalPrice = slsLineTotalFromRow(primary)
+  if (useFit20) {
+    const u2 = parseFloat(strVal(row.Selling_Price).replace(/,/g, '')) || 0
+    const t2 = slsLineTotalFromRow(row)
+    return {
+      unitPrice: unitPrice || u2,
+      totalPrice: totalPrice || t2,
+    }
+  }
+  return { unitPrice, totalPrice }
+}
+
 /** SLS: same row shape as `buildSlsLineItemsFromWi20Subforms` in SLSQuotationContent. */
 export function buildSlsLineItemsFromWi20SubformsShared(
   raw: Record<string, unknown> | null | undefined,
@@ -357,7 +356,8 @@ export function buildSlsLineItemsFromWi20SubformsShared(
   if (t.includes('product fitment')) {
     const fit20 = subformRows(raw, 'Product_Fitments2_0')
     const fitMain = subformRows(raw, 'Product_Fitments')
-    const rows = fit20.length > 0 ? fit20 : fitMain
+    const useFit20 = fit20.length > 0
+    const rows = useFit20 ? fit20 : fitMain
     return rows.map((row, index) => {
       const product =
         strVal(row.Remarks) ||
@@ -365,17 +365,16 @@ export function buildSlsLineItemsFromWi20SubformsShared(
         strVal(row.Product_Name) ||
         strVal(row.Product_Group) ||
         strVal(row.Item_Name)
-      const qtyRaw = strVal(row.Qty) || strVal(row.Pieces)
-      const sp = strVal(row.Selling_Price).replace(/,/g, '')
-      const total = strVal(
-        row.Total_Sale_Value ?? row.Net_sales_value ?? row.Net_Selling_Amount ?? row.Gross_Amount ?? row.Total_Price
-      ).replace(/,/g, '')
+      const qtyRaw = useFit20
+        ? qtyFromProductFitmentsMainRow(fitMain, row, index) || strVal(row.Qty) || strVal(row.Pieces)
+        : strVal(row.Qty) || strVal(row.Pieces)
+      const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit20, fitMain, row, index)
       return {
         item: index + 1,
         product,
         qty: qtyRaw,
-        unitPrice: parseFloat(sp) || 0,
-        totalPrice: parseFloat(total) || 0,
+        unitPrice,
+        totalPrice,
       }
     })
   }
@@ -384,14 +383,15 @@ export function buildSlsLineItemsFromWi20SubformsShared(
   return rows.map((row, index) => {
     const remarks = strVal(row.Remarks)
     const sp = strVal(row.Selling_Price).replace(/,/g, '')
-    const tsv = strVal(row.Total_Sale_Value).replace(/,/g, '')
     const qtyRaw = strVal(row.Qty)
+    const unitPrice = parseFloat(sp) || 0
+    const totalPrice = slsLineTotalFromRow(row)
     return {
       item: index + 1,
       product: remarks,
       qty: qtyRaw,
-      unitPrice: parseFloat(sp) || 0,
-      totalPrice: parseFloat(tsv) || 0,
+      unitPrice,
+      totalPrice,
     }
   })
 }

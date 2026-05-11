@@ -454,12 +454,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                 <colgroup>
                   <col style={{ width: '20%' }} />
                   <col style={{ width: '22%' }} />
-                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '10%' }} />
                   <col style={{ width: '8%' }} />
                   <col style={{ width: '8%' }} />
                   <col style={{ width: '8%' }} />
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '14%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="adhunik-goods-title-row">
@@ -632,7 +632,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>
@@ -647,7 +647,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>

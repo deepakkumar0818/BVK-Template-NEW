@@ -77,6 +77,8 @@ export interface ZohoQuotation {
   Tolerances?: string
   /** Quotation-level note under tolerances (Zoho API name: Please_Note) */
   Please_Note?: string
+  /** Preferred source for “Please Note” / notes blocks when non-empty */
+  Inside_Quotation_Text?: string
   Type_Of_Quotation?: string
   Template?: string
   /** Consignee GST from quotation record (Zoho Creator) */

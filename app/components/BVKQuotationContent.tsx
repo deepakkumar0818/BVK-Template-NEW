@@ -23,7 +23,9 @@ function bvkMeshCellValue(meshDisplay?: string): string {
 
 export default function BVKQuotationContent({ data, shippingData, billingData, rawQuotationData }: BVKQuotationContentProps) {
   const tolerancesFromZoho = String(rawQuotationData?.Tolerances ?? '').trim()
-  const pleaseNoteFromZoho = String(rawQuotationData?.Please_Note ?? '').trim()
+  const pleaseNoteFromZoho =
+    String(rawQuotationData?.Inside_Quotation_Text ?? '').trim() ||
+    String(rawQuotationData?.Please_Note ?? '').trim()
 
   // Format date for BVK (DD.MM.YY format)
   const formatBVKDate = (dateString?: string): string => {

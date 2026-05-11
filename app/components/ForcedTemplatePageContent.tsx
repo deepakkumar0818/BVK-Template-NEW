@@ -22,7 +22,7 @@ export interface ForcedTemplatePageContentProps {
   documentLabel: string
   /** WMW wmwd1 route only: document title in master header (default unchanged when omitted). */
   wmwd1DocumentTitle?: string
-  /** WMW `/quotation/[id]` only: Notes from API (`Please_Note`). */
+  /** WMW `/quotation/[id]` only: Notes from API (`Inside_Quotation_Text`, then `Please_Note`). */
   wmwd1NotesRemarksFromApi?: boolean
 }
 
