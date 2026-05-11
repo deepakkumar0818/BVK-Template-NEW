@@ -3,9 +3,14 @@
 import Link from 'next/link'
 import { QuotationData } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { formatCurrency, resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  parseOverallGrandTotalInclAccessories,
+  parseQuotationTaxForSummary,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import { buildSlsLineItemsFromWi20SubformsShared } from '@/lib/wi-line-display-shared'
-import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface SLSQuotationContentProps {
@@ -36,31 +41,13 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     }
   }
 
-  // Format date for inquiry (DD.MM.YY)
-  const formatInquiryDate = (dateString?: string): string => {
-    if (!dateString) return ''
-    try {
-      const dateMatch = dateString.match(/(\d{2})-(\w{3})-(\d{4})/)
-      if (dateMatch) {
-        const [, day, month, year] = dateMatch
-        const monthMap: { [key: string]: string } = {
-          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-          'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-        }
-        const monthNum = monthMap[month] || '01'
-        const shortYear = year.slice(-2)
-        return `${day}.${monthNum}.${shortYear}`
-      }
-      return dateString
-    } catch {
-      return dateString || ''
-    }
-  }
-
-  // Use dynamic data from API
   const date = formatSLSDate(data.date || rawQuotationData?.Created_Date_and_time)
   const quotationRefNo = data.quotationNumber || rawQuotationData?.Name || ''
-  const inquiryDate = formatInquiryDate(data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date)
+  // Root-level `Remarks` (NOT subform `Remarks` such as Product_Fitments[].Remarks).
+  // Replaces the legacy "Concerning your inquiry…" intro line; hidden when empty.
+  const slsRootRemarks = String(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Remarks ?? ''
+  ).trim()
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const recipientName = String(shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? '').trim()
   const recipientCompany =
@@ -85,8 +72,106 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
         })) || []
 
-  const { discountTotal: slsDiscountAmount } = resolveWmwChargeTotals(rawQuotationData ?? null)
+  const {
+    discountTotal: slsDiscountAmount,
+    packingTotal: slsPackingTotal,
+    freightTotal: slsFreightTotal,
+  } = resolveWmwChargeTotals(rawQuotationData ?? null)
   const slsShowDiscountRow = Number.isFinite(slsDiscountAmount) && slsDiscountAmount !== 0
+
+  // Other Charges (Zoho scalar `Other_Charges`, optionally labelled with `Type_of_Other_Charges`).
+  const slsOtherChargesAmt = quotationScalarFieldPresent(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Other_Charges
+  )
+    ? parseFloat(
+        String((rawQuotationData as Record<string, unknown>)?.Other_Charges)
+          .replace(/,/g, '')
+          .trim()
+      ) || 0
+    : 0
+  const slsOtherChargesType = String(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Type_of_Other_Charges ?? ''
+  ).trim()
+  const slsOtherChargesLabel = slsOtherChargesType
+    ? `Other Charges (${slsOtherChargesType})`
+    : 'Other Charges'
+
+  const slsLineItemsTotalFallback = lineItems.reduce(
+    (sum, item) => sum + (Number.isFinite(item.totalPrice) ? item.totalPrice : 0),
+    0
+  )
+  const {
+    cgstAmount: slsCgstAmount,
+    sgstAmount: slsSgstAmount,
+    igstAmount: slsIgstAmount,
+    taxAmount: slsTaxAmount,
+    totalBeforeTax: slsTotalBeforeTax,
+    totalAfterTax: slsTotalAfterTax,
+  } = parseQuotationTaxForSummary(rawQuotationData, slsLineItemsTotalFallback)
+  const slsGrandTotal = (() => {
+    const fromZoho = parseOverallGrandTotalInclAccessories(
+      rawQuotationData as Record<string, unknown> | null | undefined
+    )
+    if (Number.isFinite(fromZoho)) return fromZoho
+    if (Number.isFinite(slsTotalAfterTax)) return slsTotalAfterTax
+    return slsLineItemsTotalFallback
+  })()
+  const slsSafe = (n: number) => (Number.isFinite(n) ? n : 0)
+  /** Standard GST split: IGST = CGST + SGST = 18%; rate labels are fixed per tax type when an amount is present. */
+  const slsTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  type SlsSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
+  const slsSummaryRows: SlsSummaryRow[] = [
+    { label: `Total ${displayCurrency}`, value: formatCurrency(slsGrandTotal, displayCurrency), bold: true },
+    { label: 'Packing Charges', value: formatCurrency(slsSafe(slsPackingTotal), displayCurrency) },
+  ]
+  if (slsTaxHasValue(slsFreightTotal)) {
+    slsSummaryRows.push({
+      label: 'Freight Charges',
+      value: formatCurrency(slsFreightTotal, displayCurrency),
+    })
+  }
+  if (slsTaxHasValue(slsOtherChargesAmt)) {
+    slsSummaryRows.push({
+      label: slsOtherChargesLabel,
+      value: formatCurrency(slsOtherChargesAmt, displayCurrency),
+    })
+  }
+  slsSummaryRows.push({
+    label: 'Total Amount Before Tax',
+    value: formatCurrency(slsSafe(slsTotalBeforeTax), displayCurrency),
+    bold: true,
+  })
+  if (slsTaxHasValue(slsCgstAmount)) {
+    slsSummaryRows.push({
+      label: 'Add CGST @ 9%',
+      value: formatCurrency(slsCgstAmount, displayCurrency),
+    })
+  }
+  if (slsTaxHasValue(slsSgstAmount)) {
+    slsSummaryRows.push({
+      label: 'Add SGST @ 9%',
+      value: formatCurrency(slsSgstAmount, displayCurrency),
+    })
+  }
+  if (slsTaxHasValue(slsIgstAmount)) {
+    slsSummaryRows.push({
+      label: 'Add IGST @ 18%',
+      value: formatCurrency(slsIgstAmount, displayCurrency),
+    })
+  }
+  if (slsTaxHasValue(slsTaxAmount)) {
+    slsSummaryRows.push({
+      label: 'Tax Amount GST',
+      value: formatCurrency(slsTaxAmount, displayCurrency),
+    })
+  }
+  slsSummaryRows.push({
+    label: 'Total Amount After GST',
+    value: formatCurrency(slsGrandTotal, displayCurrency),
+    bold: true,
+    big: true,
+  })
 
   // "Please Note:" prefers Zoho `Inside_Quotation_Text`; else `Please_Note` only when that key exists on the record;
   // empty Please_Note must not fall through to `Remarks` (|| would treat "" as missing).
@@ -172,9 +257,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           <div style={{ marginBottom: '8px' }}>
             <strong>Quotation Ref. No.:</strong> {quotationRefNo}
           </div>
-          <div style={{ marginBottom: '20px' }}>
-            Concerning your inquiry vide email dated {inquiryDate}, we are pleased to quote our price here.
-          </div>
+          {slsRootRemarks ? (
+            <div style={{ marginBottom: '20px' }}>{slsRootRemarks}</div>
+          ) : null}
         </div>
 
         {/* Product Table */}
@@ -212,6 +297,36 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                   </td>
                 </tr>
               ) : null}
+              {slsSummaryRows.map((srow) => (
+                <tr key={srow.label} className="sls-summary-row">
+                  <td
+                    colSpan={4}
+                    style={{
+                      border: '1px solid #000',
+                      padding: srow.big ? '12px 8px' : '6px 8px',
+                      textAlign: 'right',
+                      fontWeight: srow.bold ? 'bold' : 'normal',
+                      fontSize: srow.big ? '13px' : '11px',
+                      verticalAlign: 'middle',
+                    }}
+                  >
+                    {srow.label}
+                  </td>
+                  <td
+                    style={{
+                      border: '1px solid #000',
+                      padding: srow.big ? '12px 8px' : '6px 8px',
+                      textAlign: 'right',
+                      fontWeight: srow.bold ? 'bold' : 'normal',
+                      fontSize: srow.big ? '13px' : '11px',
+                      verticalAlign: 'middle',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {srow.value}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

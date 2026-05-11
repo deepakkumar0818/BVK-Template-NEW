@@ -476,22 +476,31 @@ export default function PerformaInvoiceContent({
                                   {formatCurrency(totalBeforeTax, data.currency || 'INR')}
                                 </td>
                               </tr>
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add CGST @ &nbsp;&nbsp;{cgstRate > 0 ? `${cgstRate}` : '0.00'}</td>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(cgstAmount)}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add SGST @ &nbsp;&nbsp;{sgstRate > 0 ? `${sgstRate}` : '0.00'}</td>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(sgstAmount)}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add IGST @ &nbsp;&nbsp;{igstRate > 0 ? `${igstRate}` : '0.00'}</td>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(igstAmount)}</td>
-                              </tr>
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Tax Amount GST</td>
-                                <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(taxAmount)}</td>
-                              </tr>
+                              {/* Standard GST split: CGST 9% + SGST 9% = IGST 18%; labels are fixed when an amount exists, row is hidden otherwise. */}
+                              {Number.isFinite(cgstAmount) && cgstAmount !== 0 ? (
+                                <tr>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add CGST @ 9%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(cgstAmount)}</td>
+                                </tr>
+                              ) : null}
+                              {Number.isFinite(sgstAmount) && sgstAmount !== 0 ? (
+                                <tr>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add SGST @ 9%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(sgstAmount)}</td>
+                                </tr>
+                              ) : null}
+                              {Number.isFinite(igstAmount) && igstAmount !== 0 ? (
+                                <tr>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add IGST @ 18%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(igstAmount)}</td>
+                                </tr>
+                              ) : null}
+                              {Number.isFinite(taxAmount) && taxAmount !== 0 ? (
+                                <tr>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Tax Amount GST</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(taxAmount)}</td>
+                                </tr>
+                              ) : null}
                               <tr>
                                 <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', fontSize: '13px' }}>Total Amount After GST</td>
                                 <td style={{ border: '1px solid #000', padding: '3px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>

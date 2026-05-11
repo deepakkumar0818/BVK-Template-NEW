@@ -1,8 +1,13 @@
 'use client'
 
 import { QuotationData } from '@/lib/types'
-import { formatAmountInWords, formatCurrency, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
-import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import {
+  formatAmountInWords,
+  formatCurrency,
+  parseOverallGrandTotalInclAccessories,
+  parseQuotationTaxForSummary,
+} from '@/lib/quotation-utils'
+import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface GKDQuotationContentProps {
@@ -51,19 +56,111 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
     totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0')
   })) || []
 
-  const { discountTotal: gkdDiscountAmount, discountLabel: gkdDiscountLabel } = resolveWmwChargeTotals(
-    rawQuotationData ?? null
-  )
+  const {
+    discountTotal: gkdDiscountAmount,
+    discountLabel: gkdDiscountLabel,
+    packingTotal: gkdPackingTotal,
+    freightTotal: gkdFreightTotal,
+  } = resolveWmwChargeTotals(rawQuotationData ?? null)
   const gkdShowDiscountRow = Number.isFinite(gkdDiscountAmount) && gkdDiscountAmount !== 0
 
-  // Direct field mapping for IGST
-  const igstPercent = parseFloat(rawQuotationData?.IGST_Percent || rawQuotationData?.IGST_Rate || '0') || 0
-  const igstAmount = parseFloat(rawQuotationData?.IGST_Amount || '0') || 0
-  const totalAmount = parseOverallGrandTotalInclAccessories(
-    rawQuotationData as Record<string, unknown> | null | undefined
+  // Other Charges (Zoho scalar `Other_Charges`, optionally labelled with `Type_of_Other_Charges`).
+  const gkdOtherChargesAmt = quotationScalarFieldPresent(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Other_Charges
   )
+    ? parseFloat(
+        String((rawQuotationData as Record<string, unknown>)?.Other_Charges)
+          .replace(/,/g, '')
+          .trim()
+      ) || 0
+    : 0
+  const gkdOtherChargesType = String(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Type_of_Other_Charges ?? ''
+  ).trim()
+  const gkdOtherChargesLabel = gkdOtherChargesType
+    ? `Other Charges (${gkdOtherChargesType})`
+    : 'Other Charges'
+
   const quoteCurrency = String(rawQuotationData?.Currency ?? data.currency ?? 'INR').trim()
-  const amountInWords = formatAmountInWords(totalAmount, quoteCurrency)
+
+  const gkdLineItemsTotalFallback = lineItems.reduce(
+    (sum, item) => sum + (Number.isFinite(item.totalPrice) ? item.totalPrice : 0),
+    0
+  )
+  const {
+    cgstAmount: gkdCgstAmount,
+    sgstAmount: gkdSgstAmount,
+    igstAmount: gkdIgstAmount,
+    taxAmount: gkdTaxAmount,
+    totalBeforeTax: gkdTotalBeforeTax,
+    totalAfterTax: gkdTotalAfterTax,
+  } = parseQuotationTaxForSummary(rawQuotationData, gkdLineItemsTotalFallback)
+  const gkdGrandTotal = (() => {
+    const fromZoho = parseOverallGrandTotalInclAccessories(
+      rawQuotationData as Record<string, unknown> | null | undefined
+    )
+    if (Number.isFinite(fromZoho)) return fromZoho
+    if (Number.isFinite(gkdTotalAfterTax)) return gkdTotalAfterTax
+    return gkdLineItemsTotalFallback
+  })()
+  const gkdSafe = (n: number) => (Number.isFinite(n) ? n : 0)
+  /** Standard GST split: IGST = CGST + SGST = 18%; rate labels are fixed per tax type when an amount is present. */
+  const gkdTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  type GkdSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
+  const gkdSummaryRows: GkdSummaryRow[] = [
+    { label: `Total ${quoteCurrency}`, value: formatCurrency(gkdGrandTotal, quoteCurrency), bold: true },
+    { label: 'Packing Charges', value: formatCurrency(gkdSafe(gkdPackingTotal), quoteCurrency) },
+  ]
+  if (gkdTaxHasValue(gkdFreightTotal)) {
+    gkdSummaryRows.push({
+      label: 'Freight Charges',
+      value: formatCurrency(gkdFreightTotal, quoteCurrency),
+    })
+  }
+  if (gkdTaxHasValue(gkdOtherChargesAmt)) {
+    gkdSummaryRows.push({
+      label: gkdOtherChargesLabel,
+      value: formatCurrency(gkdOtherChargesAmt, quoteCurrency),
+    })
+  }
+  gkdSummaryRows.push({
+    label: 'Total Amount Before Tax',
+    value: formatCurrency(gkdSafe(gkdTotalBeforeTax), quoteCurrency),
+    bold: true,
+  })
+  if (gkdTaxHasValue(gkdCgstAmount)) {
+    gkdSummaryRows.push({
+      label: 'Add CGST @ 9%',
+      value: formatCurrency(gkdCgstAmount, quoteCurrency),
+    })
+  }
+  if (gkdTaxHasValue(gkdSgstAmount)) {
+    gkdSummaryRows.push({
+      label: 'Add SGST @ 9%',
+      value: formatCurrency(gkdSgstAmount, quoteCurrency),
+    })
+  }
+  if (gkdTaxHasValue(gkdIgstAmount)) {
+    gkdSummaryRows.push({
+      label: 'Add IGST @ 18%',
+      value: formatCurrency(gkdIgstAmount, quoteCurrency),
+    })
+  }
+  if (gkdTaxHasValue(gkdTaxAmount)) {
+    gkdSummaryRows.push({
+      label: 'Tax Amount GST',
+      value: formatCurrency(gkdTaxAmount, quoteCurrency),
+    })
+  }
+  gkdSummaryRows.push({
+    label: 'Total Amount After GST',
+    value: formatCurrency(gkdGrandTotal, quoteCurrency),
+    bold: true,
+    big: true,
+  })
+
+  const amountInWords = formatAmountInWords(gkdGrandTotal, quoteCurrency)
   const paymentTerms = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   
   const bankDetails = {
@@ -187,7 +284,7 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
                             {gkdDiscountLabel}
                           </td>
                           <td className="gkd-pl-cell gkd-pl-num" style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                            {formatCurrency(gkdDiscountAmount, 'INR')}
+                            {formatCurrency(gkdDiscountAmount, quoteCurrency)}
                           </td>
                         </tr>
                       ) : null}
@@ -195,28 +292,28 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
                   </table>
                 </div>
 
-                {/* Summary Section */}
+                {/* Summary block (right-aligned, non-table layout) + Amount in Words. */}
                 <div style={{ marginBottom: '20px', fontSize: '11px' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-                    <div style={{ width: '300px' }}>
-                      {igstPercent > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <div><strong>IGST {igstPercent}%:</strong></div>
-                          <div>{formatCurrency(igstAmount, 'INR')}</div>
+                    <div style={{ width: '340px' }}>
+                      {gkdSummaryRows.map((srow) => (
+                        <div
+                          key={srow.label}
+                          className="gkd-summary-row"
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: srow.big ? '8px 0' : '4px 0',
+                            borderTop: srow.big ? '1px solid #000' : 'none',
+                            fontWeight: srow.bold ? 'bold' : 'normal',
+                            fontSize: srow.big ? '13px' : '11px',
+                          }}
+                        >
+                          <div>{srow.label}</div>
+                          <div style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{srow.value}</div>
                         </div>
-                      )}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          marginTop: '8px',
-                          paddingTop: '8px',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        <div><strong>Total Amount:</strong></div>
-                        <div>{formatCurrency(totalAmount, 'INR')}</div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                   <div
