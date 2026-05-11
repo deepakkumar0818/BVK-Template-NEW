@@ -29,16 +29,18 @@ interface PerformaInvoiceContentProps {
   /** When `useWmwd1StyleLayout`: master thead title (default “PERFORMA INVOICE”). */
   wmwd1DocumentTitle?: string
   /**
-   * `/quotation/[id]` only: left merged column shows **Notes** from Zoho `Please_Note`
-   * (replacing static performa remarks). `/wmw/[id]` omits this prop.
+   * `/quotation/[id]` only: left merged column shows **Notes** from Zoho `Inside_Quotation_Text`,
+   * then `Please_Note` (replacing static performa remarks). `/wmw/[id]` omits this prop.
    */
   wmwd1NotesRemarksFromApi?: boolean
 }
 
-/** Left column for wmwd1 when {@link PerformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — Zoho `Please_Note` only. */
+/** Left column for wmwd1 when {@link PerformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — `Inside_Quotation_Text` then `Please_Note`. */
 function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null | undefined }) {
-  const pleaseNote =
+  const fromInside = String(raw?.Inside_Quotation_Text ?? '').trim()
+  const fromPlease =
     raw?.Please_Note !== undefined && raw?.Please_Note !== null ? String(raw.Please_Note).trim() : ''
+  const pleaseNote = fromInside || fromPlease
 
   return (
     <>

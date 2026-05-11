@@ -227,6 +227,40 @@ export function meshInchFromProductCode(productCode?: string): string {
 export type BvkZohoLineSource = 'cat1_wi' | 'cat2_wi' | 'fitments'
 
 export function resolveBvkLineSource(zohoData: ZohoQuotation): BvkZohoLineSource {
+  // Zoho returns empty placeholder rows in WI subforms even when the quote is Product Fitment;
+  // trust `Template` first, then `Subform_Breakdown` totals, before falling back to row counts.
+  const template = String((zohoData as any).Template ?? '')
+    .trim()
+    .toLowerCase()
+  if (template.includes('product fitment')) return 'fitments'
+  if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+    return 'cat2_wi'
+  }
+  if (template.includes('category 1 mm database wi') || template.includes('category 1 wi')) {
+    return 'cat1_wi'
+  }
+
+  const breakdown = ((zohoData as any).Subform_Breakdown as any[]) || []
+  const breakdownTotal = (name: string): number => {
+    const target = name.trim().toLowerCase()
+    let total = 0
+    for (const row of breakdown) {
+      const sub = String(row?.Subform ?? '').trim().toLowerCase()
+      if (sub !== target) continue
+      const before = parseFloat(String(row?.Cost_Before_Tax ?? '0').replace(/,/g, '')) || 0
+      const after = parseFloat(String(row?.Cost_After_Tax ?? '0').replace(/,/g, '')) || 0
+      const sale = parseFloat(String(row?.Total_Sale_Value ?? '0').replace(/,/g, '')) || 0
+      total += before + after + sale
+    }
+    return total
+  }
+  const bdFitment = breakdownTotal('product fitment')
+  const bdCat1 = breakdownTotal('category 1 wi')
+  const bdCat2 = breakdownTotal('category 2 wi')
+  if (bdFitment > 0 && bdFitment >= bdCat1 && bdFitment >= bdCat2) return 'fitments'
+  if (bdCat1 > 0 && bdCat1 >= bdCat2) return 'cat1_wi'
+  if (bdCat2 > 0) return 'cat2_wi'
+
   const c1p = ((zohoData.Category_1_MM_Database_WI as any[]) || []).length
   const c120 = ((zohoData.Category_1_MM_Database_WI_2_0 as any[]) || []).length
   const c130 = ((zohoData.Category_1_MM_Database_WI_3_0 as any[]) || []).length

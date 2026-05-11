@@ -85,22 +85,25 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
         })) || []
 
-  const { discountTotal: slsDiscountAmount, discountLabel: slsDiscountLabel } = resolveWmwChargeTotals(
-    rawQuotationData ?? null
-  )
+  const { discountTotal: slsDiscountAmount } = resolveWmwChargeTotals(rawQuotationData ?? null)
   const slsShowDiscountRow = Number.isFinite(slsDiscountAmount) && slsDiscountAmount !== 0
 
-  // "Please Note:" line maps to Zoho `Please_Note` only when the field exists on the record.
-  // Empty string must not fall through to `Remarks` (|| would treat "" as missing).
+  // "Please Note:" prefers Zoho `Inside_Quotation_Text`; else `Please_Note` only when that key exists on the record;
+  // empty Please_Note must not fall through to `Remarks` (|| would treat "" as missing).
   const pleaseNote = (() => {
     const raw = rawQuotationData as Record<string, unknown> | null | undefined
+    const fromInside = String(raw?.Inside_Quotation_Text ?? '').trim()
+    if (fromInside !== '') return fromInside
     if (raw != null && Object.prototype.hasOwnProperty.call(raw, 'Please_Note')) {
       const v = raw.Please_Note
       return v == null ? '' : String(v)
     }
     return data.remarks || ''
   })()
-  const packing = rawQuotationData?.Packing || 'Included'
+  const rawRec = rawQuotationData as Record<string, unknown> | undefined
+  const slsPackingTransportPacking = String(rawRec?.Packing ?? '').trim()
+  const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim()
+  const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
   const taxes = rawQuotationData?.Taxes || 'All taxes extra as applicable from time to time.'
   const payment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   const quotationValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | null | undefined)
@@ -202,7 +205,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                     colSpan={4}
                     style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
                   >
-                    {slsDiscountLabel}
+                    Total discount
                   </td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatCurrency(slsDiscountAmount, displayCurrency)}
@@ -219,7 +222,26 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             <strong>Please Note:</strong> {pleaseNote}
           </div>
           <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
-            <strong>Packing:</strong> {packing}
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Packing and Transport Cost :</div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(160px, max-content) 12px 1fr',
+                rowGap: '6px',
+                columnGap: '4px',
+                paddingLeft: '10px',
+              }}
+            >
+              <div>Packing</div>
+              <div>:</div>
+              <div>{slsPackingTransportPacking || '\u00A0'}</div>
+              <div>Incoterms</div>
+              <div>:</div>
+              <div>{slsPackingTransportIncoterms || '\u00A0'}</div>
+              <div>Freight cost to site</div>
+              <div>:</div>
+              <div>{slsPackingTransportFreight || '\u00A0'}</div>
+            </div>
           </div>
           <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
             <strong>Taxes:</strong> {taxes}
@@ -246,19 +268,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{companyName}</div>
           <div style={{ marginBottom: '4px' }}>
             <strong>Contact Person:</strong> {contactPerson} {contactNumber}
-          </div>
-        </div>
-
-        {/* Signature Section */}
-        <div className="sls-signature-block" style={{ marginBottom: '40px', marginTop: '50px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            <div style={{ width: '200px' }}>
-              <div style={{ borderTop: '1px solid #000', paddingTop: '4px', marginBottom: '4px' }}></div>
-              <div style={{ fontSize: '10px' }}>Signature</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', marginBottom: '4px' }}>Date: {date}</div>
-            </div>
           </div>
         </div>
 
