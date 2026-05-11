@@ -137,9 +137,10 @@ export interface BvkQuotationTableRow {
   totalPrice: number
 }
 
+/** Product column on BVK reads from Zoho `Remarks` but the visible label is `Product`. */
 function buildRemarksOnlyProductLines(remarks: string): Array<{ apiName: string; value: string }> {
   const v = remarks.trim()
-  return v ? [{ apiName: 'Remarks', value: v }] : []
+  return v ? [{ apiName: 'Product', value: v }] : []
 }
 
 function unitPriceFromLine(merged: Record<string, unknown>): number {

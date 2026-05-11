@@ -45,9 +45,9 @@ export interface QuotationSummarySectionProps {
   quotationValidityDefault?: string
 }
 
-function fmtGstRateLabel(rate: number): string {
-  if (rate > 0) return `${Number(rate).toFixed(2)}%`
-  return '0.00'
+/** Show a summary tax row only when its amount is a non-zero finite number. */
+function summaryTaxAmountHasValue(amount: number): boolean {
+  return Number.isFinite(amount) && amount !== 0
 }
 
 /**
@@ -123,14 +123,23 @@ export default function QuotationSummarySection({
     })
   }
 
+  // Standard GST split: CGST 9% + SGST 9% = IGST 18%; rate labels are fixed when an amount exists, rows are hidden otherwise.
   const summaryTaxRows: { label: string; value: string; bold?: boolean }[] = [
     { label: 'Total Amount Before Tax', value: formatCurrency(totalBeforeTax, cur), bold: true },
-    { label: `Add CGST @ ${fmtGstRateLabel(cgstRate)}`, value: formatCurrency(cgstAmount) },
-    { label: `Add SGST @ ${fmtGstRateLabel(sgstRate)}`, value: formatCurrency(sgstAmount) },
-    { label: `Add IGST @ ${fmtGstRateLabel(igstRate)}`, value: formatCurrency(igstAmount) },
-    { label: 'Tax Amount GST', value: formatCurrency(taxAmount) },
-    { label: 'Total Amount After GST', value: totalAfterFormatted, bold: true },
   ]
+  if (summaryTaxAmountHasValue(cgstAmount)) {
+    summaryTaxRows.push({ label: 'Add CGST @ 9%', value: formatCurrency(cgstAmount) })
+  }
+  if (summaryTaxAmountHasValue(sgstAmount)) {
+    summaryTaxRows.push({ label: 'Add SGST @ 9%', value: formatCurrency(sgstAmount) })
+  }
+  if (summaryTaxAmountHasValue(igstAmount)) {
+    summaryTaxRows.push({ label: 'Add IGST @ 18%', value: formatCurrency(igstAmount) })
+  }
+  if (summaryTaxAmountHasValue(taxAmount)) {
+    summaryTaxRows.push({ label: 'Tax Amount GST', value: formatCurrency(taxAmount) })
+  }
+  summaryTaxRows.push({ label: 'Total Amount After GST', value: totalAfterFormatted, bold: true })
 
   const notesRowSpan = summaryTaxRows.length
 

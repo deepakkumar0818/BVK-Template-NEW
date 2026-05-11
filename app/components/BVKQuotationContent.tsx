@@ -2,9 +2,14 @@
 
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
-import { formatCurrency, resolveQuotationValidity } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  parseOverallGrandTotalInclAccessories,
+  parseQuotationTaxForSummary,
+  resolveQuotationValidity,
+} from '@/lib/quotation-utils'
 import { buildBvkQuotationTableRows } from '@/lib/wi-line-display-shared'
-import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
 interface BVKQuotationContentProps {
@@ -81,10 +86,106 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     data.lineItems ?? []
   )
 
-  const { discountTotal: bvkDiscountAmount, discountLabel: bvkDiscountLabel } = resolveWmwChargeTotals(
-    rawQuotationData ?? null
-  )
+  const {
+    discountTotal: bvkDiscountAmount,
+    discountLabel: bvkDiscountLabel,
+    packingTotal: bvkPackingTotal,
+    freightTotal: bvkFreightTotal,
+  } = resolveWmwChargeTotals(rawQuotationData ?? null)
   const bvkShowDiscountRow = Number.isFinite(bvkDiscountAmount) && bvkDiscountAmount !== 0
+
+  // Other Charges (Zoho scalar `Other_Charges`, optionally labelled with `Type_of_Other_Charges`).
+  const bvkOtherChargesAmt = quotationScalarFieldPresent(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Other_Charges
+  )
+    ? parseFloat(
+        String((rawQuotationData as Record<string, unknown>)?.Other_Charges)
+          .replace(/,/g, '')
+          .trim()
+      ) || 0
+    : 0
+  const bvkOtherChargesType = String(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Type_of_Other_Charges ?? ''
+  ).trim()
+  const bvkOtherChargesLabel = bvkOtherChargesType
+    ? `Other Charges (${bvkOtherChargesType})`
+    : 'Other Charges'
+
+  const bvkLineItemsTotalFallback = bvkTableRows.reduce(
+    (sum, row) => sum + (Number.isFinite(row.totalPrice) ? row.totalPrice : 0),
+    0
+  )
+  const {
+    cgstAmount: bvkCgstAmount,
+    sgstAmount: bvkSgstAmount,
+    igstAmount: bvkIgstAmount,
+    taxAmount: bvkTaxAmount,
+    totalBeforeTax: bvkTotalBeforeTax,
+    totalAfterTax: bvkTotalAfterTax,
+  } = parseQuotationTaxForSummary(rawQuotationData, bvkLineItemsTotalFallback)
+  const bvkGrandTotal = (() => {
+    const fromZoho = parseOverallGrandTotalInclAccessories(
+      rawQuotationData as Record<string, unknown> | null | undefined
+    )
+    if (Number.isFinite(fromZoho)) return fromZoho
+    if (Number.isFinite(bvkTotalAfterTax)) return bvkTotalAfterTax
+    return bvkLineItemsTotalFallback
+  })()
+  const bvkSafe = (n: number) => (Number.isFinite(n) ? n : 0)
+  /** Standard GST split: IGST = CGST + SGST = 18%; rate is fixed per tax type when an amount is present. */
+  const bvkTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+  type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
+  const bvkSummaryRows: BvkSummaryRow[] = [
+    { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
+    { label: 'Packing Charges', value: formatCurrency(bvkSafe(bvkPackingTotal), displayCurrency) },
+  ]
+  if (bvkTaxHasValue(bvkFreightTotal)) {
+    bvkSummaryRows.push({
+      label: 'Freight Charges',
+      value: formatCurrency(bvkFreightTotal, displayCurrency),
+    })
+  }
+  if (bvkTaxHasValue(bvkOtherChargesAmt)) {
+    bvkSummaryRows.push({
+      label: bvkOtherChargesLabel,
+      value: formatCurrency(bvkOtherChargesAmt, displayCurrency),
+    })
+  }
+  bvkSummaryRows.push({
+    label: 'Total Amount Before Tax',
+    value: formatCurrency(bvkSafe(bvkTotalBeforeTax), displayCurrency),
+    bold: true,
+  })
+  if (bvkTaxHasValue(bvkCgstAmount)) {
+    bvkSummaryRows.push({
+      label: 'Add CGST @ 9%',
+      value: formatCurrency(bvkCgstAmount, displayCurrency),
+    })
+  }
+  if (bvkTaxHasValue(bvkSgstAmount)) {
+    bvkSummaryRows.push({
+      label: 'Add SGST @ 9%',
+      value: formatCurrency(bvkSgstAmount, displayCurrency),
+    })
+  }
+  if (bvkTaxHasValue(bvkIgstAmount)) {
+    bvkSummaryRows.push({
+      label: 'Add IGST @ 18%',
+      value: formatCurrency(bvkIgstAmount, displayCurrency),
+    })
+  }
+  if (bvkTaxHasValue(bvkTaxAmount)) {
+    bvkSummaryRows.push({
+      label: 'Tax Amount GST',
+      value: formatCurrency(bvkTaxAmount, displayCurrency),
+    })
+  }
+  bvkSummaryRows.push({
+    label: 'Total Amount After GST',
+    value: formatCurrency(bvkGrandTotal, displayCurrency),
+    bold: true,
+    big: true,
+  })
 
   return (
     <>
@@ -227,6 +328,36 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                           </td>
                         </tr>
                       ) : null}
+                      {bvkSummaryRows.map((srow) => (
+                        <tr key={srow.label} className="bvk-summary-row">
+                          <td
+                            colSpan={4}
+                            style={{
+                              border: '1px solid #000',
+                              padding: srow.big ? '12px 8px' : '6px 8px',
+                              textAlign: 'right',
+                              fontWeight: srow.bold ? 'bold' : 'normal',
+                              fontSize: srow.big ? '13px' : '11px',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            {srow.label}
+                          </td>
+                          <td
+                            style={{
+                              border: '1px solid #000',
+                              padding: srow.big ? '12px 8px' : '6px 8px',
+                              textAlign: 'right',
+                              fontWeight: srow.bold ? 'bold' : 'normal',
+                              fontSize: srow.big ? '13px' : '11px',
+                              verticalAlign: 'middle',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {srow.value}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
