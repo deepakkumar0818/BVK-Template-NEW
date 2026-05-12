@@ -87,6 +87,8 @@ export default function QuotationSummarySection({
     leftSub: string
     label: string
     value: string
+    /** Render the row text in red; reserved for the Discount band. */
+    isDiscount?: boolean
   }
 
   const wmwBandRows: WmwBandRow[] = []
@@ -96,6 +98,7 @@ export default function QuotationSummarySection({
       leftSub: 'Less',
       label: wmwDiscountRowLabel,
       value: formatCurrency(wmwDiscountTotal, cur),
+      isDiscount: true,
     })
   }
   if (wmwChargeVisible(wmwFreightChargeTotal)) {
@@ -182,18 +185,21 @@ export default function QuotationSummarySection({
           <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>
         </tr>
 
-        {wmwBandRows.map((band, bandIdx) => (
-          <tr key={`wmw-band-${bandIdx}`} className="qs-hsn-tax-row">
-            <td className="qs-cell qs-hsn-grid__col-label" colSpan={leftLabelColSpan}>
-              {band.leftMain}
-            </td>
-            <td className="qs-cell qs-hsn-grid__col-excl" colSpan={leftExclColSpan}>
-              {band.leftSub}
-            </td>
-            <td className="qs-cell qs-tax-label">{band.label}</td>
-            <td className="qs-cell qs-tax-num">{band.value}</td>
-          </tr>
-        ))}
+        {wmwBandRows.map((band, bandIdx) => {
+          const discountColor = band.isDiscount ? ({ color: '#c00000' } as const) : undefined
+          return (
+            <tr key={`wmw-band-${bandIdx}`} className="qs-hsn-tax-row">
+              <td className="qs-cell qs-hsn-grid__col-label" colSpan={leftLabelColSpan} style={discountColor}>
+                {band.leftMain}
+              </td>
+              <td className="qs-cell qs-hsn-grid__col-excl" colSpan={leftExclColSpan} style={discountColor}>
+                {band.leftSub}
+              </td>
+              <td className="qs-cell qs-tax-label" style={discountColor}>{band.label}</td>
+              <td className="qs-cell qs-tax-num" style={discountColor}>{band.value}</td>
+            </tr>
+          )
+        })}
 
         {summaryTaxRows.map((row, i) => (
           <tr key={row.label} className={row.bold ? 'qs-tax-row--bold' : undefined}>

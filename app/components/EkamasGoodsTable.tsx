@@ -683,17 +683,21 @@ export default function EkamasGoodsTable({
 
                   {isLastChunk && (
                     <>
-                      {ekamasChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
-                        <tr key={`ekamas-charge-${chargeIdx}`}>
-                          <td style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>{chargeLabel}</td>
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
-                            {formatCurrency(chargeAmt, currency)}
-                          </td>
-                        </tr>
-                      ))}
+                      {ekamasChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
+                        const isDiscountRow = chargeLabel === discountRowLabel
+                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
+                        return (
+                          <tr key={`ekamas-charge-${chargeIdx}`}>
+                            <td style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>{chargeLabel}</td>
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', verticalAlign: 'middle', ...discountColor }}>
+                              {formatCurrency(chargeAmt, currency)}
+                            </td>
+                          </tr>
+                        )
+                      })}
                       <tr>
                         <td
                           style={{

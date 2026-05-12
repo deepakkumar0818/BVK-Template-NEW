@@ -280,10 +280,17 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
                       ))}
                       {gkdShowDiscountRow ? (
                         <tr>
-                          <td colSpan={4} className="gkd-pl-cell" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          <td
+                            colSpan={4}
+                            className="gkd-pl-cell"
+                            style={{ textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}
+                          >
                             {gkdDiscountLabel}
                           </td>
-                          <td className="gkd-pl-cell gkd-pl-num" style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          <td
+                            className="gkd-pl-cell gkd-pl-num"
+                            style={{ textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}
+                          >
                             {formatCurrency(gkdDiscountAmount, quoteCurrency)}
                           </td>
                         </tr>

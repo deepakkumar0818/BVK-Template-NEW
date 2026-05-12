@@ -610,10 +610,10 @@ export default function ExportQuotationContent({
             {/* ── Discount: sum of line Discount_Value/Discount (WI/WMW *_2_0) + quotation overall discount scalars ── */}
             {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
               <tr>
-                <td colSpan={7} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px' }}>
+                <td colSpan={7} style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', color: '#c00000' }}>
                   {overallDiscountLabel}
                 </td>
-                <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'right' }}>
+                <td style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px', textAlign: 'right', color: '#c00000' }}>
                   {formatCurrency(overallDiscountAmt, currency)}
                 </td>
               </tr>
