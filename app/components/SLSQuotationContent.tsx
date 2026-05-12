@@ -54,7 +54,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
   const recipientAddressBody = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
-  
+
   const displayCurrency = data.currency || 'INR'
   const slsRowsFromWi20 = buildSlsLineItemsFromWi20SubformsShared(
     rawQuotationData as Record<string, unknown> | null | undefined,
@@ -65,12 +65,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     slsRowsFromWi20.length > 0
       ? slsRowsFromWi20
       : data.lineItems?.map((item, index) => ({
-          item: index + 1,
-          product: `${item.product || ''}${item.quality ? `; ${item.quality}` : ''}`.trim(),
-          qty: item.qty || '',
-          unitPrice: parseFloat(item.rate?.replace(/,/g, '') || '0'),
-          totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
-        })) || []
+        item: index + 1,
+        product: `${item.product || ''}${item.quality ? `; ${item.quality}` : ''}`.trim(),
+        qty: item.qty || '',
+        unitPrice: parseFloat(item.rate?.replace(/,/g, '') || '0'),
+        totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
+      })) || []
 
   const {
     discountTotal: slsDiscountAmount,
@@ -84,10 +84,10 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     (rawQuotationData as Record<string, unknown> | undefined)?.Other_Charges
   )
     ? parseFloat(
-        String((rawQuotationData as Record<string, unknown>)?.Other_Charges)
-          .replace(/,/g, '')
-          .trim()
-      ) || 0
+      String((rawQuotationData as Record<string, unknown>)?.Other_Charges)
+        .replace(/,/g, '')
+        .trim()
+    ) || 0
     : 0
   const slsOtherChargesType = String(
     (rawQuotationData as Record<string, unknown> | undefined)?.Type_of_Other_Charges ?? ''
@@ -189,7 +189,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const slsPackingTransportPacking = String(rawRec?.Packing ?? '').trim()
   const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim()
   const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
-  const taxes = rawQuotationData?.Taxes || 'All taxes extra as applicable from time to time.'
+  // "Taxes:" row content — per-tax notice lines derived from CGST/SGST/IGST amounts (rates hard-coded
+  // to the standard 9%/9%/18% split, same convention as the summary block). When no per-tax amount has
+  // data, fall back to the Zoho root `Taxes` scalar. When neither is present, the whole row is hidden.
+  const slsTaxNoticeLines: string[] = []
+  if (slsTaxHasValue(slsIgstAmount)) slsTaxNoticeLines.push('18% IGST will be applicable extra.')
+  if (slsTaxHasValue(slsCgstAmount)) slsTaxNoticeLines.push('9% CGST will be applicable extra.')
+  if (slsTaxHasValue(slsSgstAmount)) slsTaxNoticeLines.push('9% SGST will be applicable extra.')
+  const slsTaxesScalar = String(
+    (rawQuotationData as Record<string, unknown> | undefined)?.Taxes ?? ''
+  ).trim()
+  const slsShowTaxesRow = slsTaxNoticeLines.length > 0 || slsTaxesScalar !== ''
   const payment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
   const quotationValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | null | undefined)
   const warrantyDisclaimer = rawQuotationData?.Warranty_Disclaimer || 'We declare that our products are wearing parts. Therefore, they are excluded from any warranty regulations.'
@@ -216,14 +226,14 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', marginTop: 0 }}>
           {/* Left side - Empty for recipient info */}
           <div></div>
-          
+
           {/* Right side - Logo, Company Name, and Date */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', marginTop: 0 }}>
             {/* WMW Logo - 150px */}
             <div style={{ width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 0, paddingTop: 0 }}>
-              <img 
-                src="/wmw-logo.png" 
-                alt="WMW Logo" 
+              <img
+                src="/wmw-logo.png"
+                alt="WMW Logo"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', marginTop: 0 }}
                 onError={(e) => {
                   console.error('Logo failed to load:', e);
@@ -358,9 +368,26 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <div>{slsPackingTransportFreight || '\u00A0'}</div>
             </div>
           </div>
-          <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
-            <strong>Taxes:</strong> {taxes}
-          </div>
+          {slsShowTaxesRow ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' ,}}>
+              <strong>Taxes:</strong>
+              {slsTaxNoticeLines.length > 0 ? (
+                slsTaxNoticeLines.map((line, idx) => (
+                  <div
+                    key={line}
+                    style={{
+                      marginTop: idx === 0 ? '4px' : '2px',
+                     marginLeft: '10px',
+                    }}
+                  >
+                    {line}
+                  </div>
+                ))
+              ) : (
+                <span> {slsTaxesScalar}</span>
+              )}
+            </div>
+          ) : null}
           <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
             <strong>Payment:</strong> {payment}
           </div>
