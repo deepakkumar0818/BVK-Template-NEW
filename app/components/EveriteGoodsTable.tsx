@@ -583,19 +583,23 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
                       </tr>
 
-                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
-                        <tr key={`everite-charge-${chargeIdx}`}>
-                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
-                            {chargeLabel}
-                          </td>
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
-                            {formatCurrency(chargeAmt, '')}
-                          </td>
-                        </tr>
-                      ))}
+                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
+                        const isDiscountRow = chargeLabel === discountRowLabel
+                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
+                        return (
+                          <tr key={`everite-charge-${chargeIdx}`}>
+                            <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>
+                              {chargeLabel}
+                            </td>
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
+                              {formatCurrency(chargeAmt, '')}
+                            </td>
+                          </tr>
+                        )
+                      })}
 
                       <tr>
                         <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold' }}>

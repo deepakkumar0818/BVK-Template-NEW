@@ -576,12 +576,12 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
 
                       {Number.isFinite(overallDiscountAmt) && overallDiscountAmt !== 0 ? (
                         <tr>
-                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right' }}>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right', color: '#c00000' }}>
                             {overallDiscountLabel}
                           </td>
                           <td style={{ ...bdSides, padding: '6px' }} />
                           <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right', color: '#c00000' }}>
                             {formatCurrency(overallDiscountAmt, currency)}
                           </td>
                         </tr>

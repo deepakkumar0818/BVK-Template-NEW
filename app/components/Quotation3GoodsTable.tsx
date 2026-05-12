@@ -319,11 +319,11 @@ export default function Quotation3GoodsTable({ data, rawQuotationData, shippingD
                     <tr>
                       <td
                         colSpan={4}
-                        style={{ ...bd, padding: '5px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px' }}
+                        style={{ ...bd, padding: '5px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px', color: '#c00000' }}
                       >
                         {q3DiscountLabel}
                       </td>
-                      <td style={{ ...bd, padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px' }}>
+                      <td style={{ ...bd, padding: '5px 8px', textAlign: 'right', fontWeight: 'bold', fontSize: '10px', color: '#c00000' }}>
                         {formatCurrency(q3DiscountTotal, currency)}
                       </td>
                     </tr>

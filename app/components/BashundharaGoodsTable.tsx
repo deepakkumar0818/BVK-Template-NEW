@@ -639,19 +639,23 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                         </tr>
                       ) : null}
 
-                      {bashundharaChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
-                        <tr key={`bashundhara-charge-${chargeIdx}`}>
-                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
-                            {chargeLabel}
-                          </td>
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px' }} />
-                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
-                            {formatCurrency(chargeAmt, currency)}
-                          </td>
-                        </tr>
-                      ))}
+                      {bashundharaChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
+                        const isDiscountRow = chargeLabel === discountRowLabel
+                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
+                        return (
+                          <tr key={`bashundhara-charge-${chargeIdx}`}>
+                            <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>
+                              {chargeLabel}
+                            </td>
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px' }} />
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
+                              {formatCurrency(chargeAmt, currency)}
+                            </td>
+                          </tr>
+                        )
+                      })}
 
                       <tr>
                         <td colSpan={6} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>

@@ -319,11 +319,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                         <tr>
                           <td
                             colSpan={4}
-                            style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top' }}
+                            style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top', color: '#c00000' }}
                           >
                             {bvkDiscountLabel}
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top' }}>
+                          <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top', color: '#c00000' }}>
                             {formatCurrency(bvkDiscountAmount, displayCurrency)}
                           </td>
                         </tr>

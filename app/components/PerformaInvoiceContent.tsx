@@ -440,8 +440,8 @@ export default function PerformaInvoiceContent({
                               </tr>
                               {Number.isFinite(discountTotal) && discountTotal !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{discountLabel}</td>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', color: '#c00000' }}>{discountLabel}</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right', color: '#c00000' }}>
                                     {formatCurrency(discountTotal, data.currency || 'INR')}
                                   </td>
                                 </tr>

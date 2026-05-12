@@ -608,10 +608,10 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
               {Number.isFinite(discountChargeAmt) && discountChargeAmt !== 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
                     {discountRowLabel}
                   </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
                     {formatCurrency(discountChargeAmt, currency)}
                   </td>
                 </tr>

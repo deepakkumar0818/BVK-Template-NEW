@@ -298,11 +298,11 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                 <tr>
                   <td
                     colSpan={4}
-                    style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
+                    style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}
                   >
                     Total discount
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold' }}>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
                     {formatCurrency(slsDiscountAmount, displayCurrency)}
                   </td>
                 </tr>
