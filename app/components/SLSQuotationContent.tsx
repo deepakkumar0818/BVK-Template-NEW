@@ -120,9 +120,15 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   /** Standard GST split: IGST = CGST + SGST = 18%; rate labels are fixed per tax type when an amount is present. */
   const slsTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
 
+  // `Total <currency>` row: sum of the goods table's "Total Price" column minus the (red) discount value
+  // shown in that table. Other summary rows still source their values from Zoho directly.
+  const slsTotalInrValue =
+    slsLineItemsTotalFallback -
+    (Number.isFinite(slsDiscountAmount) ? Math.max(0, slsDiscountAmount) : 0)
+
   type SlsSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const slsSummaryRows: SlsSummaryRow[] = [
-    { label: `Total ${displayCurrency}`, value: formatCurrency(slsGrandTotal, displayCurrency), bold: true },
+    { label: `Total ${displayCurrency}`, value: formatCurrency(slsTotalInrValue, displayCurrency), bold: true },
     { label: 'Packing Charges', value: formatCurrency(slsSafe(slsPackingTotal), displayCurrency) },
   ]
   if (slsTaxHasValue(slsFreightTotal)) {
