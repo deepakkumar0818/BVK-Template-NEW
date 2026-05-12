@@ -107,9 +107,15 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
   /** Standard GST split: IGST = CGST + SGST = 18%; rate labels are fixed per tax type when an amount is present. */
   const gkdTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
 
+  // `Total <currency>` row: sum of the goods table's "Total Price" column minus the (red) discount value
+  // shown in that table. Other summary rows still source their values from Zoho directly.
+  const gkdTotalInrValue =
+    gkdLineItemsTotalFallback -
+    (Number.isFinite(gkdDiscountAmount) ? Math.max(0, gkdDiscountAmount) : 0)
+
   type GkdSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const gkdSummaryRows: GkdSummaryRow[] = [
-    { label: `Total ${quoteCurrency}`, value: formatCurrency(gkdGrandTotal, quoteCurrency), bold: true },
+    { label: `Total ${quoteCurrency}`, value: formatCurrency(gkdTotalInrValue, quoteCurrency), bold: true },
     { label: 'Packing Charges', value: formatCurrency(gkdSafe(gkdPackingTotal), quoteCurrency) },
   ]
   if (gkdTaxHasValue(gkdFreightTotal)) {
