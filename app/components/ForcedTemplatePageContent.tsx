@@ -24,6 +24,8 @@ export interface ForcedTemplatePageContentProps {
   wmwd1DocumentTitle?: string
   /** WMW `/quotation/[id]` only: Notes from API (`Inside_Quotation_Text`, then `Please_Note`). */
   wmwd1NotesRemarksFromApi?: boolean
+  /** `/wmw/[id]` only: enable WMW print pagination (head 7 / last 5 max). */
+  useWmwPagination?: boolean
 }
 
 export default function ForcedTemplatePageContent({
@@ -31,6 +33,7 @@ export default function ForcedTemplatePageContent({
   documentLabel,
   wmwd1DocumentTitle,
   wmwd1NotesRemarksFromApi,
+  useWmwPagination,
 }: ForcedTemplatePageContentProps) {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : ''
@@ -107,7 +110,12 @@ export default function ForcedTemplatePageContent({
   }, [id, templateType])
 
   return (
-    <main className="quotation-doc" style={{ padding: '8px' }}>
+    <main
+      className={['quotation-doc', useWmwPagination ? 'quotation-doc--wmw-numbered' : '']
+        .filter(Boolean)
+        .join(' ')}
+      style={{ padding: '8px' }}
+    >
       <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <PrintButton />
@@ -144,6 +152,7 @@ export default function ForcedTemplatePageContent({
           billingData={billingData}
           wmwd1DocumentTitle={wmwd1DocumentTitle}
           wmwd1NotesRemarksFromApi={wmwd1NotesRemarksFromApi}
+          useWmwPagination={useWmwPagination}
         />
       )}
     </main>

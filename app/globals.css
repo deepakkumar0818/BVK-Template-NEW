@@ -514,6 +514,10 @@ body {
     border-bottom: 1px solid #000 !important;
   }
 
+  .goods-description-table--stretch-last tbody tr.goods-description-data-row:has(+ tr.goods-description-stretch-spacer) td.goods-description-table-body-cell {
+    border-bottom: none !important;
+  }
+
   .goods-description-table tfoot td.goods-description-table-foot-cell {
     border-top: 1px solid #000 !important;
     border-bottom: none !important;
@@ -559,6 +563,248 @@ body {
   .quotation-goods-pages-break {
     page-break-after: always !important;
     break-after: page !important;
+  }
+
+  /* Last goods segment: fill partial pages and anchor summary at printable bottom */
+  .quotation-goods-pages-segment--last-with-summary {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: calc(297mm - var(--quotation-print-top-inset) - 25mm) !important;
+    box-sizing: border-box !important;
+  }
+
+  .quotation-goods-pages-stack
+    .quotation-goods-pages-break
+    + .quotation-goods-pages-segment.quotation-goods-pages-segment--last-with-summary {
+    min-height: calc(297mm - var(--quotation-print-top-inset) - 25mm) !important;
+  }
+
+  .quotation-goods-last-page-body {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+
+  .quotation-goods-last-page-summary {
+    flex: 0 0 auto !important;
+    margin-top: auto !important;
+    width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-goods-pages-segment--last-with-summary .goods-description-table--stretch-last {
+    flex: 0 0 auto !important;
+  }
+
+  .goods-description-table--stretch-last .goods-description-stretch-spacer .goods-description-stretch-spacer-cell {
+    height: calc(var(--goods-stretch-missing-rows, 0) * 11mm) !important;
+    min-height: calc(var(--goods-stretch-missing-rows, 0) * 11mm) !important;
+    padding: 0 !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: 1px solid #000 !important;
+    border-right: 1px solid #000 !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+  }
+
+  .goods-description-table--stretch-last tbody tr.goods-description-data-row td.goods-description-table-body-cell {
+    padding-top: calc(5px + var(--goods-stretch-missing-rows, 0) * 1.5px) !important;
+    padding-bottom: calc(5px + var(--goods-stretch-missing-rows, 0) * 1.5px) !important;
+  }
+
+  /* 5–6 rows + summary: split vertical fill across line rows (same mm budget as stretch spacer) */
+  .quotation-doc .goods-description-table--distribute-rows tbody tr.goods-description-data-row td.goods-description-table-body-cell,
+  .goods-description-table--distribute-rows tbody tr.goods-description-data-row td.goods-description-table-body-cell {
+    padding-top: calc(var(--goods-cell-pad-y, 5px) + var(--goods-even-pad-mm, 0mm)) !important;
+    padding-bottom: calc(var(--goods-cell-pad-y, 5px) + var(--goods-even-pad-mm, 0mm)) !important;
+    padding-left: var(--goods-cell-pad-x, 6px) !important;
+    padding-right: var(--goods-cell-pad-x, 6px) !important;
+  }
+
+  .quotation-goods-pages-segment--last-with-summary
+    .goods-description-table
+    + .quotation-goods-last-page-summary
+    > .quotation-summary-block:first-child {
+    margin-top: -1px !important;
+  }
+
+  .quotation-goods-pages-segment--last-with-summary .quotation-goods-last-page-summary > .quotation-master-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ≤4 line items + summary on one segment: do not force ~A4 min-height or stretch — keeps summary on page 1 */
+  .quotation-goods-pages-segment--last-with-summary.quotation-goods-pages-segment--summary-compact-first-page {
+    display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-goods-pages-stack
+    .quotation-goods-pages-break
+    + .quotation-goods-pages-segment.quotation-goods-pages-segment--last-with-summary.quotation-goods-pages-segment--summary-compact-first-page {
+    min-height: 0 !important;
+  }
+
+  .quotation-goods-pages-segment--summary-compact-first-page .quotation-goods-last-page-body {
+    display: block !important;
+    flex: unset !important;
+    min-height: 0 !important;
+  }
+
+  .quotation-goods-pages-segment--summary-compact-first-page .quotation-goods-last-page-summary {
+    margin-top: 0 !important;
+    flex: unset !important;
+  }
+
+  /*
+   * WMW pagination (/wmw/[id] only): master header (title + supplier + meta grid + addresses) is
+   * ~135mm tall on every page. Drop the default 247mm min-height (which assumed a 25mm spacer)
+   * and let the segment be content-driven. The summary follows the items directly; what matters
+   * is keeping the summary block + bank details + DOC NO. all together on the same page as items.
+   */
+  .quotation-print-sheet--wmw-pagination .quotation-goods-pages-segment--last-with-summary,
+  .quotation-print-sheet--wmw-pagination
+    .quotation-goods-pages-stack
+    .quotation-goods-pages-break
+    + .quotation-goods-pages-segment.quotation-goods-pages-segment--last-with-summary {
+    min-height: 0 !important;
+    height: auto !important;
+    display: block !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Body of last segment: drop flex so block-level page-break rules apply reliably. */
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-body {
+    display: block !important;
+    flex: unset !important;
+    min-height: 0 !important;
+  }
+
+  /*
+   * Summary slot: drop flex (browsers honor page-break-inside:avoid more reliably on block items
+   * than on flex items). The slot now sits right after the goods table; we force the whole slot
+   * and every table/row inside it to stay together as one unit.
+   */
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary {
+    display: block !important;
+    flex: unset !important;
+    margin-top: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary > *,
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /*
+   * Bank-details table + DOC NO. wrapped in .wmw-bank-details-group: browser treats them as
+   * one indivisible unit, so DOC NO. can't get orphaned to the next page.
+   */
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group .quotation-doc-footer-meta {
+    margin-top: 2px !important;
+    padding-top: 0 !important;
+    padding-bottom: 1px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+
+  /* Shrink the footer block a little: tighter row padding + line-height on summary + bank details. */
+  .quotation-print-sheet--wmw-pagination .quotation-summary-block > tbody > tr > td {
+    padding: 1px 4px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-summary-block .qs-cell--amount-words {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary table td {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    line-height: 1.2 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group table td > div {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+    line-height: 1.2 !important;
+  }
+
+  /*
+   * Page numbering: every page on the WMW route shows the current page at bottom-center.
+   * The @page must have a non-zero bottom margin — page-margin boxes (@bottom-center) are
+   * positioned inside the page margin area and won't render with margin:0.
+   * Print-container's bottom padding is reduced to compensate so the content area stays
+   * the same 25mm total bottom space as before.
+   */
+  @page wmw-numbered-page {
+    size: A4;
+    margin: 0 0 12mm 0;
+
+    @bottom-center {
+      content: counter(page);
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      color: #000;
+      vertical-align: top;
+      padding-top: 2mm;
+    }
+  }
+
+  .quotation-doc.quotation-doc--wmw-numbered,
+  .quotation-doc.quotation-doc--wmw-numbered * {
+    page: wmw-numbered-page;
+  }
+
+  /* Compensate: @page now eats 12mm of the bottom, so the inner container only needs 13mm. */
+  .quotation-doc--wmw-numbered .print-container {
+    padding-bottom: 13mm !important;
+  }
+
+  /* Non-last partial WMW pages (5–6 items, no footer): fill the available printable area. */
+  .quotation-print-sheet--wmw-pagination .quotation-goods-pages-segment--wmw-fill-page {
+    min-height: calc(297mm - 135mm - 25mm) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-goods-pages-segment--wmw-fill-page .goods-description-table {
+    flex: 1 1 auto !important;
+  }
+
+  /* WMW pagination: keep the goods table from splitting between rows / tfoot. */
+  .quotation-print-sheet--wmw-pagination .quotation-goods-pages-segment .goods-description-table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Continuation header: inside goods table thead so it reliably shows when table starts on new page. */
@@ -999,6 +1245,31 @@ body {
   border-bottom: 1px solid #000 !important;
 }
 
+/* 5–6 rows + summary: equidistant vertical padding per row (screen + print preview) */
+.quotation-doc .goods-description-table--distribute-rows tbody tr.goods-description-data-row td.goods-description-table-body-cell,
+.goods-description-table--distribute-rows tbody tr.goods-description-data-row td.goods-description-table-body-cell {
+  padding-top: calc(var(--goods-cell-pad-y, 12px) + var(--goods-even-pad-mm, 0mm)) !important;
+  padding-bottom: calc(var(--goods-cell-pad-y, 12px) + var(--goods-even-pad-mm, 0mm)) !important;
+  padding-left: var(--goods-cell-pad-x, 8px) !important;
+  padding-right: var(--goods-cell-pad-x, 8px) !important;
+}
+
+.goods-description-table--stretch-last tbody tr.goods-description-data-row:has(+ tr.goods-description-stretch-spacer) td.goods-description-table-body-cell {
+  border-bottom: none !important;
+}
+
+.goods-description-table--stretch-last .goods-description-stretch-spacer .goods-description-stretch-spacer-cell {
+  height: calc(var(--goods-stretch-missing-rows, 0) * 11mm);
+  min-height: calc(var(--goods-stretch-missing-rows, 0) * 11mm);
+  padding: 0;
+  border-top: none;
+  border-bottom: none;
+  border-left: 1px solid #000;
+  border-right: 1px solid #000;
+  line-height: 0;
+  font-size: 0;
+}
+
 .quotation-doc .goods-description-table tfoot td.goods-description-table-foot-cell,
 .goods-description-table tfoot td.goods-description-table-foot-cell {
   border-top: 1px solid #000 !important;
@@ -1171,6 +1442,15 @@ body {
 
 /* Seam: goods row + summary row (separate <tr>) — collapse double rule */
 .quotation-doc .quotation-header-master-table tbody tr.quotation-master-body-row--summary .quotation-seamless-stack>.quotation-summary-block:first-child {
+  margin-top: -1px !important;
+}
+
+/* Seam: goods table tfoot + summary inside last paginated segment */
+.quotation-doc .quotation-goods-pages-segment--last-with-summary .quotation-goods-last-page-summary > .quotation-summary-block:first-child {
+  margin-top: -1px !important;
+}
+
+.quotation-doc .quotation-goods-pages-segment--last-with-summary .quotation-seamless-stack > .quotation-summary-block + .quotation-master-footer {
   margin-top: -1px !important;
 }
 
