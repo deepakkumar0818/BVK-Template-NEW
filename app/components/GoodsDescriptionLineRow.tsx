@@ -38,7 +38,7 @@ export default function GoodsDescriptionLineRow({
   const qtyFirstLine = [uom, subQty].filter(Boolean).join(' ')
 
   return (
-    <tr>
+    <tr className="goods-description-data-row">
       <td
         className="goods-description-table-body-cell goods-description-table-desc-cell"
         style={{ verticalAlign: 'top', ...pad }}

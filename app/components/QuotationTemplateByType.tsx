@@ -108,6 +108,8 @@ export interface QuotationTemplateByTypeProps {
   wmwd1DocumentTitle?: string
   /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Inside_Quotation_Text`, then `Please_Note`. */
   wmwd1NotesRemarksFromApi?: boolean
+  /** `/wmw/[id]` only: enable WMW print pagination (head 7 / last 5 max). */
+  useWmwPagination?: boolean
 }
 
 /**
@@ -121,6 +123,7 @@ export default function QuotationTemplateByType({
   billingData,
   wmwd1DocumentTitle,
   wmwd1NotesRemarksFromApi,
+  useWmwPagination,
 }: QuotationTemplateByTypeProps) {
   return (
     <div className="print-container">
@@ -172,6 +175,7 @@ export default function QuotationTemplateByType({
                   useWmwd1StyleLayout
                   wmwd1DocumentTitle={wmwd1DocumentTitle}
                   wmwd1NotesRemarksFromApi={wmwd1NotesRemarksFromApi}
+                  useWmwPagination={useWmwPagination}
                 />
               </td>
             </tr>

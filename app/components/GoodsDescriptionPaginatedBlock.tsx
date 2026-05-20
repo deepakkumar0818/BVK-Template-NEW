@@ -1,7 +1,17 @@
 'use client'
 
+import type { CSSProperties, ReactNode } from 'react'
 import type { QuotationData, QuotationLineItem } from '@/lib/types'
-import { chunkLineItems, GOODS_ROWS_PER_PRINT_PAGE } from '@/lib/quotation-line-item-display'
+import {
+  chunkLineItemsForPrint,
+  chunkLineItemsForPrintWithSummary,
+  chunkLineItemsForWmwPrint,
+  GOODS_EVEN_DISTRIBUTE_MAX_ROWS,
+  GOODS_EVEN_DISTRIBUTE_MIN_ROWS,
+  GOODS_PRINT_FILL_MM_PER_MISSING_ROW,
+  GOODS_ROWS_PER_PRINT_PAGE,
+  GOODS_SUMMARY_SINGLE_PAGE_COMPACT_MAX_ITEMS,
+} from '@/lib/quotation-line-item-display'
 import GoodsDescriptionLineRow from './GoodsDescriptionLineRow'
 import QuotationHeaderThead from './QuotationHeaderThead'
 
@@ -27,6 +37,15 @@ export interface GoodsDescriptionPaginatedBlockProps {
   }
   /** WMWD1 (WI): extra “HSN Code” column after Description; summary must use matching 7-col layout */
   showHsnCodeColumn?: boolean
+  /** Summary + footer rendered once on the last goods segment (print: anchored at page bottom). */
+  summaryFollowSlot?: ReactNode
+  /** When true (default if `summaryFollowSlot` is set), stretch partial last pages inside the goods table. */
+  stretchLastPage?: boolean
+  /**
+   * WMW `/wmw/[id]` route only: head pages cap at 7 rows, last (footer) page caps at 5 rows;
+   * partial head pages (5–6 rows) stretch row heights evenly to fill A4.
+   */
+  useWmwPagination?: boolean
 }
 
 export default function GoodsDescriptionPaginatedBlock({
@@ -35,12 +54,31 @@ export default function GoodsDescriptionPaginatedBlock({
   cellPaddingPx,
   masterQuotationHeaderProps,
   showHsnCodeColumn = false,
+  summaryFollowSlot,
+  stretchLastPage,
+  useWmwPagination = false,
 }: GoodsDescriptionPaginatedBlockProps) {
   const items = lineItems ?? []
   const documentCurrency =
     totalFoot?.currency ?? masterQuotationHeaderProps?.data?.currency ?? 'INR'
-  const chunks = chunkLineItems(items, GOODS_ROWS_PER_PRINT_PAGE)
+  const chunks = useWmwPagination
+    ? chunkLineItemsForWmwPrint(items)
+    : summaryFollowSlot
+      ? chunkLineItemsForPrintWithSummary(items, GOODS_ROWS_PER_PRINT_PAGE)
+      : chunkLineItemsForPrint(items, GOODS_ROWS_PER_PRINT_PAGE)
   const colCount = showHsnCodeColumn ? 7 : 6
+  const summaryCompactFirstPage =
+    !useWmwPagination &&
+    Boolean(summaryFollowSlot) &&
+    chunks.length === 1 &&
+    items.length > 0 &&
+    items.length <= GOODS_SUMMARY_SINGLE_PAGE_COMPACT_MAX_ITEMS
+  const shouldStretchLastPage =
+    stretchLastPage === false
+      ? false
+      : summaryCompactFirstPage
+        ? false
+        : Boolean(summaryFollowSlot) && (stretchLastPage ?? true)
   /** WI+HSN: keep total width 100% aligned with quotation-summary-block */
   const w = showHsnCodeColumn
     ? { d: '28%', h: '12%', del: '12%', u: '8%', q: '15%', r: '12%', a: '13%' }
@@ -58,8 +96,46 @@ export default function GoodsDescriptionPaginatedBlock({
     <div className="quotation-goods-pages-stack">
       {chunks.map((chunk, pageIdx) => {
         const isLastChunk = pageIdx === chunks.length - 1
-
         const injectedMaster = showInjectedMasterHeader(pageIdx)
+        const missingRows = Math.max(0, GOODS_ROWS_PER_PRINT_PAGE - chunk.length)
+        const isPartialDistributeRange =
+          chunk.length >= GOODS_EVEN_DISTRIBUTE_MIN_ROWS &&
+          chunk.length <= GOODS_EVEN_DISTRIBUTE_MAX_ROWS &&
+          missingRows > 0
+        const distributeEvenRowsThisChunk =
+          isPartialDistributeRange &&
+          (
+            (Boolean(summaryFollowSlot) && isLastChunk) ||
+            (useWmwPagination && !isLastChunk)
+          )
+        const stretchThisChunk =
+          isLastChunk &&
+          shouldStretchLastPage &&
+          chunk.length > 0 &&
+          missingRows > 0 &&
+          !distributeEvenRowsThisChunk
+        const stretchStyle = stretchThisChunk
+          ? ({ '--goods-stretch-missing-rows': missingRows } as CSSProperties)
+          : undefined
+        const distributePerMissingMm =
+          useWmwPagination && !isLastChunk
+            ? GOODS_PRINT_FILL_MM_PER_MISSING_ROW * 4 // non-last WMW page must fill A4 minus master header
+            : GOODS_PRINT_FILL_MM_PER_MISSING_ROW
+        const distributeTableStyle = distributeEvenRowsThisChunk
+          ? ({
+              '--goods-even-pad-mm': `${(missingRows * distributePerMissingMm) / (2 * chunk.length)}mm`,
+              ...(cellPaddingPx != null
+                ? {
+                    '--goods-cell-pad-x': `${cellPaddingPx}px`,
+                    '--goods-cell-pad-y': `${cellPaddingPx}px`,
+                  }
+                : {}),
+            } as CSSProperties)
+          : undefined
+        const lastChunkCellPadding =
+          stretchThisChunk && cellPaddingPx != null
+            ? cellPaddingPx + Math.min(missingRows * 2, 12)
+            : cellPaddingPx
 
         return (
           <div
@@ -67,10 +143,18 @@ export default function GoodsDescriptionPaginatedBlock({
             className={[
               'quotation-goods-pages-segment',
               !isLastChunk ? 'quotation-goods-pages-break' : '',
+              isLastChunk ? 'quotation-goods-pages-segment--last' : '',
+              isLastChunk && summaryFollowSlot ? 'quotation-goods-pages-segment--last-with-summary' : '',
+              isLastChunk && summaryCompactFirstPage ? 'quotation-goods-pages-segment--summary-compact-first-page' : '',
               injectedMaster ? 'quotation-goods-pages-segment--master-header-continuation' : '',
+              useWmwPagination && !isLastChunk && distributeEvenRowsThisChunk
+                ? 'quotation-goods-pages-segment--wmw-fill-page'
+                : '',
+              useWmwPagination ? 'quotation-goods-pages-segment--wmw' : '',
             ]
               .filter(Boolean)
               .join(' ')}
+            style={isLastChunk && summaryFollowSlot && !summaryCompactFirstPage ? stretchStyle : undefined}
           >
             {injectedMaster ? (
               <table
@@ -93,29 +177,32 @@ export default function GoodsDescriptionPaginatedBlock({
                 />
               </table>
             ) : null}
-            <table
-              className="goods-description-table quotation-stack-table"
-              style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginTop: injectedMaster ? '-1px' : '0', tableLayout: 'fixed', wordWrap: 'break-word' }}
-            >
-              <thead style={{ display: 'table-header-group' }}>
-                <tr>
-                  <th
-                    style={{
-                      width: w.d,
-                      textAlign: 'left',
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    Description Of Goods
-                  </th>
-                  {showHsnCodeColumn ? (
+            <div className={isLastChunk && summaryFollowSlot ? 'quotation-goods-last-page-body' : undefined}>
+              <table
+                className={[
+                  'goods-description-table',
+                  'quotation-stack-table',
+                  stretchThisChunk ? 'goods-description-table--stretch-last' : '',
+                  distributeEvenRowsThisChunk ? 'goods-description-table--distribute-rows' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  border: '1px solid #000',
+                  marginTop: injectedMaster ? '-1px' : '0',
+                  tableLayout: 'fixed',
+                  wordWrap: 'break-word',
+                  ...stretchStyle,
+                  ...distributeTableStyle,
+                }}
+              >
+                <thead style={{ display: 'table-header-group' }}>
+                  <tr>
                     <th
                       style={{
-                        width: w.h,
+                        width: w.d,
                         textAlign: 'left',
                         border: '1px solid #000',
                         padding: '8px',
@@ -124,116 +211,143 @@ export default function GoodsDescriptionPaginatedBlock({
                         display: 'table-cell',
                       }}
                     >
-                      HSN Code
+                      Description Of Goods
                     </th>
+                    {showHsnCodeColumn ? (
+                      <th
+                        style={{
+                          width: w.h,
+                          textAlign: 'left',
+                          border: '1px solid #000',
+                          padding: '8px',
+                          backgroundColor: '#f5f5f5',
+                          fontWeight: 'bold',
+                          display: 'table-cell',
+                        }}
+                      >
+                        HSN Code
+                      </th>
+                    ) : null}
+                    <th
+                      style={{
+                        width: w.del,
+                        border: '1px solid #000',
+                        padding: '8px',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        display: 'table-cell',
+                      }}
+                    >
+                      Delivery
+                    </th>
+                    <th
+                      style={{
+                        width: w.u,
+                        border: '1px solid #000',
+                        padding: '8px',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        display: 'table-cell',
+                      }}
+                    >
+                      UOM
+                    </th>
+                    <th
+                      style={{
+                        width: w.q,
+                        border: '1px solid #000',
+                        padding: '8px',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        display: 'table-cell',
+                      }}
+                    >
+                      Quantity
+                    </th>
+                    <th
+                      style={{
+                        width: w.r,
+                        textAlign: 'right',
+                        border: '1px solid #000',
+                        padding: '8px',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        display: 'table-cell',
+                      }}
+                    >
+                      Rate/SQM
+                    </th>
+                    <th
+                      style={{
+                        width: w.a,
+                        textAlign: 'right',
+                        border: '1px solid #000',
+                        padding: '8px',
+                        backgroundColor: '#f5f5f5',
+                        fontWeight: 'bold',
+                        display: 'table-cell',
+                      }}
+                    >
+                      Amount INR
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chunk.length > 0 ? (
+                    chunk.map((row, i) => (
+                      <GoodsDescriptionLineRow
+                        key={`${pageIdx}-${i}`}
+                        row={row}
+                        cellPaddingPx={lastChunkCellPadding}
+                        showHsnCodeColumn={showHsnCodeColumn}
+                        currency={documentCurrency}
+                      />
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={colCount}
+                        className="goods-description-table-body-cell"
+                        style={{ textAlign: 'center', padding: '20px', color: '#666' }}
+                      >
+                        No line items found
+                      </td>
+                    </tr>
+                  )}
+                  {stretchThisChunk ? (
+                    <tr className="goods-description-stretch-spacer" aria-hidden="true">
+                      {Array.from({ length: colCount }, (_, cellIdx) => (
+                        <td key={cellIdx} className="goods-description-stretch-spacer-cell" />
+                      ))}
+                    </tr>
                   ) : null}
-                  <th
-                    style={{
-                      width: w.del,
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    Delivery
-                  </th>
-                  <th
-                    style={{
-                      width: w.u,
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    UOM
-                  </th>
-                  <th
-                    style={{
-                      width: w.q,
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    Quantity
-                  </th>
-                  <th
-                    style={{
-                      width: w.r,
-                      textAlign: 'right',
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    Rate/SQM
-                  </th>
-                  <th
-                    style={{
-                      width: w.a,
-                      textAlign: 'right',
-                      border: '1px solid #000',
-                      padding: '8px',
-                      backgroundColor: '#f5f5f5',
-                      fontWeight: 'bold',
-                      display: 'table-cell',
-                    }}
-                  >
-                    Amount INR
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {chunk.length > 0 ? (
-                  chunk.map((row, i) => (
-                    <GoodsDescriptionLineRow
-                      key={`${pageIdx}-${i}`}
-                      row={row}
-                      cellPaddingPx={cellPaddingPx}
-                      showHsnCodeColumn={showHsnCodeColumn}
-                      currency={documentCurrency}
-                    />
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={colCount}
-                      className="goods-description-table-body-cell"
-                      style={{ textAlign: 'center', padding: '20px', color: '#666' }}
-                    >
-                      No line items found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              {totalFoot && isLastChunk ? (
-                <tfoot>
-                  <tr>
-                    <td
-                      colSpan={showHsnCodeColumn ? 6 : 5}
-                      className="goods-description-table-foot-cell text-right font-bold"
-                      style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
-                    >
-                      {totalFoot.label ?? `Total ${totalFoot.currency}`}
-                    </td>
-                    <td
-                      className="goods-description-table-foot-cell text-right font-bold"
-                      style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
-                    >
-                      {totalFoot.amountFormatted}
-                    </td>
-                  </tr>
-                </tfoot>
+                </tbody>
+                {totalFoot && isLastChunk ? (
+                  <tfoot>
+                    <tr>
+                      <td
+                        colSpan={showHsnCodeColumn ? 6 : 5}
+                        className="goods-description-table-foot-cell text-right font-bold"
+                        style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
+                      >
+                        {totalFoot.label ?? `Total ${totalFoot.currency}`}
+                      </td>
+                      <td
+                        className="goods-description-table-foot-cell text-right font-bold"
+                        style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold' }}
+                      >
+                        {totalFoot.amountFormatted}
+                      </td>
+                    </tr>
+                  </tfoot>
+                ) : null}
+              </table>
+              {isLastChunk && summaryFollowSlot ? (
+                <div className="quotation-goods-last-page-summary quotation-seamless-stack">
+                  {summaryFollowSlot}
+                </div>
               ) : null}
-            </table>
+            </div>
           </div>
         )
       })}

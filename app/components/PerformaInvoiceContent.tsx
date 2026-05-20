@@ -33,6 +33,11 @@ interface PerformaInvoiceContentProps {
    * then `Please_Note` (replacing static performa remarks). `/wmw/[id]` omits this prop.
    */
   wmwd1NotesRemarksFromApi?: boolean
+  /**
+   * `/wmw/[id]` only: switches goods pagination to the WMW print rule (head 7 / last 5 max,
+   * partial head pages stretch row heights to fill A4).
+   */
+  useWmwPagination?: boolean
 }
 
 /** Left column for wmwd1 when {@link PerformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — `Inside_Quotation_Text` then `Please_Note`. */
@@ -75,7 +80,7 @@ function performaRemarksFooterBlock(
   const remarkLines = remarksRaw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
 
   return (
-    <>
+    <div className="wmw-bank-details-group">
       <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
           <tr>
@@ -115,13 +120,13 @@ function performaRemarksFooterBlock(
       <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
         DOC NO. WMW/MKT/F.1 (Rev.00)
       </div>
-    </>
+    </div>
   )
 }
 
 function performaBankDetailsBlock(data: QuotationData): ReactNode {
   return (
-    <>
+    <div className="wmw-bank-details-group">
       <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <tbody>
           <tr>
@@ -143,7 +148,7 @@ function performaBankDetailsBlock(data: QuotationData): ReactNode {
       <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
         DOC NO. WMW/MKT/F.1 (Rev.00)
       </div>
-    </>
+    </div>
   )
 }
 
@@ -155,6 +160,7 @@ export default function PerformaInvoiceContent({
   useWmwd1StyleLayout = false,
   wmwd1DocumentTitle,
   wmwd1NotesRemarksFromApi = false,
+  useWmwPagination = false,
 }: PerformaInvoiceContentProps) {
   const {
     cgstRate,
@@ -190,9 +196,53 @@ export default function PerformaInvoiceContent({
       }
       return totalAmount
     })()
+    const wmwd1SummaryFollowSlot = (
+      <>
+        <QuotationSummarySection
+          data={data}
+          totalAmountFormatted={totalInrBandFormatted}
+          cgstRate={cgstRate}
+          cgstAmount={cgstAmount}
+          sgstRate={sgstRate}
+          sgstAmount={sgstAmount}
+          igstRate={igstRate}
+          igstAmount={igstAmount}
+          taxAmount={taxAmount}
+          totalBeforeTax={totalBeforeTax}
+          totalAfterTax={totalAfterTax}
+          wmwDiscountTotal={discountTotal}
+          wmwDiscountRowLabel={discountLabel}
+          wmwFreightChargeTotal={freightTotal}
+          wmwPackingChargeTotal={packingTotal}
+          wmwSeamChargeTotal={seamTotal}
+          sevenColumnGoodsLayout
+          notesMergedSlot={
+            wmwd1NotesRemarksFromApi ? (
+              <Wmwd1ApiNotesRemarksSlot raw={rawQuotationData as Record<string, unknown> | null | undefined} />
+            ) : (
+              performaStaticRemarksBlock
+            )
+          }
+          rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
+        />
+        {wmwd1NotesRemarksFromApi
+          ? performaRemarksFooterBlock(
+              data,
+              rawQuotationData as Record<string, unknown> | null | undefined
+            )
+          : performaBankDetailsBlock(data)}
+      </>
+    )
     return (
       <>
-        <div className="quotation-print-sheet">
+        <div
+          className={[
+            'quotation-print-sheet',
+            useWmwPagination ? 'quotation-print-sheet--wmw-pagination' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <div className="quotation-content-section quotation-content-section--seamless print-content" style={{ marginBottom: '24px' }}>
             <table
               className="quotation-header-master-table quotation-header-master-table--wmwd1"
@@ -211,6 +261,8 @@ export default function PerformaInvoiceContent({
                   <td colSpan={2} className="quotation-seamless-stack">
                     <GoodsDescriptionPaginatedBlock
                       lineItems={lineItems}
+                      totalFoot={{ currency: cur, amountFormatted: totalInrBandFormatted }}
+                      cellPaddingPx={8}
                       masterQuotationHeaderProps={{
                         title: performaTitle,
                         data,
@@ -219,52 +271,9 @@ export default function PerformaInvoiceContent({
                         rawQuotationData,
                       }}
                       showHsnCodeColumn
+                      summaryFollowSlot={wmwd1SummaryFollowSlot}
+                      useWmwPagination={useWmwPagination}
                     />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <table
-              className="quotation-header-master-table quotation-summary-follow-master-table"
-              style={{ width: '100%', borderCollapse: 'collapse' }}
-            >
-              <tbody>
-                <tr className="quotation-master-body-row quotation-master-body-row--summary">
-                  <td colSpan={2} className="quotation-seamless-stack">
-                    <QuotationSummarySection
-                      data={data}
-                      totalAmountFormatted={totalInrBandFormatted}
-                      cgstRate={cgstRate}
-                      cgstAmount={cgstAmount}
-                      sgstRate={sgstRate}
-                      sgstAmount={sgstAmount}
-                      igstRate={igstRate}
-                      igstAmount={igstAmount}
-                      taxAmount={taxAmount}
-                      totalBeforeTax={totalBeforeTax}
-                      totalAfterTax={totalAfterTax}
-                      wmwDiscountTotal={discountTotal}
-                      wmwDiscountRowLabel={discountLabel}
-                      wmwFreightChargeTotal={freightTotal}
-                      wmwPackingChargeTotal={packingTotal}
-                      wmwSeamChargeTotal={seamTotal}
-                      sevenColumnGoodsLayout
-                      notesMergedSlot={
-                        wmwd1NotesRemarksFromApi ? (
-                          <Wmwd1ApiNotesRemarksSlot raw={rawQuotationData as Record<string, unknown> | null | undefined} />
-                        ) : (
-                          performaStaticRemarksBlock
-                        )
-                      }
-                      rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
-                    />
-                    {wmwd1NotesRemarksFromApi
-                      ? performaRemarksFooterBlock(
-                          data,
-                          rawQuotationData as Record<string, unknown> | null | undefined
-                        )
-                      : performaBankDetailsBlock(data)}
                   </td>
                 </tr>
               </tbody>

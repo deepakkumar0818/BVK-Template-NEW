@@ -38,14 +38,43 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
     rawQuotationData ?? null
   )
 
+  const quotationSummaryFollowSlot = (
+    <>
+      <QuotationSummarySection
+        data={data}
+        totalAmountFormatted={totalAmount}
+        cgstRate={cgstRate}
+        cgstAmount={cgstAmount}
+        sgstRate={sgstRate}
+        sgstAmount={sgstAmount}
+        igstRate={igstRate}
+        igstAmount={igstAmount}
+        taxAmount={taxAmount}
+        totalBeforeTax={totalBeforeTax}
+        totalAfterTax={totalAfterTax}
+        wmwDiscountTotal={discountTotal}
+        wmwDiscountRowLabel={discountLabel}
+        wmwFreightChargeTotal={freightTotal}
+        wmwPackingChargeTotal={packingTotal}
+        wmwSeamChargeTotal={seamTotal}
+        sevenColumnGoodsLayout
+        rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
+      />
+
+      <div className="quotation-master-footer print-footer">
+        <QuotationInvoiceFooter quotationDate={data.date} />
+      </div>
+    </>
+  )
+
   return (
     <>
       {/* Quotation Content Div - All content until Remarks */}
       <div className="quotation-print-sheet">
         <div className="quotation-content-section quotation-content-section--seamless print-content" style={{ marginBottom: '24px' }}>
         {/*
-          Goods in their own table so the master thead can repeat only for goods pages.
-          Summary/footer in a follow-up table without thead so new sheets do not repeat QUOTATION.
+          Goods + summary in one paginated block: ~7 rows per print page;
+          summary/footer prints once on the last goods segment only.
         */}
         <table
           className="quotation-header-master-table quotation-header-master-table--wmwd1"
@@ -63,44 +92,11 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
               <td colSpan={2} className="quotation-seamless-stack">
                 <GoodsDescriptionPaginatedBlock
                   lineItems={lineItems}
+                  totalFoot={{ currency: data.currency || 'INR', amountFormatted: totalAmount }}
                   masterQuotationHeaderProps={{ data, shippingData, billingData, rawQuotationData }}
                   showHsnCodeColumn
+                  summaryFollowSlot={quotationSummaryFollowSlot}
                 />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table
-          className="quotation-header-master-table quotation-summary-follow-master-table"
-          style={{ width: '100%', borderCollapse: 'collapse' }}
-        >
-          <tbody>
-            <tr className="quotation-master-body-row quotation-master-body-row--summary">
-              <td colSpan={2} className="quotation-seamless-stack">
-                <QuotationSummarySection
-                  data={data}
-                  totalAmountFormatted={totalAmount}
-                  cgstRate={cgstRate}
-                  cgstAmount={cgstAmount}
-                  sgstRate={sgstRate}
-                  sgstAmount={sgstAmount}
-                  igstRate={igstRate}
-                  igstAmount={igstAmount}
-                  taxAmount={taxAmount}
-                  totalBeforeTax={totalBeforeTax}
-                  totalAfterTax={totalAfterTax}
-                  wmwDiscountTotal={discountTotal}
-                  wmwDiscountRowLabel={discountLabel}
-                  wmwFreightChargeTotal={freightTotal}
-                  wmwPackingChargeTotal={packingTotal}
-                  wmwSeamChargeTotal={seamTotal}
-                  sevenColumnGoodsLayout
-                  rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
-                />
-
-                <div className="quotation-master-footer print-footer">
-                  <QuotationInvoiceFooter quotationDate={data.date} />
-                </div>
               </td>
             </tr>
           </tbody>

@@ -8,6 +8,7 @@ export default function QuotationWmwReplicaPage() {
       documentLabel="Quotation"
       wmwd1DocumentTitle="QUOTATION"
       wmwd1NotesRemarksFromApi
+      useWmwPagination
     />
   )
 }
