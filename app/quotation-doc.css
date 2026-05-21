@@ -508,6 +508,10 @@
   .quotation-doc .quotation-header-master-table .quotation-header-td--title {
     page-break-after: avoid;
     page-break-inside: avoid;
+    vertical-align: middle !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    line-height: 1.2 !important;
   }
 
   .quotation-doc .quotation-summary-block>tbody>tr>td {

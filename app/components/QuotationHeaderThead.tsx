@@ -55,7 +55,7 @@ export default function QuotationHeaderThead({
                 <td className="qh-supplier-layout__text">
                   <div className="qh-company-name">WMW Metal Fabrics Ltd</div>
                   <div className="qh-line">53, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India</div>
-                  <div className="qh-line">Tel: +91.141.7105151</div>
+                  <div className="qh-line">Tel: +91 14171 05151</div>
                 </td>
               </tr>
             </tbody>

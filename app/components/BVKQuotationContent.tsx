@@ -452,9 +452,9 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <div style={{ marginLeft: '20px' }}>100% Advance with an acceptance of offer and a confirmed purchase order of the total invoice value.</div>
                   </div>
 
-                  {/* Quotation Validity */}
+                  {/* Quotation Valid Till */}
                   <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Validity</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Valid Till</div>
                     <div style={{ marginLeft: '20px' }}>
                       {resolveQuotationValidity(
                         rawQuotationData as Record<string, unknown> | undefined,
