@@ -398,7 +398,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             <strong>Payment:</strong> {payment}
           </div>
           <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
-            <strong>Quotation Validity Time:</strong> {quotationValidity}
+            <strong>Quotation Valid Till Time:</strong> {quotationValidity}
           </div>
           <div style={{ marginBottom: '15px', marginTop: '15px' }}>
             {warrantyDisclaimer}
@@ -524,7 +524,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
 
         <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
 
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Validity:</div>
+        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Valid Till:</div>
         <div style={{ marginBottom: '14px' }}>
           Time: {quotationValidity.trim() !== '' ? quotationValidity : '1 months from the date of quotation.'}
         </div>

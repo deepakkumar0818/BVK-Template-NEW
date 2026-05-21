@@ -32,7 +32,7 @@ const headerSupplierCell = (
     </div>
     <div style={{ fontWeight: 'bold' }}>WMW Metal Fabrics Ltd</div>
     <div>53, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India</div>
-    <div>Tel: +91.141.7105151</div>
+    <div>Tel: +91 14171 05151</div>
     <div>www.wmwindia.com</div>
     <div>info@wmwindia.com</div>
     <div>GSTIN: 08AAACW2620D1Z8</div>

@@ -39,7 +39,7 @@ export interface QuotationSummarySectionProps {
    * WMW Performa: static “Remarks :” list in the original left-column position beside tax rows.
    */
   notesMergedSlot?: ReactNode
-  /** Zoho raw record: drives “QUOTATION VALIDITY” via `Quotation_Validity` / `Offer_Validity`. */
+  /** Zoho raw record: drives “Quotation Valid Till” via `Quotation_Validity` / `Offer_Validity`. */
   rawQuotationData?: Record<string, unknown> | null
   /** When Zoho fields are empty; defaults to {@link DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE}. */
   quotationValidityDefault?: string
@@ -179,7 +179,7 @@ export default function QuotationSummarySection({
       <tbody>
         <tr>
           <td className="qs-cell qs-cell--validity" colSpan={validityColSpan}>
-            <strong>QUOTATION VALIDITY :</strong> {quotationValidityDisplay}
+            <strong>Quotation Valid Till :</strong> {quotationValidityDisplay}
           </td>
           <td className="qs-cell qs-cell--total-inr">Total INR</td>
           <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>

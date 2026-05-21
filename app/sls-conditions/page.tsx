@@ -83,7 +83,7 @@ export default function SlsConditionsPage() {
 
         <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
 
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Validity:</div>
+        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Valid Till:</div>
         <div style={{ marginBottom: '14px' }}>Time: 1 months from the date of quotation.</div>
 
         <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />

@@ -406,7 +406,7 @@ export default function PerformaInvoiceContent({
                       <tr>
                         <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
                           <div style={{ padding: '6px 8px', borderBottom: '1px solid #000' }}>
-                            <strong>QUOTATION VALIDITY:</strong>{' '}
+                            <strong>Quotation Valid Till:</strong>{' '}
                             {resolveQuotationValidity(
                               rawQuotationData as Record<string, unknown> | undefined,
                               DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE
