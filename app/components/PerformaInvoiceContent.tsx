@@ -70,15 +70,8 @@ const performaStaticRemarksBlock: ReactNode = (
   </>
 )
 
-/** `/quotation/[id]` footer: same grid as bank block, left column = Zoho `Remarks`. */
-function performaRemarksFooterBlock(
-  data: QuotationData,
-  raw: Record<string, unknown> | null | undefined
-): ReactNode {
-  const remarksRaw =
-    raw?.Remarks !== undefined && raw?.Remarks !== null ? String(raw.Remarks).trim() : ''
-  const remarkLines = remarksRaw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
-
+/** `/quotation/[id]` footer: same grid as bank block, left column = hardcoded Remarks list. */
+function performaRemarksFooterBlock(data: QuotationData): ReactNode {
   return (
     <div className="wmw-bank-details-group">
       <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -97,15 +90,14 @@ function performaRemarksFooterBlock(
           </tr>
           <tr>
             <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 8px', lineHeight: 1.35 }}>
-              {remarkLines.length > 0 ? (
-                <ol style={{ margin: 0, paddingLeft: '22px' }}>
-                  {remarkLines.map((line, idx) => (
-                    <li key={idx}>{line}</li>
-                  ))}
-                </ol>
-              ) : (
-                <div style={{ minHeight: '1em' }}>{'\u00A0'}</div>
-              )}
+              <ol style={{ margin: 0, paddingLeft: '22px' }}>
+                <li>Please mention this quotation number on your PO and all communications</li>
+                <li>In case of extreme currency volatility prices maybe revised at anytime.</li>
+                <li>This quotation is valid only for the products &amp; quantity mentioned.</li>
+                <li>Packing : Export worthy packing</li>
+                <li>ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request</li>
+                <li>All Foreign Bank charges on Purchaser Account.</li>
+              </ol>
             </td>
             <td style={{ width: '39%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
               <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
@@ -226,10 +218,7 @@ export default function PerformaInvoiceContent({
           rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
         />
         {wmwd1NotesRemarksFromApi
-          ? performaRemarksFooterBlock(
-              data,
-              rawQuotationData as Record<string, unknown> | null | undefined
-            )
+          ? performaRemarksFooterBlock(data)
           : performaBankDetailsBlock(data)}
       </>
     )

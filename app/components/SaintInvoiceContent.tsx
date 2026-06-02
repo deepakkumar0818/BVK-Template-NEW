@@ -221,8 +221,8 @@ export default function SaintInvoiceContent({
                             2. In case of extreme currency volatility prices maybe revised at anytime.<br />
                             3. This quotation is valid only for the products &amp; quantity mentioned.<br />
                             4. Packing : Export worthy packing<br />
-                            5. ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request.<br />
-                            6. All foreign bank charges in purchaser account.
+                            5. ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request<br />
+                            6. All Foreign Bank charges on Purchaser Account.
                           </td>
                           <td style={{ border: '1px solid #000', padding: '16px 8px', textAlign: 'center', verticalAlign: 'middle', height: '60px' }}>
                             This is an electronically generated document, No<br />signature required.
