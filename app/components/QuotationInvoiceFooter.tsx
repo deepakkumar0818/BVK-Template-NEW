@@ -24,14 +24,12 @@ export default function QuotationInvoiceFooter({ quotationDate }: QuotationInvoi
           <tr>
             <td className="qs-remarks-table__body qs-remarks-table__body--left">
               <ol className="qs-remarks-list">
-                <li>
-                  We hope you will find the offer as per your needs. We request you to release your valued PO at the
-                  earliest.
-                </li>
-                <li>Please mention this quotation number on your PO and all communications.</li>
+                <li>Please mention this quotation number on your PO and all communications</li>
+                <li>In case of extreme currency volatility prices maybe revised at anytime.</li>
                 <li>This quotation is valid only for the products &amp; quantity mentioned.</li>
-                <li>Mentioned delivery date is from date of confirmed PO other terms if any.</li>
-                <li>Subjects to terms and conditions closed.</li>
+                <li>Packing : Export worthy packing</li>
+                <li>ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request</li>
+                <li>All Foreign Bank charges on Purchaser Account.</li>
               </ol>
             </td>
             <td className="qs-remarks-table__body qs-remarks-table__body--right">
