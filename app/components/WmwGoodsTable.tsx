@@ -6,6 +6,7 @@ import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
   formatGoodsTableAmountChargeableInWords,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   resolveCountryOfFinalDestination,
   resolveQuotationDeliveryCell,
@@ -479,7 +480,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                                   )
                                 })()
                               ) : (
-                                `${row.quantity}${row.quantity !== '0' ? ' Pc' : ''}`
+                                `${formatPiecesInteger(row.quantity)}${row.quantity !== '0' ? ' Pc' : ''}`
                               )}
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>

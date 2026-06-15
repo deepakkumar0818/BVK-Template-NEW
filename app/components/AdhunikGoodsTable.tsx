@@ -7,6 +7,7 @@ import { buildProductFitmentBrandedGoodsBlock, renumberMergedGoodsItems } from '
 import {
   formatCurrency,
   formatGoodsTableAmountChargeableInWords,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   resolveCountryOfFinalDestination,
   resolveTransportDisplayLine,
@@ -555,7 +556,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                <span>{row.quantity}</span>
+                                <span>{formatPiecesInteger(row.quantity)}</span>
                                 <span>Pcs</span>
                               </div>
                             </td>

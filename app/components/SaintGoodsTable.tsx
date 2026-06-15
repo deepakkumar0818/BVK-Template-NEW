@@ -6,6 +6,7 @@ import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
   formatGoodsTableAmountChargeableInWords,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
@@ -364,8 +365,10 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
 
   const renderQtyUomCell = (qty: unknown, uom: unknown) => {
-    const qtyText = String(qty ?? '').trim()
     const uomText = String(uom ?? '').trim()
+    const qtyText = /^pcs?$/i.test(uomText)
+      ? formatPiecesInteger(qty)
+      : String(qty ?? '').trim()
     return (
       <div className="quotation-qty-uom-cell">
         <div className="quotation-qty-value">{qtyText || '\u00A0'}</div>
