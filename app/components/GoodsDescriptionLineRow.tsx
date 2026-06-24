@@ -43,29 +43,48 @@ export default function GoodsDescriptionLineRow({
         className="goods-description-table-body-cell goods-description-table-desc-cell"
         style={{ verticalAlign: 'top', ...pad }}
       >
-        <div>
-          <strong>Product</strong>: {product || '—'}
+        <div
+          className="goods-description-meta-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'max-content max-content 1fr',
+            columnGap: '6px',
+            rowGap: '0',
+            alignItems: 'baseline',
+          }}
+        >
+          <strong>Product</strong>
+          <span>:</span>
+          <span>{product || '—'}</span>
+          {quality ? (
+            <>
+              <strong>Quality</strong>
+              <span>:</span>
+              <span>{quality}</span>
+            </>
+          ) : null}
+          {form ? (
+            <>
+              <strong>Form</strong>
+              <span>:</span>
+              <span>{form}</span>
+            </>
+          ) : null}
+          {size ? (
+            <>
+              <strong>Size</strong>
+              <span>:</span>
+              <span>{size}</span>
+            </>
+          ) : null}
+          {type ? (
+            <>
+              <strong>Type</strong>
+              <span>:</span>
+              <span>{type}</span>
+            </>
+          ) : null}
         </div>
-        {quality ? (
-          <div>
-            <strong>Quality</strong>: {quality}
-          </div>
-        ) : null}
-        {form ? (
-          <div>
-            <strong>Form</strong>: {form}
-          </div>
-        ) : null}
-        {size ? (
-          <div>
-            <strong>Size</strong>: {size}
-          </div>
-        ) : null}
-        {type ? (
-          <div>
-            <strong>Type</strong>: {type}
-          </div>
-        ) : null}
       </td>
       {showHsnCodeColumn ? (
         <td className="goods-description-table-body-cell" style={{ verticalAlign: 'top', ...pad }}>
@@ -79,25 +98,59 @@ export default function GoodsDescriptionLineRow({
         {uom || '—'}
       </td>
       <td className="goods-description-table-body-cell" style={{ verticalAlign: 'top', ...pad }}>
-        {qtyFirstLine ? (
-          <>
-            {qtyFirstLine}
-            <br />
-          </>
-        ) : null}
-        {qtyLine}
-        {unit ? (
-          <>
-            <br />
-            {unit}
-          </>
-        ) : null}
-        {lineText(row.pieces) ? (
-          <>
-            <br />
-            {lineText(row.pieces)}
-          </>
-        ) : null}
+        {(() => {
+          const piecesSource = lineText(row.pieces) || unit
+          // Strip trailing "Pc" / "Pcs" and convert word-numbers ("One"/"Two"/"Three"/"Four") so the value column is just the count.
+          const piecesValue = (() => {
+            if (!piecesSource) return ''
+            const stripped = piecesSource.replace(/\s*pcs?\s*$/i, '').trim()
+            const wordMap: Record<string, string> = {
+              one: '1',
+              two: '2',
+              three: '3',
+              four: '4',
+            }
+            const lower = stripped.toLowerCase()
+            return wordMap[lower] ?? stripped
+          })()
+          const hasSubQty = Boolean(subQty) && subQty !== '0'
+          return (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'max-content max-content max-content',
+                columnGap: '4px',
+                rowGap: 0,
+                alignItems: 'baseline',
+                justifyItems: 'start',
+              }}
+            >
+              {uom ? (
+                <>
+                  <strong style={{ justifySelf: 'start' }}>{uom}</strong>
+                  <span style={{ justifySelf: 'start' }}>:</span>
+                  <span style={{ justifySelf: 'start' }}>{qtyLine}</span>
+                </>
+              ) : (
+                <span style={{ gridColumn: '1 / span 3' }}>{qtyLine}</span>
+              )}
+              {hasSubQty ? (
+                <>
+                  <span />
+                  <span />
+                  <span style={{ justifySelf: 'start' }}>{subQty}</span>
+                </>
+              ) : null}
+              {piecesValue ? (
+                <>
+                  <strong style={{ justifySelf: 'start' }}>Pc</strong>
+                  <span style={{ justifySelf: 'start' }}>:</span>
+                  <span style={{ justifySelf: 'start' }}>{piecesValue}</span>
+                </>
+              ) : null}
+            </div>
+          )
+        })()}
       </td>
       <td className="goods-description-table-body-cell text-right" style={pad}>
         {rate || '—'}
