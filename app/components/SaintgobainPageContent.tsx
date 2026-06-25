@@ -26,7 +26,7 @@ export default function SaintgobainPageContent() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+// my name is amit 
   useEffect(() => {
     const fetchQuotation = async () => {
       try {
