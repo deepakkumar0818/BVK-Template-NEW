@@ -4,6 +4,7 @@ import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import {
   formatCurrency,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   parseQuotationTaxForSummary,
   resolveQuotationValidity,
@@ -305,7 +306,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                             <div>Weave : {row.weaveDisplay?.trim() || '---------'}</div>
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
-                            {row.qty ? `${row.qty} Pcs` : '--- Pcs'}
+                            {row.qty ? `${formatPiecesInteger(row.qty)} Pcs` : '--- Pcs'}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
                             {row.unitPrice > 0 ? formatCurrency(row.unitPrice, displayCurrency) : ''}

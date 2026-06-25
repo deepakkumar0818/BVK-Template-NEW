@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(findstr /R \"Content.tsx\")"
+      "Bash(findstr /R \"Content.tsx\")",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }

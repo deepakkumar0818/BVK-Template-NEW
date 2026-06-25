@@ -852,12 +852,33 @@ export function determineTemplateType(
   return 'WI'
 }
 
-/** Append a space + `Pc` after Zoho `Pieces` when the value does not already end with `Pc`. */
+/**
+ * Pieces are whole units — strip any trailing decimals from a display value.
+ * "1.000" → "1", "12,345.6789" → "12345", "2 Pc" → "2 Pc", non-numeric → returned as-is.
+ */
+export function formatPiecesInteger(value: unknown): string {
+  if (value == null) return ''
+  const s = String(value).trim()
+  if (!s) return ''
+  // Strip existing Pc/Pcs suffix so we can re-apply consistently
+  const trailingPcs = /\s*(pcs?)\s*$/i.exec(s)
+  const suffix = trailingPcs ? ` ${trailingPcs[1]}` : ''
+  const numeric = trailingPcs ? s.slice(0, trailingPcs.index).trim() : s
+  const match = numeric.match(/^(-?[\d,]+)(?:\.\d+)?/)
+  if (!match) return s
+  const numStr = match[1].replace(/,/g, '')
+  const n = parseInt(numStr, 10)
+  if (!Number.isFinite(n)) return s
+  return `${n}${suffix}`
+}
+
+/** Append a space + `Pc` after Zoho `Pieces`; pieces value rendered as integer (decimals dropped). */
 function formatPiecesWithPcSuffix(piecesFromApi: string): string {
   const p = String(piecesFromApi ?? '').trim()
   if (!p) return ''
-  if (/\s*pc$/i.test(p)) return p
-  return `${p} Pc`
+  if (/\s*pcs?$/i.test(p)) return formatPiecesInteger(p)
+  const intPart = formatPiecesInteger(p)
+  return intPart ? `${intPart} Pc` : ''
 }
 
 /**
@@ -867,17 +888,18 @@ function formatPiecesWithPcSuffix(piecesFromApi: string): string {
 function unitAndPiecesFromQty(qtyNum: number, piecesFromApi: string): { unit: string; pieces: string } {
   const p = String(piecesFromApi ?? '').trim()
   if (p) return { unit: '', pieces: formatPiecesWithPcSuffix(p) }
+  const intQty = Math.trunc(qtyNum)
   const unit =
-    qtyNum === 1
+    intQty === 1
       ? 'One Pc'
-      : qtyNum === 2
+      : intQty === 2
         ? 'Two Pc'
-        : qtyNum === 3
+        : intQty === 3
           ? 'Three Pc'
-          : qtyNum === 4
+          : intQty === 4
             ? 'Four Pc'
-            : qtyNum > 0
-              ? `${qtyNum} Pc`
+            : intQty > 0
+              ? `${intQty} Pc`
               : ''
   return { unit, pieces: '' }
 }

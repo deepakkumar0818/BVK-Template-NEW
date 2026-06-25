@@ -6,6 +6,7 @@ import type { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
   formatGoodsTableAmountChargeableInWords,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
@@ -555,7 +556,7 @@ export default function SaintgobainGoodsTable({ data, rawQuotationData, headerNo
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                <span>{row.quantity}</span>
+                                <span>{formatPiecesInteger(row.quantity)}</span>
                                 <span>Pcs</span>
                               </div>
                             </td>

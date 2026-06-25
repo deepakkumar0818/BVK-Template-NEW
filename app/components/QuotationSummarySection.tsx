@@ -43,6 +43,8 @@ export interface QuotationSummarySectionProps {
   rawQuotationData?: Record<string, unknown> | null
   /** When Zoho fields are empty; defaults to {@link DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE}. */
   quotationValidityDefault?: string
+  /** `/wmw/[id]` only: skip the "Quotation Valid Till : …" row (the Total INR cell that sat in this row is also dropped). */
+  hideQuotationValidityRow?: boolean
 }
 
 /** Show a summary tax row only when its amount is a non-zero finite number. */
@@ -75,6 +77,7 @@ export default function QuotationSummarySection({
   notesMergedSlot,
   rawQuotationData,
   quotationValidityDefault = DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
+  hideQuotationValidityRow = false,
 }: QuotationSummarySectionProps) {
   const quotationValidityDisplay = resolveQuotationValidity(rawQuotationData ?? undefined, quotationValidityDefault)
   const totalAfterFormatted = formatCurrency(totalAfterTax)
@@ -177,13 +180,15 @@ export default function QuotationSummarySection({
         </colgroup>
       )}
       <tbody>
-        <tr>
-          <td className="qs-cell qs-cell--validity" colSpan={validityColSpan}>
-            <strong>Quotation Valid Till :</strong> {quotationValidityDisplay}
-          </td>
-          <td className="qs-cell qs-cell--total-inr">Total INR</td>
-          <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>
-        </tr>
+        {hideQuotationValidityRow ? null : (
+          <tr>
+            <td className="qs-cell qs-cell--validity" colSpan={validityColSpan}>
+              <strong>Quotation Valid Till :</strong> {quotationValidityDisplay}
+            </td>
+            <td className="qs-cell qs-cell--total-inr">Total INR</td>
+            <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>
+          </tr>
+        )}
 
         {wmwBandRows.map((band, bandIdx) => {
           const discountColor = band.isDiscount ? ({ color: '#c00000' } as const) : undefined

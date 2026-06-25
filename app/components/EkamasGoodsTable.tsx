@@ -6,6 +6,7 @@ import type { QuotationData, ZohoQuotation } from '@/lib/types'
 import {
   formatCurrency,
   formatGoodsTableAmountChargeableInWords,
+  formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
   resolveTransportDisplayLine,
@@ -669,7 +670,7 @@ export default function EkamasGoodsTable({
                               >
                                 {row.hsnCode || ''}
                               </td>
-                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{row.quantity} Pcs</td>
+                              <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>{formatPiecesInteger(row.quantity)} Pcs</td>
                               <td style={{ ...ekamasRightValueCell, paddingTop: '10px' }}>
                                 {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                               </td>

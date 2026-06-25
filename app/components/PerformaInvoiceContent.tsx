@@ -64,8 +64,12 @@ const performaStaticRemarksBlock: ReactNode = (
       Remarks :
     </div>
     <ol style={{ margin: 0, padding: '4px 8px 8px 28px', lineHeight: 1.35 }}>
-      <li>Mentioned delivery date is from date of confirmed PO other terms if any</li>
-      <li>Subjects to terms and conditions enclosed.</li>
+      <li>Please mention this quotation number on your PO and all communications</li>
+      <li>In case of extreme currency volatility prices maybe revised at anytime.</li>
+      <li>This quotation is valid only for the products &amp; quantity mentioned.</li>
+      <li>Packing : Export worthy packing</li>
+      <li>ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request</li>
+      <li>All Foreign Bank charges on Purchaser Account.</li>
     </ol>
   </>
 )
@@ -116,7 +120,73 @@ function performaRemarksFooterBlock(data: QuotationData): ReactNode {
   )
 }
 
-function performaBankDetailsBlock(data: QuotationData): ReactNode {
+function performaBankDetailsBlock(
+  data: QuotationData,
+  options?: { ourBankDetails?: string; showWmwBankSplit?: boolean }
+): ReactNode {
+  const bankText = String(options?.ourBankDetails ?? '').trim()
+  const bankLines = bankText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+  const splitLayout = Boolean(options?.showWmwBankSplit) && bankLines.length > 0
+
+  if (splitLayout) {
+    return (
+      <div className="wmw-bank-details-group">
+        <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <tbody>
+            <tr>
+              <td
+                style={{
+                  width: '60%',
+                  border: '1px solid #000',
+                  padding: '3px 8px',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}
+              >
+                Bank Details :-
+              </td>
+              <td
+                style={{
+                  width: '40%',
+                  border: '1px solid #000',
+                  padding: '3px 8px',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}
+              >
+                For WMW Metal Fabrics Ltd.
+              </td>
+            </tr>
+            <tr>
+              <td
+                style={{
+                  verticalAlign: 'top',
+                  border: '1px solid #000',
+                  padding: '4px 8px',
+                  lineHeight: 1.35,
+                }}
+              >
+                {bankLines.map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
+              </td>
+              <td style={{ verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
+                <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
+                  <div>Computer Generated Document</div>
+                  <div>No Signature Needed</div>
+                </div>
+                <div style={{ borderTop: '1px solid #000', padding: '4px 8px' }}>Dated: {data.date}</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
+          DOC NO. WMW/MKT/F.1 (Rev.00)
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="wmw-bank-details-group">
       <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -216,10 +286,16 @@ export default function PerformaInvoiceContent({
             )
           }
           rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
+          hideQuotationValidityRow={useWmwPagination && !wmwd1NotesRemarksFromApi}
         />
         {wmwd1NotesRemarksFromApi
           ? performaRemarksFooterBlock(data)
-          : performaBankDetailsBlock(data)}
+          : performaBankDetailsBlock(data, {
+              ourBankDetails: String(
+                (rawQuotationData as Record<string, unknown> | null | undefined)?.Our_Bank_Details ?? ''
+              ),
+              showWmwBankSplit: useWmwPagination,
+            })}
       </>
     )
     return (

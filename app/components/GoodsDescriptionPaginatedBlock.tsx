@@ -102,28 +102,63 @@ export default function GoodsDescriptionPaginatedBlock({
           chunk.length >= GOODS_EVEN_DISTRIBUTE_MIN_ROWS &&
           chunk.length <= GOODS_EVEN_DISTRIBUTE_MAX_ROWS &&
           missingRows > 0
+        // Even a "full" 7-row WMW head page leaves empty space below the rows once the master
+        // header is shrunk — apply distribute-rows to those pages too so rows spread vertically.
+        const isWmwFullHeadChunkForDistribute =
+          useWmwPagination && !isLastChunk && chunk.length === GOODS_ROWS_PER_PRINT_PAGE
         const distributeEvenRowsThisChunk =
-          isPartialDistributeRange &&
-          (
-            (Boolean(summaryFollowSlot) && isLastChunk) ||
-            (useWmwPagination && !isLastChunk)
-          )
+          (isPartialDistributeRange &&
+            (
+              (Boolean(summaryFollowSlot) && isLastChunk) ||
+              (useWmwPagination && !isLastChunk)
+            )) ||
+          isWmwFullHeadChunkForDistribute
         const stretchThisChunk =
           isLastChunk &&
           shouldStretchLastPage &&
           chunk.length > 0 &&
           missingRows > 0 &&
-          !distributeEvenRowsThisChunk
+          !distributeEvenRowsThisChunk &&
+          // WMW pagination: stretch-last only for 1-3 item last chunks (room to spare for the
+          // spacer to push the footer to the page bottom). 4-5 items already fill the page —
+          // adding a spacer would overflow.
+          (!useWmwPagination || chunk.length <= 3)
+        // Stretch-last spacer height per missing row. Standard 11mm overshoots when 7 items naturally fill a page,
+        // but for the shrunk WMW pagination layout with 1-3 items + footer, we need a bigger per-missing budget
+        // so the spacer pushes the summary all the way to the page bottom.
+        const stretchMmPerMissing =
+          useWmwPagination && stretchThisChunk && chunk.length <= 3
+            ? chunk.length === 1
+              ? 15
+              : chunk.length === 2
+                ? 13
+                : 11.5
+            : 11
         const stretchStyle = stretchThisChunk
-          ? ({ '--goods-stretch-missing-rows': missingRows } as CSSProperties)
+          ? ({
+              '--goods-stretch-missing-rows': missingRows,
+              '--goods-stretch-mm-per-missing': `${stretchMmPerMissing}mm`,
+            } as CSSProperties)
           : undefined
-        const distributePerMissingMm =
-          useWmwPagination && !isLastChunk
-            ? GOODS_PRINT_FILL_MM_PER_MISSING_ROW * 4 // non-last WMW page must fill A4 minus master header
-            : GOODS_PRINT_FILL_MM_PER_MISSING_ROW
+        // Distribute-rows pad: standard formula = (missing × 11mm) / (2 × rows). That works when
+        // the chunk would naturally fit a full 7-row page; for WMW non-last partial pages the
+        // rows need to spread further to cover the available area below the (shrunk) master header.
+        // Override the pad calculation with a "fill target" so 5-6 rows reach the page bottom.
+        const distributeEvenPadMm = (() => {
+          if (!distributeEvenRowsThisChunk) return 0
+          if (useWmwPagination && !isLastChunk) {
+            // Target area available for goods rows (A4 − bottom margins − master − thead/tfoot).
+            const WMW_GOODS_AREA_TARGET_MM = 185
+            const NATURAL_ROW_MM = 22
+            const targetRowMm = WMW_GOODS_AREA_TARGET_MM / chunk.length
+            const extraRowMm = Math.max(0, targetRowMm - NATURAL_ROW_MM)
+            return extraRowMm / 2
+          }
+          return (missingRows * GOODS_PRINT_FILL_MM_PER_MISSING_ROW) / (2 * chunk.length)
+        })()
         const distributeTableStyle = distributeEvenRowsThisChunk
           ? ({
-              '--goods-even-pad-mm': `${(missingRows * distributePerMissingMm) / (2 * chunk.length)}mm`,
+              '--goods-even-pad-mm': `${distributeEvenPadMm}mm`,
               ...(cellPaddingPx != null
                 ? {
                     '--goods-cell-pad-x': `${cellPaddingPx}px`,
@@ -151,6 +186,11 @@ export default function GoodsDescriptionPaginatedBlock({
                 ? 'quotation-goods-pages-segment--wmw-fill-page'
                 : '',
               useWmwPagination ? 'quotation-goods-pages-segment--wmw' : '',
+              // Pin footer to page bottom only when the last chunk has 1–3 items
+              // (content is naturally short enough to have leftover vertical space to fill).
+              useWmwPagination && isLastChunk && chunk.length >= 1 && chunk.length <= 3
+                ? 'quotation-goods-pages-segment--wmw-pin-bottom'
+                : '',
             ]
               .filter(Boolean)
               .join(' ')}

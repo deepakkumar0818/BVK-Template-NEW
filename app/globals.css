@@ -599,8 +599,8 @@ body {
   }
 
   .goods-description-table--stretch-last .goods-description-stretch-spacer .goods-description-stretch-spacer-cell {
-    height: calc(var(--goods-stretch-missing-rows, 0) * 11mm) !important;
-    min-height: calc(var(--goods-stretch-missing-rows, 0) * 11mm) !important;
+    height: calc(var(--goods-stretch-missing-rows, 0) * var(--goods-stretch-mm-per-missing, 11mm)) !important;
+    min-height: calc(var(--goods-stretch-missing-rows, 0) * var(--goods-stretch-mm-per-missing, 11mm)) !important;
     padding: 0 !important;
     border-top: none !important;
     border-bottom: none !important;
@@ -723,13 +723,44 @@ body {
   }
 
   .quotation-print-sheet--wmw-pagination .wmw-bank-details-group .quotation-doc-footer-meta {
-    margin-top: 2px !important;
+    margin-top: 0 !important;
     padding-top: 0 !important;
-    padding-bottom: 1px !important;
-    font-size: 9px !important;
-    line-height: 1.1 !important;
+    padding-bottom: 0 !important;
+    font-size: 8px !important;
+    line-height: 1 !important;
     page-break-before: avoid !important;
     break-before: avoid !important;
+  }
+
+  /* Remarks list inside the footer slot: tighter spacing so all 6 items fit alongside DOC NO. */
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group ol,
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary ol {
+    margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1.15 !important;
+    font-size: 9px !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group ol li,
+  .quotation-print-sheet--wmw-pagination .quotation-goods-last-page-summary ol li {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Bank-details right column ("For WMW … / Computer Generated / Dated"): tighter rows. */
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group table td {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .wmw-bank-details-group table td > div {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    line-height: 1.15 !important;
   }
 
   /* Shrink the footer block a little: tighter row padding + line-height on summary + bank details. */
@@ -786,6 +817,94 @@ body {
   .quotation-doc--wmw-numbered .print-container {
     padding-bottom: 13mm !important;
   }
+
+  /*
+   * Aggressive shrinking for WMW pagination — required so 5 items + footer fits on one A4 page
+   * even with multi-line product descriptions + interstate IGST summary. The user explicitly
+   * wants [5+footer] single page for N=5, regardless of content size.
+   */
+
+  /* Goods table: smaller font + tighter padding (recover ~3mm per row × 5 = ~15mm) */
+  .quotation-print-sheet--wmw-pagination .goods-description-table tbody td.goods-description-table-body-cell {
+    padding: 4px 6px !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .goods-description-table thead th {
+    padding: 4px 6px !important;
+    font-size: 9px !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .goods-description-table tfoot td {
+    padding: 4px 6px !important;
+    font-size: 9px !important;
+  }
+
+  /* Product description: prevent wrapping where possible — saves height when names are long. */
+  .quotation-print-sheet--wmw-pagination .goods-description-meta-grid {
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Master header: tighter rows (recover ~10–15mm). */
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .quotation-header-td--title {
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .quotation-header-td--supplier {
+    padding: 3px 5px 3px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid td {
+    padding: 2px 4px !important;
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-line {
+    line-height: 1.1 !important;
+  }
+
+  /* Consignee/recipient block: smaller font + tighter padding. */
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair {
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair th,
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair td {
+    padding: 2px 4px !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-address-plain {
+    padding: 2px 4px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-address-state-grid th,
+  .quotation-print-sheet--wmw-pagination .quotation-address-state-grid td {
+    padding: 1px 4px !important;
+    font-size: 9px !important;
+  }
+
+  /* Reduce top spacer in master thead from 25mm → 8mm (recover ~17mm). */
+  .quotation-print-sheet--wmw-pagination .print-page-top-spacer,
+  .quotation-print-sheet--wmw-pagination .print-page-top-spacer td {
+    height: 8mm !important;
+    min-height: 8mm !important;
+  }
+
+  /*
+   * Footer pin for 1-3 item last chunks is handled by stretch-last (a tall spacer row inside
+   * the goods table) instead of flex layout, because Chrome's flex page-break behavior is
+   * unreliable in print. The spacer row's height = missing-rows × 11mm pushes the summary
+   * toward the bottom of the page.
+   */
 
   /* Non-last partial WMW pages (5–6 items, no footer): fill the available printable area. */
   .quotation-print-sheet--wmw-pagination .quotation-goods-pages-segment--wmw-fill-page {
@@ -1263,8 +1382,8 @@ body {
 }
 
 .goods-description-table--stretch-last .goods-description-stretch-spacer .goods-description-stretch-spacer-cell {
-  height: calc(var(--goods-stretch-missing-rows, 0) * 11mm);
-  min-height: calc(var(--goods-stretch-missing-rows, 0) * 11mm);
+  height: calc(var(--goods-stretch-missing-rows, 0) * var(--goods-stretch-mm-per-missing, 11mm));
+  min-height: calc(var(--goods-stretch-missing-rows, 0) * var(--goods-stretch-mm-per-missing, 11mm));
   padding: 0;
   border-top: none;
   border-bottom: none;

@@ -79,14 +79,14 @@ export default function QuotationHeaderThead({
                 <tr>
                   <td colSpan={2} className="qh-supplier-footer__gstin-cin-cell">
                     <div className="qh-supplier-footer__gstin-cin-line">
-                      <span className="qh-supplier-footer__gstin">GSTIN: 08AAACW2620D1Z8</span>
+                      <span className="qh-supplier-footer__gstin">GSTIN: 08AAACW2620D1ZS</span>
                       <span className="qh-supplier-footer__cin">CIN: U27109WB1995PLC068681</span>
                     </div>
                   </td>
                 </tr>
               ) : (
                 <tr>
-                  <td className="qh-supplier-footer__left">GSTIN: 08AAACW2620D1Z8</td>
+                  <td className="qh-supplier-footer__left">GSTIN: 08AAACW2620D1ZS</td>
                   <td className="qh-supplier-footer__right">CIN: U27109WB1995PLC068681</td>
                 </tr>
               )}

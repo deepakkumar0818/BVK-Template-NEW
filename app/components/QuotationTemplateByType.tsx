@@ -35,7 +35,7 @@ const headerSupplierCell = (
     <div>Tel: +91 14171 05151</div>
     <div>www.wmwindia.com</div>
     <div>info@wmwindia.com</div>
-    <div>GSTIN: 08AAACW2620D1Z8</div>
+    <div>GSTIN: 08AAACW2620D1ZS</div>
     <div>CIN: U27109WB1995PLC068681</div>
   </td>
 )
