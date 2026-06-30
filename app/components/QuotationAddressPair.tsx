@@ -201,19 +201,19 @@ export default function QuotationAddressPair({
   const bState = billingMerged?.Billing_State ?? ''
 
   return (
-    <div className="quotation-stack-segment">
+    <div className="quotation-stack-segment quotation-address-pair">
       <table className="quotation-address-pair-table">
         <colgroup>
-          {/* Shipped To (50%) */}
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '13%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '13%' }} />
+          {/* Shipped To (50%) — label cols widened so "GST Number" is not clipped in print */}
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '11%' }} />
           {/* Billed To (50%) */}
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '13%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '13%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '11%' }} />
         </colgroup>
         <tbody>
           <tr>

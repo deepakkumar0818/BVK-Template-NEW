@@ -891,8 +891,14 @@ body {
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-address-pair th,
-  .quotation-print-sheet--wmw-pagination .quotation-address-pair td {
-    padding: 2px 4px !important;
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair td,
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair-table th,
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair-table td {
+    padding: 2px 3px !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-address-pair-table .qap-label {
+    padding-right: 4px !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-address-plain {
@@ -1035,6 +1041,11 @@ body {
   .quotation-doc .quotation-address-state-grid td {
     border: 1px solid #000 !important;
     padding: 2px 5px !important;
+  }
+
+  .quotation-doc .quotation-address-pair-table .qap-label {
+    overflow: visible !important;
+    padding-right: 5px !important;
   }
 
   .quotation-title--compact,
