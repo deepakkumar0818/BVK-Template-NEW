@@ -341,6 +341,7 @@ export default function GoodsDescriptionPaginatedBlock({
                         cellPaddingPx={lastChunkCellPadding}
                         showHsnCodeColumn={showHsnCodeColumn}
                         currency={documentCurrency}
+                        useWmwPagination={useWmwPagination}
                       />
                     ))
                   ) : (

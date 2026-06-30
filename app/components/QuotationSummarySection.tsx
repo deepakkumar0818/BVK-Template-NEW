@@ -6,6 +6,7 @@ import {
   resolveQuotationValidity,
   DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
 } from '@/lib/quotation-utils'
+import { isQuotationZohoCheckboxTrue } from '@/lib/wmw-subform-mapping'
 
 export interface QuotationSummarySectionProps {
   data: QuotationData
@@ -92,6 +93,8 @@ export default function QuotationSummarySection({
     value: string
     /** Render the row text in red; reserved for the Discount band. */
     isDiscount?: boolean
+    /** WMWD1: checkbox-only Incl. band (no amount) — wide layout aligned to tax/amount column. */
+    wideLeftBandOnly?: boolean
   }
 
   const wmwBandRows: WmwBandRow[] = []
@@ -104,25 +107,33 @@ export default function QuotationSummarySection({
       isDiscount: true,
     })
   }
-  if (wmwChargeVisible(wmwFreightChargeTotal)) {
+  const freightHasAmount = wmwChargeVisible(wmwFreightChargeTotal)
+  const freightInclOnly =
+    !freightHasAmount && isQuotationZohoCheckboxTrue(rawQuotationData ?? undefined, 'Freight_Charge')
+  if (freightHasAmount || freightInclOnly) {
     wmwBandRows.push({
       leftMain: 'Freight',
-      leftSub: 'Excl.',
+      leftSub: freightInclOnly ? 'Incl.' : 'Excl.',
       label: 'Freight Charge',
-      value: formatCurrency(wmwFreightChargeTotal, cur),
+      value: freightHasAmount ? formatCurrency(wmwFreightChargeTotal, cur) : '',
+      wideLeftBandOnly: freightInclOnly,
     })
   }
-  if (wmwChargeVisible(wmwPackingChargeTotal)) {
+  const packingHasAmount = wmwChargeVisible(wmwPackingChargeTotal)
+  const packingInclOnly =
+    !packingHasAmount && isQuotationZohoCheckboxTrue(rawQuotationData ?? undefined, 'Packing_Charge')
+  if (packingHasAmount || packingInclOnly) {
     wmwBandRows.push({
-      leftMain: <strong>Insurance</strong>,
+      leftMain: <strong>Packing</strong>,
       leftSub: 'Incl.',
       label: 'Packing Charges',
-      value: formatCurrency(wmwPackingChargeTotal, cur),
+      value: packingHasAmount ? formatCurrency(wmwPackingChargeTotal, cur) : '',
+      wideLeftBandOnly: packingInclOnly,
     })
   }
   if (wmwChargeVisible(wmwSeamChargeTotal)) {
     wmwBandRows.push({
-      leftMain: <strong>Packing</strong>,
+      leftMain: <strong>Seam</strong>,
       leftSub: 'Incl.',
       label: 'Seam Charges',
       value: formatCurrency(wmwSeamChargeTotal, cur),
@@ -150,14 +161,19 @@ export default function QuotationSummarySection({
   const notesRowSpan = summaryTaxRows.length
 
   /**
-   * WMWD1: first 5 goods cols (desc+hsn+del+uom+qty) split 3+2 so Freight/Excl occupy that whole band.
+   * WMWD1: notes occupy cols 1–4 (desc+hsn+del+uom). Tax/charge labels start at col 5 (Qty —
+   * third column from the right in the goods table) and span cols 5–6; amounts stay in col 7.
    * Legacy 6→4 col summary: single cells in widened first two columns + tax pair.
    */
   const leftLabelColSpan = sevenColumnGoodsLayout ? 3 : 1
-  const leftExclColSpan = sevenColumnGoodsLayout ? 2 : 1
-  const validityColSpan = sevenColumnGoodsLayout ? 5 : 2
-  const notesColSpan = sevenColumnGoodsLayout ? 5 : 2
+  const leftExclColSpan = sevenColumnGoodsLayout ? 1 : 1
+  const validityColSpan = sevenColumnGoodsLayout ? 4 : 2
+  const notesColSpan = sevenColumnGoodsLayout ? 4 : 2
+  const taxLabelColSpan = sevenColumnGoodsLayout ? 2 : 1
   const amountWordsColSpan = sevenColumnGoodsLayout ? 7 : 4
+  /** Align charge-band split with tax rows: cols 1–(notes+label) | amount col. */
+  const chargeBandMainColSpan = notesColSpan + taxLabelColSpan
+  const chargeBandRightColSpan = 1
 
   return (
     <table className="quotation-stack-table quotation-summary-block">
@@ -185,13 +201,46 @@ export default function QuotationSummarySection({
             <td className="qs-cell qs-cell--validity" colSpan={validityColSpan}>
               <strong>Quotation Valid Till :</strong> {quotationValidityDisplay}
             </td>
-            <td className="qs-cell qs-cell--total-inr">Total INR</td>
+            <td className="qs-cell qs-cell--total-inr" colSpan={sevenColumnGoodsLayout ? taxLabelColSpan : 1}>
+              Total INR
+            </td>
             <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>
           </tr>
         )}
 
         {wmwBandRows.map((band, bandIdx) => {
           const discountColor = band.isDiscount ? ({ color: '#c00000' } as const) : undefined
+          const wideLeft = Boolean(band.wideLeftBandOnly)
+          const hideAmountCell = wideLeft && !band.value
+          if (wideLeft) {
+            return (
+              <tr key={`wmw-band-${bandIdx}`} className="qs-hsn-tax-row">
+                <td className="qs-cell qs-hsn-grid__col-label" colSpan={chargeBandMainColSpan} style={discountColor}>
+                  {hideAmountCell ? (
+                    band.leftMain
+                  ) : (
+                    <span className="qs-charge-band-main-row">
+                      <span>{band.leftMain}</span>
+                      <span>{band.leftSub}</span>
+                    </span>
+                  )}
+                </td>
+                {hideAmountCell ? (
+                  <td
+                    className="qs-cell qs-hsn-grid__col-excl qs-charge-band-incl-cell"
+                    colSpan={chargeBandRightColSpan}
+                    style={discountColor}
+                  >
+                    {band.leftSub}
+                  </td>
+                ) : (
+                  <td className="qs-cell qs-tax-num" colSpan={chargeBandRightColSpan} style={discountColor}>
+                    {band.value}
+                  </td>
+                )}
+              </tr>
+            )
+          }
           return (
             <tr key={`wmw-band-${bandIdx}`} className="qs-hsn-tax-row">
               <td className="qs-cell qs-hsn-grid__col-label" colSpan={leftLabelColSpan} style={discountColor}>
@@ -200,8 +249,12 @@ export default function QuotationSummarySection({
               <td className="qs-cell qs-hsn-grid__col-excl" colSpan={leftExclColSpan} style={discountColor}>
                 {band.leftSub}
               </td>
-              <td className="qs-cell qs-tax-label" style={discountColor}>{band.label}</td>
-              <td className="qs-cell qs-tax-num" style={discountColor}>{band.value}</td>
+              <td className="qs-cell qs-tax-label" colSpan={taxLabelColSpan} style={discountColor}>
+                {band.label}
+              </td>
+              <td className="qs-cell qs-tax-num" style={discountColor}>
+                {band.value}
+              </td>
             </tr>
           )
         })}
@@ -220,7 +273,9 @@ export default function QuotationSummarySection({
                 )}
               </td>
             ) : null}
-            <td className="qs-cell qs-tax-label">{row.label}</td>
+            <td className="qs-cell qs-tax-label" colSpan={taxLabelColSpan}>
+              {row.label}
+            </td>
             <td className="qs-cell qs-tax-num">{row.value}</td>
           </tr>
         ))}

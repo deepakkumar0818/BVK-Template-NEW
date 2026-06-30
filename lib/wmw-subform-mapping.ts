@@ -84,8 +84,12 @@ export interface WmwJoinedLineDisplayRow {
   piecesDisplay: string
   /** Source field Total_SQM — displayed as “Rate/Sqm” per business mapping */
   ratePerSqmDisplay: string
+  /** Raw Total_SQM string (main → 2_0 → 3_0). WMW pagination renders this next to UOM label. */
+  totalSqm: string
   /** Source field Total_Price — displayed as “Amount INR” (or invoice currency in UI) */
   amountDisplay: string
+  /** Per-line `Discount_Value` on the linked `*_2_0` row only (no fallbacks). */
+  discountValueDisplay: string
   /** Zoho `Delivery` text from linked rows (`WMW_2_0` → `WMW_3_0` → main). */
   deliveryApi: string
   deliveryDate: string
@@ -379,10 +383,7 @@ function buildJoinedLineRowsForSubformBundle(
     const blendProductLabel =
       stringifyField(ext3?.Blend_Category) ||
       stringifyField(ext2?.Blend_Category) ||
-      stringifyField(main.Blend_Category) ||
-      stringifyField(main.Product_Group) ||
-      stringifyField(main.Product_Name) ||
-      stringifyField(main.Price_Master)
+      stringifyField(main.Blend_Category)
 
     /** “Form” column: `End_Type` only (linked 2_0 → 3_0 → main), same as branded goods tables. */
     const supplyForm = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
@@ -464,7 +465,9 @@ function buildJoinedLineRowsForSubformBundle(
       quantity: coalesceMainFirst(main, ext2, ext3, 'Qty') || (isProductFitment ? coalesceMainFirst(main, ext2, ext3, 'Pieces') : ''),
       piecesDisplay: coalesceMainFirst(main, ext2, ext3, 'Pieces'),
       ratePerSqmDisplay,
+      totalSqm: coalesceMainFirst(main, ext2, ext3, 'Total_SQM'),
       amountDisplay,
+      discountValueDisplay: stringifyField(ext2?.Discount_Value),
 
       deliveryApi: coalesceLinkedFirst(ext2, ext3, main, 'Delivery'),
       deliveryDate: desiredDateForRef(desiredRows, lastItemRef),
@@ -578,6 +581,49 @@ const LINE_ITEM_DISCOUNT_SUBFORM_KEYS = [
   'Category_2_MM_Database_WI_2_0',
 ] as const
 
+/** WMWD1 / WMW pagination: `Discount_Value` on WMW `*_2_0` rows only. */
+const WMW_LINE_DISCOUNT_VALUE_SUBFORM_KEYS = [
+  'Category_1_MM_Database_WMW_2_0',
+  'Category_2_MM_Database_WMW_2_0',
+] as const
+
+/**
+ * When `true`, show a separate discount summary row (amounts stay gross in the goods table).
+ * When `false`, absorb each line’s `Discount_Value` into the line amount and hide the row.
+ * Missing / other values default to `true` for legacy quotations.
+ */
+export function isQuotationDiscountSummaryEnabled(raw: ZohoQuotation | null | undefined): boolean {
+  const v = (raw as Record<string, unknown> | undefined)?.Discount
+  if (v === true) return true
+  if (v === false) return false
+  const s = String(v ?? '').trim().toLowerCase()
+  if (s === 'true') return true
+  if (s === 'false') return false
+  return true
+}
+
+/** Zoho checkbox scalars (`"true"` / `"false"` strings or booleans). */
+export function isQuotationZohoCheckboxTrue(
+  raw: ZohoQuotation | Record<string, unknown> | null | undefined,
+  field: string
+): boolean {
+  const v = (raw as Record<string, unknown> | undefined)?.[field]
+  if (v === true) return true
+  if (v === false) return false
+  return String(v ?? '').trim().toLowerCase() === 'true'
+}
+
+export function sumWmwLineDiscountValueOnly(raw: ZohoQuotation | null | undefined): number {
+  if (!raw) return 0
+  let sum = 0
+  for (const key of WMW_LINE_DISCOUNT_VALUE_SUBFORM_KEYS) {
+    for (const row of toRowArray(raw, key)) {
+      sum += parseChargeNumber(stringifyField(row.Discount_Value))
+    }
+  }
+  return sum
+}
+
 function sumPerLineDiscountFromQuotation(raw: ZohoQuotation | null | undefined): number {
   if (!raw) return 0
   let sum = 0
@@ -628,6 +674,39 @@ export function resolveWmwChargeTotals(raw: ZohoQuotation | null | undefined): {
 
   const discountTotal =
     sumPerLineDiscountFromQuotation(raw) + resolveOverallDiscountScalar(r)
+
+  return {
+    discountTotal,
+    discountLabel: formatOverallDiscountRowLabel(r.Discount_Type),
+    freightTotal: quotationScalarFieldPresent(r.Total_Freight_Charges)
+      ? parseChargeNumber(String(r.Total_Freight_Charges))
+      : 0,
+    packingTotal: quotationScalarFieldPresent(r.Total_Packing_Charges)
+      ? parseChargeNumber(String(r.Total_Packing_Charges))
+      : 0,
+    seamTotal: quotationScalarFieldPresent(r.Total_Seam_Charges)
+      ? parseChargeNumber(String(r.Total_Seam_Charges))
+      : 0,
+  }
+}
+
+/**
+ * WMWD1 / WMW pagination (`/wmw/[id]`, `/quotation/[id]`): discount uses `Discount_Value` on WMW `*_2_0` rows only.
+ * The discount summary row is shown only when quotation `Discount` is `true`.
+ */
+export function resolveWmwd1ChargeTotals(raw: ZohoQuotation | null | undefined): {
+  discountTotal: number
+  discountLabel: string
+  freightTotal: number
+  packingTotal: number
+  seamTotal: number
+} {
+  const r = raw as Record<string, unknown> | undefined
+  if (!r) {
+    return { discountTotal: 0, discountLabel: 'Discount', freightTotal: 0, packingTotal: 0, seamTotal: 0 }
+  }
+
+  const discountTotal = isQuotationDiscountSummaryEnabled(raw) ? sumWmwLineDiscountValueOnly(raw) : 0
 
   return {
     discountTotal,

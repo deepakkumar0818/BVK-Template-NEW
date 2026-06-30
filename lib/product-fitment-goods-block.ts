@@ -135,11 +135,7 @@ export function buildProductFitmentBrandedGoodsBlock(
 
     const blendProductLabel =
       stringifyField(ext2?.Blend_Category) ||
-      stringifyField(main.Blend_Category) ||
-      stringifyField(main.Product_Group) ||
-      stringifyField(main.Product_Name) ||
-      stringifyField(main.Product_Master) ||
-      stringifyField(main.Price_Master)
+      stringifyField(main.Blend_Category)
 
     /** Form: `End_Type` from `Product_Fitments2_0` (linked row) first, then main `Product_Fitments`. */
     const form = coalesceLinkedFirst(ext2, ext3, main, 'End_Type')
