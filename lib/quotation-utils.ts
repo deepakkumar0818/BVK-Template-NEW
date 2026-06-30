@@ -3,6 +3,7 @@ import { deliveryDisplayFromRecords, endTypeDisplayFromRecords } from './goods-d
 import {
   buildWmwJoinedLineRows,
   desiredDateForRef,
+  isQuotationDiscountSummaryEnabled,
   type WmwJoinedLineDisplayRow,
   normalizeLastItemRef,
   numericSegmentFromInvoiceDimension,
@@ -926,7 +927,7 @@ function addQuotationLineItemsFromWmwJoin(
     totalAdd += amtNum
 
     lineItems.push({
-      product: row.productLabel?.trim() || 'N/A',
+      product: row.productLabel?.trim() || '',
       quality: row.materialCode?.trim() || '',
       form: row.supplyForm?.trim() || '',
       size: row.size?.trim() || '',
@@ -940,6 +941,7 @@ function addQuotationLineItemsFromWmwJoin(
       uom: row.uom?.trim() || 'SQMT',
       qty,
       subQty: '',
+      totalSqm: (row.totalSqm?.trim() || '').replace(/,/g, '') || undefined,
       unit,
       pieces,
       rate: formatCurrency(row.ratePerSqmDisplay, currency),
@@ -947,6 +949,47 @@ function addQuotationLineItemsFromWmwJoin(
     })
   }
   return totalAdd
+}
+
+function parseLineItemAmountNumber(amount: string | undefined): number {
+  const n = parseFloat(String(amount ?? '').replace(/,/g, '').trim())
+  return Number.isFinite(n) ? n : 0
+}
+
+function parseDiscountValueNumber(value: string | undefined): number {
+  const n = parseFloat(String(value ?? '').replace(/,/g, '').trim())
+  return Number.isFinite(n) ? n : 0
+}
+
+/**
+ * WMWD1 / WMW pagination: when quotation `Discount` is `false`, subtract each joined line’s
+ * `Discount_Value` from the goods amount and return the net line total for summary bands.
+ */
+export function applyWmwd1LineDiscountAbsorption(
+  lineItems: QuotationLineItem[],
+  raw: ZohoQuotation | null | undefined,
+  currency: string
+): { lineItems: QuotationLineItem[]; netTotal: number } {
+  if (isQuotationDiscountSummaryEnabled(raw)) {
+    const netTotal = lineItems.reduce((sum, item) => sum + parseLineItemAmountNumber(item.amount), 0)
+    return { lineItems, netTotal }
+  }
+
+  const joined = buildWmwJoinedLineRows(raw)
+  let netTotal = 0
+  const adjusted = lineItems.map((item, index) => {
+    const joinedRow = joined[index]
+    const gross = parseLineItemAmountNumber(item.amount)
+    const discountValue = joinedRow ? parseDiscountValueNumber(joinedRow.discountValueDisplay) : 0
+    const net = gross - discountValue
+    netTotal += net
+    return {
+      ...item,
+      amount: formatCurrency(net, currency),
+    }
+  })
+
+  return { lineItems: adjusted, netTotal }
 }
 
 /**
@@ -1181,6 +1224,10 @@ export function transformQuotationData(
         uom: item.UOM_Billing?.trim() || productDetail.UOM_Billing?.trim() || 'SQMT',
         qty,
         subQty,
+        totalSqm:
+          (productDetail.Total_SQM?.trim() ||
+            (item as any).Total_SQM?.trim() ||
+            '').replace(/,/g, '') || undefined,
         unit,
         pieces,
         rate: rate ? formatCurrency(rate) : '',

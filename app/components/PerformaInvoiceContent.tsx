@@ -10,9 +10,10 @@ import {
   parseQuotationTaxForSummary,
   parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
+  applyWmwd1LineDiscountAbsorption,
   DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
 } from '@/lib/quotation-utils'
-import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
+import { isQuotationDiscountSummaryEnabled, resolveWmwd1ChargeTotals, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import QuotationHeaderThead from './QuotationHeaderThead'
 import QuotationSummarySection from './QuotationSummarySection'
 
@@ -57,6 +58,17 @@ function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null
   )
 }
 
+/** Shared numbered remarks for `/wmw/[id]` (summary) and `/quotation/[id]` (footer). */
+const WMW_PERFORMA_REMARK_ITEMS: readonly string[] = [
+  'Please mention this quotation number on your PO and all communications',
+  'In case of extreme currency volatility prices maybe revised at anytime.',
+  'This quotation is valid only for the products & quantity mentioned.',
+  'Packing : Export worthy packing',
+  'ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request',
+  'All Foreign Bank charges on Purchaser Account.',
+  'For details Terms and conditions please refer to our website.',
+]
+
 /** Static Performa remarks (unchanged copy) — left column beside tax rows (original WMW position). */
 const performaStaticRemarksBlock: ReactNode = (
   <>
@@ -64,12 +76,9 @@ const performaStaticRemarksBlock: ReactNode = (
       Remarks :
     </div>
     <ol style={{ margin: 0, padding: '4px 8px 8px 28px', lineHeight: 1.35 }}>
-      <li>Please mention this quotation number on your PO and all communications</li>
-      <li>In case of extreme currency volatility prices maybe revised at anytime.</li>
-      <li>This quotation is valid only for the products &amp; quantity mentioned.</li>
-      <li>Packing : Export worthy packing</li>
-      <li>ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request</li>
-      <li>All Foreign Bank charges on Purchaser Account.</li>
+      {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
+        <li key={text}>{text}</li>
+      ))}
     </ol>
   </>
 )
@@ -95,12 +104,9 @@ function performaRemarksFooterBlock(data: QuotationData): ReactNode {
           <tr>
             <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 8px', lineHeight: 1.35 }}>
               <ol style={{ margin: 0, paddingLeft: '22px' }}>
-                <li>Please mention this quotation number on your PO and all communications</li>
-                <li>In case of extreme currency volatility prices maybe revised at anytime.</li>
-                <li>This quotation is valid only for the products &amp; quantity mentioned.</li>
-                <li>Packing : Export worthy packing</li>
-                <li>ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request</li>
-                <li>All Foreign Bank charges on Purchaser Account.</li>
+                {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
+                  <li key={text}>{text}</li>
+                ))}
               </ol>
             </td>
             <td style={{ width: '39%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
@@ -242,22 +248,33 @@ export default function PerformaInvoiceContent({
 
   const lineItems = data.lineItems ?? []
 
-  const { discountTotal, discountLabel, freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(
-    rawQuotationData ?? null
-  )
-
   if (useWmwd1StyleLayout) {
     const performaTitle = wmwd1DocumentTitle ?? 'PERFORMA INVOICE'
     const cur = data.currency || 'INR'
-    /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; fallback preserves prior grand-total behaviour if unset. */
-    const totalInrBandFormatted = (() => {
-      const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
-      if (v !== undefined && v !== null && String(v).trim() !== '') {
-        const n = parseFloat(String(v).replace(/,/g, '').trim())
-        if (Number.isFinite(n)) return formatCurrency(n, cur)
-      }
-      return totalAmount
-    })()
+    const { lineItems: wmwd1LineItems, netTotal: wmwd1NetLineTotal } = applyWmwd1LineDiscountAbsorption(
+      lineItems,
+      rawQuotationData ?? null,
+      cur
+    )
+    const { discountTotal, discountLabel, freightTotal, packingTotal, seamTotal } = resolveWmwd1ChargeTotals(
+      rawQuotationData ?? null
+    )
+    const discountAbsorbedIntoLines = !isQuotationDiscountSummaryEnabled(rawQuotationData ?? null)
+    /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; when discount is absorbed in lines, use net line sum. */
+    const totalInrBandFormatted = discountAbsorbedIntoLines
+      ? formatCurrency(wmwd1NetLineTotal, cur)
+      : (() => {
+          const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
+          if (v !== undefined && v !== null && String(v).trim() !== '') {
+            const n = parseFloat(String(v).replace(/,/g, '').trim())
+            if (Number.isFinite(n)) return formatCurrency(n, cur)
+          }
+          return formatCurrency(
+            parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined),
+            cur
+          )
+        })()
+    const wmwd1TotalBeforeTax = discountAbsorbedIntoLines ? wmwd1NetLineTotal : totalBeforeTax
     const wmwd1SummaryFollowSlot = (
       <>
         <QuotationSummarySection
@@ -270,7 +287,7 @@ export default function PerformaInvoiceContent({
           igstRate={igstRate}
           igstAmount={igstAmount}
           taxAmount={taxAmount}
-          totalBeforeTax={totalBeforeTax}
+          totalBeforeTax={wmwd1TotalBeforeTax}
           totalAfterTax={totalAfterTax}
           wmwDiscountTotal={discountTotal}
           wmwDiscountRowLabel={discountLabel}
@@ -325,8 +342,12 @@ export default function PerformaInvoiceContent({
                 <tr className="quotation-master-body-row quotation-master-body-row--goods">
                   <td colSpan={2} className="quotation-seamless-stack">
                     <GoodsDescriptionPaginatedBlock
-                      lineItems={lineItems}
-                      totalFoot={{ currency: cur, amountFormatted: totalInrBandFormatted }}
+                      lineItems={wmwd1LineItems}
+                      totalFoot={
+                        wmwd1NotesRemarksFromApi
+                          ? undefined
+                          : { currency: cur, amountFormatted: totalInrBandFormatted }
+                      }
                       cellPaddingPx={8}
                       masterQuotationHeaderProps={{
                         title: performaTitle,
@@ -434,6 +455,10 @@ export default function PerformaInvoiceContent({
     );
   }
 
+  const { discountTotal, discountLabel, freightTotal, packingTotal, seamTotal } = resolveWmwChargeTotals(
+    rawQuotationData ?? null
+  )
+
   return (
     <>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
@@ -481,7 +506,7 @@ export default function PerformaInvoiceContent({
                             <thead>
                               <tr>
                                 <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>Freight</th>
-                                <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>Excl.</th>
+                                <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>Incl.</th>
                                 <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}></th>
                                 <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left', fontWeight: 'bold' }}>HSN Number</th>
                               </tr>

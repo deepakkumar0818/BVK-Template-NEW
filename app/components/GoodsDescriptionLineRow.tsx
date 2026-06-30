@@ -12,6 +12,8 @@ interface GoodsDescriptionLineRowProps {
   showHsnCodeColumn?: boolean
   /** Document currency — drives qty grouping locale (same as Rate/Amount). */
   currency?: string
+  /** `/wmw/[id]` + `/quotation/[id]` only: show `Total_SQM` next to the UOM label instead of `qty`. */
+  useWmwPagination?: boolean
 }
 
 export default function GoodsDescriptionLineRow({
@@ -19,6 +21,7 @@ export default function GoodsDescriptionLineRow({
   cellPaddingPx,
   showHsnCodeColumn = false,
   currency = 'INR',
+  useWmwPagination = false,
 }: GoodsDescriptionLineRowProps) {
   const pad = cellPaddingPx != null ? ({ padding: `${cellPaddingPx}px` } as const) : undefined
 
@@ -32,7 +35,10 @@ export default function GoodsDescriptionLineRow({
   const uom = lineText(row.uom)
   const subQty = lineText(row.subQty)
   const unit = lineText(row.unit)
-  const qtyLine = formatQuantityDisplay(row.qty, currency)
+  const totalSqmRaw = lineText(row.totalSqm)
+  const qtyLine = useWmwPagination
+    ? formatQuantityDisplay(totalSqmRaw, currency)
+    : formatQuantityDisplay(row.qty, currency)
   const rate = lineText(row.rate)
   const amount = lineText(row.amount)
   const qtyFirstLine = [uom, subQty].filter(Boolean).join(' ')
@@ -41,18 +47,9 @@ export default function GoodsDescriptionLineRow({
     <tr className="goods-description-data-row">
       <td
         className="goods-description-table-body-cell goods-description-table-desc-cell"
-        style={{ verticalAlign: 'top', ...pad }}
+        style={pad}
       >
-        <div
-          className="goods-description-meta-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'max-content max-content 1fr',
-            columnGap: '6px',
-            rowGap: '0',
-            alignItems: 'baseline',
-          }}
-        >
+        <div className="goods-description-meta-grid">
           <strong>Product</strong>
           <span>:</span>
           <span>{product || '—'}</span>
@@ -87,7 +84,7 @@ export default function GoodsDescriptionLineRow({
         </div>
       </td>
       {showHsnCodeColumn ? (
-        <td className="goods-description-table-body-cell" style={{ verticalAlign: 'top', ...pad }}>
+        <td className="goods-description-table-body-cell" style={pad}>
           {hsnCode || '—'}
         </td>
       ) : null}
@@ -97,9 +94,9 @@ export default function GoodsDescriptionLineRow({
       <td className="goods-description-table-body-cell" style={pad}>
         {uom || '—'}
       </td>
-      <td className="goods-description-table-body-cell" style={{ verticalAlign: 'top', ...pad }}>
+      <td className="goods-description-table-body-cell" style={pad}>
         {(() => {
-          const piecesSource = lineText(row.pieces) || unit
+          const piecesSource = useWmwPagination ? lineText(row.pieces) : lineText(row.pieces) || unit
           // Strip trailing "Pc" / "Pcs" and convert word-numbers ("One"/"Two"/"Three"/"Four") so the value column is just the count.
           const piecesValue = (() => {
             if (!piecesSource) return ''
@@ -113,39 +110,30 @@ export default function GoodsDescriptionLineRow({
             const lower = stripped.toLowerCase()
             return wordMap[lower] ?? stripped
           })()
-          const hasSubQty = Boolean(subQty) && subQty !== '0'
+          const hasSubQty = !useWmwPagination && Boolean(subQty) && subQty !== '0'
           return (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'max-content max-content max-content',
-                columnGap: '4px',
-                rowGap: 0,
-                alignItems: 'baseline',
-                justifyItems: 'start',
-              }}
-            >
+            <div className="goods-description-qty-grid">
               {uom ? (
                 <>
-                  <strong style={{ justifySelf: 'start' }}>{uom}</strong>
-                  <span style={{ justifySelf: 'start' }}>:</span>
-                  <span style={{ justifySelf: 'start' }}>{qtyLine}</span>
+                  <strong>{uom}</strong>
+                  <span>:</span>
+                  <span>{qtyLine}</span>
                 </>
               ) : (
-                <span style={{ gridColumn: '1 / span 3' }}>{qtyLine}</span>
+                <span className="goods-description-qty-grid__value-only">{qtyLine}</span>
               )}
               {hasSubQty ? (
                 <>
                   <span />
                   <span />
-                  <span style={{ justifySelf: 'start' }}>{subQty}</span>
+                  <span>{subQty}</span>
                 </>
               ) : null}
               {piecesValue ? (
                 <>
-                  <strong style={{ justifySelf: 'start' }}>Pc</strong>
-                  <span style={{ justifySelf: 'start' }}>:</span>
-                  <span style={{ justifySelf: 'start' }}>{piecesValue}</span>
+                  <strong>Pc</strong>
+                  <span>:</span>
+                  <span>{piecesValue}</span>
                 </>
               ) : null}
             </div>

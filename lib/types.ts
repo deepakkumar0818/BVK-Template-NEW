@@ -255,6 +255,11 @@ export interface ZohoQuotation {
   Total_Tax_Amount_IGST_CGST?: string
   Total_Cost_After_Tax_Grand_Total?: string
   Overall_Grand_Total_incl_Accessories?: string
+  /**
+   * Quotation-level discount mode: `"true"` shows a separate discount summary row;
+   * `"false"` absorbs each line’s `Discount_Value` into the goods amount (WMWD1 / WMW pagination).
+   */
+  Discount?: string | boolean
   /** Zoho: kind of overall discount; shown in summary as `{Discount_Type} Discount` */
   Discount_Type?: string
   Total_Discount?: string
@@ -264,6 +269,10 @@ export interface ZohoQuotation {
   Overall_Discount_Value?: string
   Total_Freight_Charges?: string
   Total_Packing_Charges?: string
+  /** When checked and no freight total: show Freight / Incl. row without amount. */
+  Freight_Charge?: string | boolean
+  /** When checked and no packing total: show Packing / Incl. row without amount. */
+  Packing_Charge?: string | boolean
   Total_Seam_Charges?: string
   Other_Charges?: string
   Type_of_Other_Charges?: string
@@ -347,6 +356,8 @@ export interface QuotationLineItem {
   uom: string
   qty: string
   subQty: string
+  /** WMW pagination only — Zoho `Total_SQM` per line; shown next to the UOM label instead of `qty`. */
+  totalSqm?: string
   unit: string
   pieces?: string
   rate: string

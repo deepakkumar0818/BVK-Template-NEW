@@ -479,7 +479,7 @@
 
   /* Consignee / recipient â€” print: same compact rules + gray band */
   .quotation-doc .quotation-address-pair {
-    font-size: 10px !important;
+    font-size: 11px !important;
     line-height: 1.22 !important;
     border: 1px solid #000 !important;
   }
@@ -846,7 +846,7 @@
   border-collapse: collapse !important;
   border: none !important;
   border-spacing: 0 !important;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.15;
   box-sizing: border-box;
 }
@@ -939,7 +939,7 @@
   font-weight: bold;
   margin: 0 0 3px;
   padding: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .quotation-doc .quotation-header-master-table .qh-supplier-layout {
@@ -992,7 +992,7 @@
   border-collapse: collapse;
   margin: 3px 0 0;
   padding: 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
 }
 
@@ -1025,7 +1025,7 @@
 .quotation-doc .quotation-header-master-table .qh-meta-grid td {
   border: 1px solid #000 !important;
   padding: 2px 5px !important;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.15;
   vertical-align: middle;
   box-sizing: border-box;
@@ -1096,7 +1096,7 @@
   border-spacing: 0;
   margin: 0;
   border: 1px solid #000;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.22;
   box-sizing: border-box;
 }
@@ -1139,7 +1139,7 @@
   margin: 0;
   padding: 3px 6px 4px;
   line-height: 1.22;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .quotation-doc .quotation-address-plain__line {
@@ -1158,7 +1158,7 @@
 .quotation-doc .quotation-address-pair__empty {
   margin: 0;
   padding: 4px 6px 6px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.22;
 }
 
@@ -1185,7 +1185,7 @@
   border-collapse: collapse;
   border-spacing: 0;
   border: none !important;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   margin: 0;
   box-sizing: border-box;
@@ -1200,13 +1200,13 @@
 
 /* Align with goods table: last two columns = Rate/SQM + Amount INR */
 .quotation-doc .quotation-summary-block .qs-cell--validity {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.22;
 }
 
 .quotation-doc .quotation-summary-block .qs-cell--total-inr,
 .quotation-doc .quotation-summary-block .qs-cell--total-amt {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: bold;
   text-align: right;
   vertical-align: middle;
@@ -1258,7 +1258,7 @@
   padding: 2px 4px;
   text-align: center;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   background-color: #f5f5f5;
   border-bottom: var(--quotation-rule);
@@ -1270,20 +1270,24 @@
   min-height: 36px;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.22;
 }
 
-/* Tax / charge columns (5â€“6): align with reference invoice â€” middle vertical align, clear divider from col 4 */
+/* Tax / charge columns (5–6): align with goods Qty + Rate */
 .quotation-doc .quotation-summary-block .qs-cell.qs-tax-label {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   text-align: left;
   vertical-align: middle;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .quotation-doc .quotation-summary-block .qs-cell.qs-tax-num {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   text-align: right;
   white-space: nowrap;
@@ -1297,7 +1301,7 @@
 
 .quotation-doc .quotation-summary-block .qs-cell--amount-words {
   padding: 3px 5px !important;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.25;
 }
 
@@ -1322,7 +1326,7 @@
   padding: 3px 4px !important;
   font-weight: bold;
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   width: 50%;
   vertical-align: middle;
@@ -1336,7 +1340,7 @@
   padding: 3px 4px !important;
   font-weight: bold;
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
   width: 50%;
   vertical-align: middle;
@@ -1351,7 +1355,7 @@
   padding: 3px 5px !important;
   vertical-align: top;
   width: 50%;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .quotation-doc .quotation-summary-block .qs-remarks-list,
@@ -1389,7 +1393,7 @@
   margin-top: 6px;
   padding-top: 4px;
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* Invoice footer block (Remarks / signature / DOC) below master table */
@@ -1405,7 +1409,7 @@
   text-align: right;
   margin-top: 2px;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.2;
 }
 

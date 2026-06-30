@@ -7,6 +7,9 @@
 /* Printed quotation: top inset on every sheet (theader spacer + goods continuation segments). Match A4 side inset (25mm). */
 :root {
   --quotation-print-top-inset: 25mm;
+  --quotation-font-size: 11px;
+  --quotation-font-size-sm: 10px;
+  --quotation-line-height: 1.25;
 }
 
 /*
@@ -275,8 +278,8 @@ body {
   }
 
   .quotation-doc table.quotation-header-master-table--wmwd1 .qh-supplier-footer__gstin-cin-line {
-    font-size: 9px !important;
-    line-height: 1.2 !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
   }
 
   .quotation-content-section .repeating-header {
@@ -476,16 +479,16 @@ body {
     font-weight: bold !important;
     border: 1px solid #000 !important;
     padding: 5px 6px !important;
-    font-size: 10px !important;
-    line-height: 1.2 !important;
+    font-size: var(--quotation-font-size) !important;
+    line-height: var(--quotation-line-height) !important;
     vertical-align: middle !important;
   }
 
   /* WMW line grid: compact spacing like reference PDF (not oversized screen padding) */
   .quotation-doc .goods-description-table,
   .performa-invoice-content-section .goods-description-table {
-    font-size: 10px !important;
-    line-height: 1.22 !important;
+    font-size: var(--quotation-font-size) !important;
+    line-height: var(--quotation-line-height) !important;
   }
 
   .goods-description-table tbody td.goods-description-table-body-cell {
@@ -494,13 +497,18 @@ body {
     border-left: 1px solid #000 !important;
     border-right: 1px solid #000 !important;
     padding: 5px 6px !important;
-    font-size: 10px !important;
-    line-height: 1.22 !important;
-    vertical-align: top;
+    font-size: var(--quotation-font-size) !important;
+    line-height: var(--quotation-line-height) !important;
+    vertical-align: middle;
   }
 
   .goods-description-table tbody td.goods-description-table-body-cell.text-right {
     vertical-align: middle !important;
+    text-align: right !important;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right) {
+    text-align: left !important;
   }
 
   .goods-description-table tbody td.goods-description-table-body-cell[colspan='6'],
@@ -524,8 +532,8 @@ body {
     border-left: 1px solid #000 !important;
     border-right: 1px solid #000 !important;
     padding: 5px 6px !important;
-    font-size: 10px !important;
-    line-height: 1.22 !important;
+    font-size: var(--quotation-font-size) !important;
+    line-height: var(--quotation-line-height) !important;
   }
 
   /* Paginated goods (WI + Performa): 7 rows per sheet; optional fill padding on full pages */
@@ -726,8 +734,8 @@ body {
     margin-top: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-    font-size: 8px !important;
-    line-height: 1 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
     page-break-before: avoid !important;
     break-before: avoid !important;
   }
@@ -738,8 +746,8 @@ body {
     margin: 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-    line-height: 1.15 !important;
-    font-size: 9px !important;
+    line-height: 1.2 !important;
+    font-size: var(--quotation-font-size-sm) !important;
   }
 
   .quotation-print-sheet--wmw-pagination .wmw-bank-details-group ol li,
@@ -753,8 +761,8 @@ body {
   .quotation-print-sheet--wmw-pagination .wmw-bank-details-group table td {
     padding-top: 1px !important;
     padding-bottom: 1px !important;
-    font-size: 9px !important;
-    line-height: 1.15 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .wmw-bank-details-group table td > div {
@@ -765,8 +773,15 @@ body {
 
   /* Shrink the footer block a little: tighter row padding + line-height on summary + bank details. */
   .quotation-print-sheet--wmw-pagination .quotation-summary-block > tbody > tr > td {
-    padding: 1px 4px !important;
-    line-height: 1.15 !important;
+    padding: 2px 5px !important;
+    line-height: 1.2 !important;
+    font-size: var(--quotation-font-size) !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-summary-block .qs-cell.qs-tax-label,
+  .quotation-print-sheet--wmw-pagination .quotation-summary-block .qs-cell.qs-tax-num {
+    font-size: var(--quotation-font-size) !important;
+    line-height: 1.25 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-summary-block .qs-cell--amount-words {
@@ -824,45 +839,45 @@ body {
    * wants [5+footer] single page for N=5, regardless of content size.
    */
 
-  /* Goods table: smaller font + tighter padding (recover ~3mm per row × 5 = ~15mm) */
+  /* Goods table: readable print size while keeping rows compact */
   .quotation-print-sheet--wmw-pagination .goods-description-table tbody td.goods-description-table-body-cell {
     padding: 4px 6px !important;
-    font-size: 9px !important;
-    line-height: 1.2 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.25 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .goods-description-table thead th {
     padding: 4px 6px !important;
-    font-size: 9px !important;
+    font-size: var(--quotation-font-size-sm) !important;
   }
 
   .quotation-print-sheet--wmw-pagination .goods-description-table tfoot td {
     padding: 4px 6px !important;
-    font-size: 9px !important;
+    font-size: var(--quotation-font-size-sm) !important;
   }
 
   /* Product description: prevent wrapping where possible — saves height when names are long. */
   .quotation-print-sheet--wmw-pagination .goods-description-meta-grid {
-    font-size: 9px !important;
-    line-height: 1.15 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
   }
 
   /* Master header: tighter rows (recover ~10–15mm). */
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .quotation-header-td--title {
     padding: 2px 4px !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .quotation-header-td--supplier {
     padding: 3px 5px 3px !important;
-    font-size: 9px !important;
-    line-height: 1.15 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid td {
     padding: 2px 4px !important;
-    font-size: 9px !important;
-    line-height: 1.1 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.15 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-line {
@@ -871,8 +886,8 @@ body {
 
   /* Consignee/recipient block: smaller font + tighter padding. */
   .quotation-print-sheet--wmw-pagination .quotation-address-pair {
-    font-size: 9px !important;
-    line-height: 1.15 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-address-pair th,
@@ -882,14 +897,14 @@ body {
 
   .quotation-print-sheet--wmw-pagination .quotation-address-plain {
     padding: 2px 4px !important;
-    font-size: 9px !important;
-    line-height: 1.15 !important;
+    font-size: var(--quotation-font-size-sm) !important;
+    line-height: 1.2 !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-address-state-grid th,
   .quotation-print-sheet--wmw-pagination .quotation-address-state-grid td {
     padding: 1px 4px !important;
-    font-size: 9px !important;
+    font-size: var(--quotation-font-size-sm) !important;
   }
 
   /* Reduce top spacer in master thead from 25mm → 8mm (recover ~17mm). */
@@ -1001,8 +1016,8 @@ body {
 
   /* Consignee / recipient — print: same compact rules + gray band */
   .quotation-doc .quotation-address-pair {
-    font-size: 10px !important;
-    line-height: 1.22 !important;
+    font-size: var(--quotation-font-size) !important;
+    line-height: var(--quotation-line-height) !important;
     border: 1px solid #000 !important;
   }
 
@@ -1337,6 +1352,14 @@ body {
   padding: 6px 8px;
   text-align: left;
   vertical-align: top;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
+}
+
+.quotation-doc .goods-description-table,
+.goods-description-table {
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 /* No horizontal rules between rows — use vertical padding for invisible breathing room between line items */
@@ -1347,12 +1370,58 @@ body {
   border-left: 1px solid #000 !important;
   border-right: 1px solid #000 !important;
   padding: 12px 8px !important;
-  vertical-align: top;
+  vertical-align: middle;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 .quotation-doc .goods-description-table tbody td.goods-description-table-body-cell.text-right,
 .goods-description-table tbody td.goods-description-table-body-cell.text-right {
   vertical-align: middle;
+  text-align: right;
+}
+
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right),
+.goods-description-table tbody td.goods-description-table-body-cell:not(.text-right) {
+  text-align: left;
+}
+
+/* Description / quantity: fixed label | colon | value columns so rows align within each cell */
+.goods-description-meta-grid {
+  display: grid;
+  grid-template-columns: 4.25em 0.35em 1fr;
+  column-gap: 4px;
+  row-gap: 0;
+  align-items: baseline;
+}
+
+.goods-description-qty-grid {
+  display: grid;
+  grid-template-columns: 2.75em 0.35em 1fr;
+  column-gap: 4px;
+  row-gap: 0;
+  align-items: baseline;
+  justify-items: start;
+}
+
+.goods-description-qty-grid__value-only {
+  grid-column: 1 / -1;
+}
+
+.goods-description-meta-grid strong,
+.goods-description-qty-grid strong {
+  font-weight: bold;
+  justify-self: start;
+}
+
+.goods-description-meta-grid > span:nth-child(3n + 2),
+.goods-description-qty-grid > span:nth-child(3n + 2) {
+  justify-self: center;
+}
+
+.goods-description-meta-grid > span:nth-child(3n),
+.goods-description-qty-grid > span:nth-child(3n) {
+  justify-self: start;
 }
 
 .quotation-doc .goods-description-table tbody td.goods-description-table-body-cell[colspan='6'],
@@ -1485,8 +1554,8 @@ body {
   border-collapse: collapse !important;
   border: none !important;
   border-spacing: 0 !important;
-  font-size: 10px;
-  line-height: 1.15;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   box-sizing: border-box;
 }
 
@@ -1587,7 +1656,7 @@ body {
   font-weight: bold;
   margin: 0 0 3px;
   padding: 0;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
 }
 
 .quotation-doc .quotation-header-master-table .qh-supplier-layout {
@@ -1671,8 +1740,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   border-collapse: collapse;
   margin: 3px 0 0;
   padding: 0;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 .quotation-doc .quotation-header-master-table .qh-supplier-footer td {
@@ -1737,7 +1806,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 .quotation-doc .quotation-header-master-table .qh-meta-grid td {
   border: 1px solid #000 !important;
   padding: 2px 5px !important;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.15;
   vertical-align: middle;
   box-sizing: border-box;
@@ -1808,7 +1877,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   box-sizing: border-box;
   margin: 0;
   min-height: 0;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.22;
 }
 
@@ -1829,8 +1898,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 
 .quotation-doc .quotation-address-pair__header {
   font-weight: bold;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   padding: 4px 6px;
   margin: 0;
   text-align: left;
@@ -1843,7 +1912,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   margin: 0;
   padding: 3px 6px 4px;
   line-height: 1.22;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   flex-shrink: 0;
 }
 
@@ -1863,7 +1932,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 .quotation-doc .quotation-address-pair__empty {
   margin: 0;
   padding: 4px 6px 6px;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.22;
 }
 
@@ -1875,8 +1944,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   border-spacing: 0;
   margin: 0;
   border: none !important;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   flex-shrink: 0;
 }
 
@@ -1919,7 +1988,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   border-spacing: 0;
   margin: 0;
   border: 1px solid #000 !important;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.22;
   box-sizing: border-box;
 }
@@ -1969,6 +2038,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 /* ── Quotation bottom summary: validity + total | HSN/notes + tax | amount in words | remarks ── */
 .quotation-doc {
   --quotation-rule: 1px solid #000;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 /* Single continuous grid: one table, border-collapse (no nested left/right tables) */
@@ -1979,8 +2050,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   border-collapse: collapse;
   border-spacing: 0;
   border: none !important;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   margin: 0;
   box-sizing: border-box;
 }
@@ -1994,13 +2065,13 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 
 /* Align with goods table: last two columns = Rate/SQM + Amount INR */
 .quotation-doc .quotation-summary-block .qs-cell--validity {
-  font-size: 10px;
-  line-height: 1.22;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 .quotation-doc .quotation-summary-block .qs-cell--total-inr,
 .quotation-doc .quotation-summary-block .qs-cell--total-amt {
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   font-weight: bold;
   text-align: right;
   vertical-align: middle;
@@ -2036,6 +2107,17 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   white-space: nowrap;
 }
 
+.quotation-doc .quotation-summary-block .qs-charge-band-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.quotation-doc .quotation-summary-block .qs-charge-band-incl-cell {
+  text-align: right;
+}
+
 .quotation-doc .quotation-summary-block .qs-hsn-grid__code {
   text-align: right;
   width: 14%;
@@ -2053,8 +2135,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   padding: 2px 4px;
   text-align: center;
   font-weight: bold;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   background-color: #f5f5f5;
   border-bottom: var(--quotation-rule);
 }
@@ -2065,21 +2147,25 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   min-height: 36px;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.22;
 }
 
-/* Tax / charge columns (5–6): align with reference invoice — middle vertical align, clear divider from col 4 */
+/* Tax / charge columns (5–6): align with goods Qty + Rate; middle vertical align */
 .quotation-doc .quotation-summary-block .qs-cell.qs-tax-label {
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   text-align: left;
   vertical-align: middle;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .quotation-doc .quotation-summary-block .qs-cell.qs-tax-num {
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   text-align: right;
   white-space: nowrap;
   vertical-align: middle;
@@ -2092,7 +2178,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 
 .quotation-doc .quotation-summary-block .qs-cell--amount-words {
   padding: 3px 5px !important;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
   line-height: 1.25;
 }
 
@@ -2117,8 +2203,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   padding: 3px 4px !important;
   font-weight: bold;
   text-align: center;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   width: 50%;
   vertical-align: middle;
   background-color: #f5f5f5;
@@ -2131,8 +2217,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   padding: 3px 4px !important;
   font-weight: bold;
   text-align: center;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
   width: 50%;
   vertical-align: middle;
   background-color: #f5f5f5;
@@ -2146,7 +2232,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   padding: 3px 5px !important;
   vertical-align: top;
   width: 50%;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
 }
 
 .quotation-doc .quotation-summary-block .qs-remarks-list,
@@ -2184,7 +2270,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   margin-top: 6px;
   padding-top: 4px;
   text-align: center;
-  font-size: 10px;
+  font-size: var(--quotation-font-size);
 }
 
 /* Invoice footer block (Remarks / signature / DOC) below master table */
@@ -2200,8 +2286,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   text-align: right;
   margin-top: 2px;
   padding: 2px 4px;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--quotation-font-size);
+  line-height: var(--quotation-line-height);
 }
 
 /* Pull adjacent bordered blocks together so shared horizontal rules don’t double up */
