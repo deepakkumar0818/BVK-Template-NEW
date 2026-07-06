@@ -204,16 +204,16 @@ export default function QuotationAddressPair({
     <div className="quotation-stack-segment quotation-address-pair">
       <table className="quotation-address-pair-table">
         <colgroup>
-          {/* Shipped To (50%) — label cols widened so "GST Number" is not clipped in print */}
+          {/* Shipped To (56%) — align with supplier column above */}
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '10%' }} />
           <col style={{ width: '16%' }} />
-          <col style={{ width: '9%' }} />
+          <col style={{ width: '12%' }} />
+          {/* Billed To (44%) — align with meta column above */}
           <col style={{ width: '14%' }} />
-          <col style={{ width: '11%' }} />
-          {/* Billed To (50%) */}
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '14%' }} />
-          <col style={{ width: '11%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '10%' }} />
         </colgroup>
         <tbody>
           <tr>

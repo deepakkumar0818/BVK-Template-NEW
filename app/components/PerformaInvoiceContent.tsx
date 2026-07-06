@@ -51,10 +51,8 @@ function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null
 
   return (
     <>
-      <div style={{ borderTop: '1px solid #000', padding: '6px 8px', fontWeight: 'bold' }}>Notes</div>
-      <div style={{ padding: '4px 8px 8px 8px', minHeight: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
-        {pleaseNote || '\u00A0'}
-      </div>
+      <div className="qs-notes-banner">Notes</div>
+      <div className="qs-notes-fill">{pleaseNote || '\u00A0'}</div>
     </>
   )
 }
@@ -73,10 +71,8 @@ const WMW_PERFORMA_REMARK_ITEMS: readonly string[] = [
 /** Static Performa remarks (unchanged copy) — left column beside tax rows (original WMW position). */
 const performaStaticRemarksBlock: ReactNode = (
   <>
-    <div style={{ borderTop: '1px solid #000', textAlign: 'center', fontWeight: 'bold', padding: '3px 6px' }}>
-      Remarks :
-    </div>
-    <ol style={{ margin: 0, padding: '4px 8px 8px 28px', lineHeight: 1.35 }}>
+    <div className="qs-notes-banner">Remarks :</div>
+    <ol className="qs-remarks-list qs-notes-fill">
       {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
         <li key={text}>{text}</li>
       ))}
@@ -88,41 +84,31 @@ const performaStaticRemarksBlock: ReactNode = (
 function performaRemarksFooterBlock(data: QuotationData): ReactNode {
   return (
     <div className="wmw-bank-details-group">
-      <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="quotation-stack-table wmw-footer-slot-table">
         <tbody>
           <tr>
-            <td
-              style={{ width: '61%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
-            >
-              Remarks
-            </td>
-            <td
-              style={{ width: '39%', border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}
-            >
-              For WMW Metal Fabrics Ltd.
-            </td>
+            <td style={{ width: '61%' }}>Remarks</td>
+            <td style={{ width: '39%' }}>For WMW Metal Fabrics Ltd.</td>
           </tr>
           <tr>
-            <td style={{ width: '61%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 8px', lineHeight: 1.35 }}>
-              <ol style={{ margin: 0, paddingLeft: '22px' }}>
+            <td className="wmw-footer-slot__body-pad">
+              <ol className="qs-remarks-list">
                 {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
                   <li key={text}>{text}</li>
                 ))}
               </ol>
             </td>
-            <td style={{ width: '39%', verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
-              <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
+            <td className="wmw-footer-slot__body-split">
+              <div className="wmw-footer-slot__sig">
                 <div>Computer Generated Document</div>
                 <div>No Signature Needed</div>
               </div>
-              <div style={{ borderTop: '1px solid #000', padding: '4px 8px' }}>Dated: {data.date}</div>
+              <div className="wmw-footer-slot__dated">Dated: {data.date}</div>
             </td>
           </tr>
         </tbody>
       </table>
-      <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
-        DOC NO. WMW/MKT/F.1 (Rev.00)
-      </div>
+      <div className="quotation-doc-footer-meta">DOC NO. WMW/MKT/F.1 (Rev.00)</div>
     </div>
   )
 }
@@ -138,85 +124,52 @@ function performaBankDetailsBlock(
   if (splitLayout) {
     return (
       <div className="wmw-bank-details-group">
-        <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <table className="quotation-stack-table wmw-footer-slot-table">
           <tbody>
             <tr>
-              <td
-                style={{
-                  width: '60%',
-                  border: '1px solid #000',
-                  padding: '3px 8px',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                }}
-              >
-                Bank Details :-
-              </td>
-              <td
-                style={{
-                  width: '40%',
-                  border: '1px solid #000',
-                  padding: '3px 8px',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                }}
-              >
-                For WMW Metal Fabrics Ltd.
-              </td>
+              <td style={{ width: '60%' }}>Bank Details :-</td>
+              <td style={{ width: '40%' }}>For WMW Metal Fabrics Ltd.</td>
             </tr>
             <tr>
-              <td
-                style={{
-                  verticalAlign: 'top',
-                  border: '1px solid #000',
-                  padding: '4px 8px',
-                  lineHeight: 1.35,
-                }}
-              >
+              <td className="wmw-footer-slot__body-pad">
                 {bankLines.map((line, idx) => (
                   <div key={idx}>{line}</div>
                 ))}
               </td>
-              <td style={{ verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
-                <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
+              <td className="wmw-footer-slot__body-split">
+                <div className="wmw-footer-slot__sig">
                   <div>Computer Generated Document</div>
                   <div>No Signature Needed</div>
                 </div>
-                <div style={{ borderTop: '1px solid #000', padding: '4px 8px' }}>Dated: {data.date}</div>
+                <div className="wmw-footer-slot__dated">Dated: {data.date}</div>
               </td>
             </tr>
           </tbody>
         </table>
-        <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
-          DOC NO. WMW/MKT/F.1 (Rev.00)
-        </div>
+        <div className="quotation-doc-footer-meta">DOC NO. WMW/MKT/F.1 (Rev.00)</div>
       </div>
     )
   }
 
   return (
     <div className="wmw-bank-details-group">
-      <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="quotation-stack-table wmw-footer-slot-table">
         <tbody>
           <tr>
-            <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold', textAlign: 'center' }}>
-              For WMW Metal Fabrics Ltd.
-            </td>
+            <td>For WMW Metal Fabrics Ltd.</td>
           </tr>
           <tr>
-            <td style={{ verticalAlign: 'top', border: '1px solid #000', padding: '0' }}>
-              <div style={{ padding: '4px 8px', textAlign: 'center', lineHeight: 1.35 }}>
+            <td className="wmw-footer-slot__body-split">
+              <div className="wmw-footer-slot__sig">
                 <div>Computer Generated Document</div>
                 <div>No Signature Needed</div>
               </div>
-              <div style={{ borderTop: '1px solid #000', padding: '4px 8px' }}>Dated: {data.date}</div>
+              <div className="wmw-footer-slot__dated">Dated: {data.date}</div>
             </td>
           </tr>
         </tbody>
       </table>
-      <div className="quotation-doc-footer-meta" style={{ textAlign: 'right', marginTop: '6px', padding: '0 4px 4px', fontSize: '10px' }}>
-        DOC NO. WMW/MKT/F.1 (Rev.00)
-      </div>
+      <div className="quotation-doc-footer-meta">DOC NO. WMW/MKT/F.1 (Rev.00)</div>
     </div>
   )
 }
@@ -542,7 +495,7 @@ export default function PerformaInvoiceContent({
                           <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                             <tbody>
                               <tr>
-                                <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold' }}>Total INR</td>
+                                <td style={{ border: '1px solid #000', padding: '3px 8px', fontWeight: 'bold' }}>Total {data.currency || 'INR'}</td>
                                 <td style={{ border: '1px solid #000', padding: '3px 8px', textAlign: 'right' }}>{totalAmount}</td>
                               </tr>
                               {Number.isFinite(discountTotal) && discountTotal !== 0 ? (
