@@ -61,6 +61,11 @@ export default function GoodsDescriptionPaginatedBlock({
   const items = lineItems ?? []
   const documentCurrency =
     totalFoot?.currency ?? masterQuotationHeaderProps?.data?.currency ?? 'INR'
+  const isAccessoriesDocument =
+    items.length > 0 && items.every((item) => Boolean(item.isAccessoriesLine))
+  const firstAccessoriesGlobalIndex = isAccessoriesDocument
+    ? 0
+    : items.findIndex((item) => Boolean(item.isAccessoriesLine))
   const chunks = useWmwPagination
     ? chunkLineItemsForWmwPrint(items)
     : summaryFollowSlot
@@ -95,6 +100,7 @@ export default function GoodsDescriptionPaginatedBlock({
   return (
     <div className="quotation-goods-pages-stack">
       {chunks.map((chunk, pageIdx) => {
+        const chunkGlobalStart = chunks.slice(0, pageIdx).reduce((sum, c) => sum + c.length, 0)
         const isLastChunk = pageIdx === chunks.length - 1
         const injectedMaster = showInjectedMasterHeader(pageIdx)
         const missingRows = Math.max(0, GOODS_ROWS_PER_PRINT_PAGE - chunk.length)
@@ -106,13 +112,20 @@ export default function GoodsDescriptionPaginatedBlock({
         // header is shrunk — apply distribute-rows to those pages too so rows spread vertically.
         const isWmwFullHeadChunkForDistribute =
           useWmwPagination && !isLastChunk && chunk.length === GOODS_ROWS_PER_PRINT_PAGE
+        // WMW/WI last page with 4 items: spread row padding (more room than 5-item pages).
+        const isWmwLastChunkFourItemsDistribute =
+          useWmwPagination &&
+          isLastChunk &&
+          chunk.length === 4 &&
+          Boolean(summaryFollowSlot)
         const distributeEvenRowsThisChunk =
           (isPartialDistributeRange &&
             (
               (Boolean(summaryFollowSlot) && isLastChunk) ||
               (useWmwPagination && !isLastChunk)
             )) ||
-          isWmwFullHeadChunkForDistribute
+          isWmwFullHeadChunkForDistribute ||
+          isWmwLastChunkFourItemsDistribute
         const stretchThisChunk =
           isLastChunk &&
           shouldStretchLastPage &&
@@ -146,6 +159,15 @@ export default function GoodsDescriptionPaginatedBlock({
         // Override the pad calculation with a "fill target" so 5-6 rows reach the page bottom.
         const distributeEvenPadMm = (() => {
           if (!distributeEvenRowsThisChunk) return 0
+          if (useWmwPagination && isLastChunk) {
+            const base =
+              (missingRows * GOODS_PRINT_FILL_MM_PER_MISSING_ROW) / (2 * chunk.length)
+            // 5 items: tight — full formula overflows the footer.
+            if (chunk.length === 5) return base * 0.55
+            // 4 items: a bit more vertical spread (extra room below the table).
+            if (chunk.length === 4) return base * 0.72
+            return base * 0.55
+          }
           if (useWmwPagination && !isLastChunk) {
             // Target area available for goods rows (A4 − bottom margins − master − thead/tfoot).
             const WMW_GOODS_AREA_TARGET_MM = 185
@@ -161,16 +183,18 @@ export default function GoodsDescriptionPaginatedBlock({
               '--goods-even-pad-mm': `${distributeEvenPadMm}mm`,
               ...(cellPaddingPx != null
                 ? {
-                    '--goods-cell-pad-x': `${cellPaddingPx}px`,
-                    '--goods-cell-pad-y': `${cellPaddingPx}px`,
+                    '--goods-cell-pad-x': `${useWmwPagination ? 6 : cellPaddingPx}px`,
+                    '--goods-cell-pad-y': `${useWmwPagination ? 4 : cellPaddingPx}px`,
                   }
                 : {}),
             } as CSSProperties)
           : undefined
-        const lastChunkCellPadding =
-          stretchThisChunk && cellPaddingPx != null
-            ? cellPaddingPx + Math.min(missingRows * 2, 12)
-            : cellPaddingPx
+        const rowCellPaddingPx =
+          useWmwPagination && isLastChunk && (chunk.length === 4 || chunk.length === 5)
+            ? 4
+            : stretchThisChunk && cellPaddingPx != null
+              ? cellPaddingPx + Math.min(missingRows * 2, 12)
+              : cellPaddingPx
 
         return (
           <div
@@ -315,7 +339,7 @@ export default function GoodsDescriptionPaginatedBlock({
                         display: 'table-cell',
                       }}
                     >
-                      Rate/SQM
+                      Rate/{isAccessoriesDocument ? 'UOM' : 'SQM'}
                     </th>
                     <th
                       style={{
@@ -328,22 +352,32 @@ export default function GoodsDescriptionPaginatedBlock({
                         display: 'table-cell',
                       }}
                     >
-                      Amount INR
+                      Amount {documentCurrency}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {chunk.length > 0 ? (
-                    chunk.map((row, i) => (
-                      <GoodsDescriptionLineRow
-                        key={`${pageIdx}-${i}`}
-                        row={row}
-                        cellPaddingPx={lastChunkCellPadding}
-                        showHsnCodeColumn={showHsnCodeColumn}
-                        currency={documentCurrency}
-                        useWmwPagination={useWmwPagination}
-                      />
-                    ))
+                    chunk.map((row, i) => {
+                      const globalIndex = chunkGlobalStart + i
+                      const accessoriesDescriptionRole =
+                        row.isAccessoriesLine && firstAccessoriesGlobalIndex >= 0
+                          ? globalIndex === firstAccessoriesGlobalIndex
+                            ? 'first'
+                            : 'continuation'
+                          : undefined
+                      return (
+                        <GoodsDescriptionLineRow
+                          key={`${pageIdx}-${i}`}
+                          row={row}
+                          cellPaddingPx={rowCellPaddingPx}
+                          showHsnCodeColumn={showHsnCodeColumn}
+                          currency={documentCurrency}
+                          useWmwPagination={useWmwPagination}
+                          accessoriesDescriptionRole={accessoriesDescriptionRole}
+                        />
+                      )
+                    })
                   ) : (
                     <tr>
                       <td

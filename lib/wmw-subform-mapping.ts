@@ -97,6 +97,9 @@ export interface WmwJoinedLineDisplayRow {
   freightCharge: string
   packingCharges: string
   seamCharges: string
+
+  /** `accessories` when row came from Accessories + Accessories2_0 join (WMW performa routes). */
+  lineKind?: 'accessories' | 'wmw' | 'pf'
 }
 
 export interface WmwFormTotalsDisplay {
@@ -169,7 +172,9 @@ function toRowArray(raw: ZohoQuotation | null | undefined, key: string): Unknown
 }
 
 function refFromRow(row: UnknownRecord): string {
-  return normalizeLastItemRef(row.last_item_ref ?? row.Last_item_ref ?? row.Line_Item_ref ?? row.Sr_No ?? row.S_No)
+  return normalizeLastItemRef(
+    row.last_item_ref ?? row.Last_item_ref ?? row.Line_Item_ref ?? row.Sr_No ?? row.SR_No ?? row.S_No
+  )
 }
 
 function rowHasExplicitLastItemRef(row: UnknownRecord): boolean {
@@ -177,6 +182,7 @@ function rowHasExplicitLastItemRef(row: UnknownRecord): boolean {
     normalizeLastItemRef(row.last_item_ref) !== '' ||
     normalizeLastItemRef(row.Last_item_ref) !== '' ||
     normalizeLastItemRef(row.Sr_No) !== '' ||
+    normalizeLastItemRef(row.SR_No) !== '' ||
     normalizeLastItemRef(row.S_No) !== ''
   )
 }
@@ -475,6 +481,8 @@ function buildJoinedLineRowsForSubformBundle(
       freightCharge: pickOtherChargePrice(chargeRows, WMW_STANDARD_CHARGE_NAMES.FREIGHT, lastItemRef),
       packingCharges: pickOtherChargePrice(chargeRows, WMW_STANDARD_CHARGE_NAMES.PACKING, lastItemRef),
       seamCharges: pickOtherChargePrice(chargeRows, WMW_STANDARD_CHARGE_NAMES.SEAM, lastItemRef),
+
+      lineKind: isProductFitment ? 'pf' : 'wmw',
     }
   })
 }
@@ -501,6 +509,94 @@ export function buildWmwJoinedLineRows(raw: ZohoQuotation | null | undefined): W
     wmwBlock.length
   )
   return [...wmwBlock, ...pfBlock]
+}
+
+/**
+ * Accessories + Accessories2_0 join for `/wmw/[id]` and `/quotation/[id]`.
+ * Same display row shape as WMW; description uses `Brand_Selling_Name` via `productLabel` + `lineKind: 'accessories'`.
+ */
+export function buildAccessoriesJoinedLineRows(
+  raw: ZohoQuotation | null | undefined
+): WmwJoinedLineDisplayRow[] {
+  if (!raw) return []
+  const mainRows = toRowArray(raw, 'Accessories')
+  if (mainRows.length === 0) return []
+
+  const rows2 = toRowArray(raw, 'Accessories2_0')
+  const byRef2 = groupRowsByLastItemRef(rows2)
+
+  const parseNumeric = (value: unknown): number => {
+    const s = stringifyField(value).replace(/,/g, '')
+    if (!s) return NaN
+    const n = parseFloat(s)
+    return Number.isFinite(n) ? n : NaN
+  }
+
+  return mainRows.map((main, idx) => {
+    const lastItemRef = refFromRow(main)
+    const ext2 = pickFirstRowForRef(byRef2, lastItemRef)
+    const mainId = stringifyField(main.ID) || `acc-main-${idx}`
+
+    const ratePerSqmDisplay = coalesceMainFirst(main, ext2, undefined, 'Selling_Price')
+
+    const amountDisplay = (() => {
+      const qtyNum = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'Qty'))
+      let unitRate = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'Selling_Price'))
+      if (!Number.isFinite(unitRate) || unitRate <= 0) {
+        unitRate = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'List_Price'))
+      }
+      const computed = qtyNum * unitRate
+      if (Number.isFinite(computed) && computed >= 0) return computed.toFixed(2)
+      const totalSelling = coalesceMainFirst(main, ext2, undefined, 'Total_Selling_Price')
+      if (totalSelling) return totalSelling
+      const totalPrice = coalesceMainFirst(main, ext2, undefined, 'Total_Price')
+      if (totalPrice) return totalPrice
+      const beforeTax = ext2 ? stringifyField(ext2.Cost_Before_Tax) : ''
+      if (beforeTax) return beforeTax
+      return ''
+    })()
+
+    return {
+      rowKey: `acc-${mainId}-${idx}`,
+      lastItemRef,
+      rowIndex: idx + 1,
+      mainRowId: mainId,
+
+      productLabel: coalesceMainFirst(main, ext2, undefined, 'Brand_Selling_Name'),
+      materialCode: '',
+      supplyForm: '',
+      size: '',
+      seamType: '',
+      hsnCode: coalesceLinkedFirst(ext2, undefined, main, 'HSN_Code'),
+      uom: coalesceMainFirst(main, ext2, undefined, 'Unit_of_Purchase') || 'SQMT',
+      quantity: coalesceMainFirst(main, ext2, undefined, 'Qty'),
+      piecesDisplay: coalesceMainFirst(main, ext2, undefined, 'Pieces'),
+      ratePerSqmDisplay,
+      totalSqm: coalesceMainFirst(main, ext2, undefined, 'Total_SQM'),
+      amountDisplay,
+      discountValueDisplay: ext2 ? stringifyField(ext2.Discount_Value) : '',
+
+      deliveryApi: coalesceLinkedFirst(ext2, undefined, main, 'Delivery'),
+      deliveryDate: '',
+
+      freightCharge: '',
+      packingCharges: '',
+      seamCharges: '',
+
+      lineKind: 'accessories',
+    }
+  })
+}
+
+/**
+ * `/wmw/[id]` + `/quotation/[id]`: WMW + Product Fitment join first; else Accessories when mesh lines are absent.
+ */
+export function buildJoinedLineRowsForWmwPerforma(
+  raw: ZohoQuotation | null | undefined
+): WmwJoinedLineDisplayRow[] {
+  const wmw = buildWmwJoinedLineRows(raw)
+  if (wmw.length > 0) return wmw
+  return buildAccessoriesJoinedLineRows(raw)
 }
 
 /**

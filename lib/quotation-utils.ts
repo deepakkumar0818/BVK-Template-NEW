@@ -1,6 +1,7 @@
 import { ZohoQuotation, QuotationData, QuotationLineItem, TemplateType } from './types'
 import { deliveryDisplayFromRecords, endTypeDisplayFromRecords } from './goods-description-form'
 import {
+  buildJoinedLineRowsForWmwPerforma,
   buildWmwJoinedLineRows,
   desiredDateForRef,
   isQuotationDiscountSummaryEnabled,
@@ -918,6 +919,7 @@ function addQuotationLineItemsFromWmwJoin(
 ): number {
   let totalAdd = 0
   for (const row of joinedWmw) {
+    const isAccessoriesLine = row.lineKind === 'accessories'
     const qty = String(row.quantity ?? '0').trim()
     const qtyNum = parseFloat(qty.replace(/,/g, '')) || 0
     const piecesStr = String(row.piecesDisplay ?? '').trim()
@@ -928,10 +930,10 @@ function addQuotationLineItemsFromWmwJoin(
 
     lineItems.push({
       product: row.productLabel?.trim() || '',
-      quality: row.materialCode?.trim() || '',
-      form: row.supplyForm?.trim() || '',
-      size: row.size?.trim() || '',
-      type: row.seamType?.trim() || '',
+      quality: isAccessoriesLine ? '' : row.materialCode?.trim() || '',
+      form: isAccessoriesLine ? '' : row.supplyForm?.trim() || '',
+      size: isAccessoriesLine ? '' : row.size?.trim() || '',
+      type: isAccessoriesLine ? '' : row.seamType?.trim() || '',
       hsnCode: row.hsnCode?.trim() || '',
       delivery: resolveQuotationDeliveryCell(
         row.deliveryApi,
@@ -946,6 +948,7 @@ function addQuotationLineItemsFromWmwJoin(
       pieces,
       rate: formatCurrency(row.ratePerSqmDisplay, currency),
       amount: formatCurrency(row.amountDisplay, currency),
+      ...(isAccessoriesLine ? { isAccessoriesLine: true } : {}),
     })
   }
   return totalAdd
@@ -975,7 +978,7 @@ export function applyWmwd1LineDiscountAbsorption(
     return { lineItems, netTotal }
   }
 
-  const joined = buildWmwJoinedLineRows(raw)
+  const joined = buildJoinedLineRowsForWmwPerforma(raw)
   let netTotal = 0
   const adjusted = lineItems.map((item, index) => {
     const joinedRow = joined[index]
@@ -998,7 +1001,9 @@ export function applyWmwd1LineDiscountAbsorption(
 export function transformQuotationData(
   zohoData: ZohoQuotation, 
   templateType: TemplateType = 'WI',
-  templateField?: string
+  templateField?: string,
+  /** `/wmw/[id]` + `/quotation/[id]`: enable Accessories join when WMW lines are absent. */
+  wmwPerformaRoute = false
 ): QuotationData {
   const lineItems: QuotationLineItem[] = []
   let totalAmount = 0
@@ -1077,7 +1082,9 @@ export function transformQuotationData(
   const wiDesiredRowsCat2 = ((zohoData as any).Category_2_MM_Database_WI_Desired_Date as any[]) || []
   const fitmentDesiredRows = ((zohoData as any).Product_Fitments_Desired_Date as any[]) || []
   /** Single WMW+Product_Fitment join for this quotation — used by WI, WMW/WMW2, and SLS/GKD when we prefer the same pipeline as Export. */
-  const joinedWmwForTransform = buildWmwJoinedLineRows(zohoData)
+  const joinedWmwForTransform = wmwPerformaRoute && templateType === 'WMW'
+    ? buildJoinedLineRowsForWmwPerforma(zohoData)
+    : buildWmwJoinedLineRows(zohoData)
 
   /**
    * WI quotation layout, but line data lives in Category 1 WMW + linked subforms (last_item_ref)

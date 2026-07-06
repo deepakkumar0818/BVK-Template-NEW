@@ -239,6 +239,11 @@ export interface ZohoQuotation {
     last_item_ref?: string
     [key: string]: any
   }>
+  /** Accessories line items (main subform) */
+  Accessories?: Array<Record<string, unknown>>
+  /** Accessories pricing / tax rows (join on Sr_No / SR_No) */
+  Accessories2_0?: Array<Record<string, unknown>>
+  Accessories_Total?: string
   /** Product fitments (legacy / alternate subform name) */
   Product_Fitments?: Array<Record<string, unknown>>
   /** Product fitments line items (2.0 subform) */
@@ -362,4 +367,6 @@ export interface QuotationLineItem {
   pieces?: string
   rate: string
   amount: string
+  /** `/wmw/[id]` + `/quotation/[id]` accessories lines: description shows “Accessories” only. */
+  isAccessoriesLine?: boolean
 }

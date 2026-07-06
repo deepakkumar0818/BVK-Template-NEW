@@ -66,7 +66,12 @@ export default function ForcedTemplatePageContent({
         logQuotationPayloadForUrlId(id, quotation, documentLabel)
         setRawQuotationData(quotation)
 
-        const transformed = transformQuotationData(quotation, templateType, quotation.Template)
+        const transformed = transformQuotationData(
+          quotation,
+          templateType,
+          quotation.Template,
+          Boolean(useWmwPagination)
+        )
         setQuotationData(transformed)
 
         if (quotation.Account_Module?.CRM_Account_ID) {

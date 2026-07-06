@@ -81,8 +81,8 @@ export default function QuotationSummarySection({
   hideQuotationValidityRow = false,
 }: QuotationSummarySectionProps) {
   const quotationValidityDisplay = resolveQuotationValidity(rawQuotationData ?? undefined, quotationValidityDefault)
-  const totalAfterFormatted = formatCurrency(totalAfterTax)
   const cur = data.currency || 'INR'
+  const totalAfterFormatted = formatCurrency(totalAfterTax, cur)
 
   const wmwChargeVisible = (n: number) => Number.isFinite(n) && n !== 0
 
@@ -202,7 +202,7 @@ export default function QuotationSummarySection({
               <strong>Quotation Valid Till :</strong> {quotationValidityDisplay}
             </td>
             <td className="qs-cell qs-cell--total-inr" colSpan={sevenColumnGoodsLayout ? taxLabelColSpan : 1}>
-              Total INR
+              Total {cur}
             </td>
             <td className="qs-cell qs-cell--total-amt">{totalAmountFormatted}</td>
           </tr>
