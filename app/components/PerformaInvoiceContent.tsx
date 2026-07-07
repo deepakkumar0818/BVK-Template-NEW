@@ -57,14 +57,20 @@ function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null
   )
 }
 
-/** Shared numbered remarks for `/wmw/[id]` (summary) and `/quotation/[id]` (footer). */
-const WMW_PERFORMA_REMARK_ITEMS: readonly string[] = [
-  'Please mention this quotation number on your PO and all communications',
-  'In case of extreme currency volatility prices maybe revised at anytime.',
+/** `/wmw/[id]` — summary “Remarks :” list (left column beside tax rows). */
+const WMW_ROUTE_REMARK_ITEMS: readonly string[] = [
+  'Mentioned delivery date is from date of confirmed PO other terms if any',
+  'Subjects to terms and conditions enclosed.',
+  'For details Terms and conditions please refer to our website.',
+]
+
+/** `/quotation/[id]` — footer remarks list. */
+const QUOTATION_ROUTE_REMARK_ITEMS: readonly string[] = [
+  'We hope you will find the offer as per your needs.We request you to release your valued PO at the earliest.',
+  'Please mention this quotation number on your PO and all communications.',
   'This quotation is valid only for the products & quantity mentioned.',
-  'Packing : Export worthy packing',
-  'ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request',
-  'All Foreign Bank charges on Purchaser Account.',
+  'Mentioned delivery date is from date of confirmed PO other terms if any',
+  'Subjects to terms and conditions closed.',
   'For details Terms and conditions please refer to our website.',
 ]
 
@@ -73,7 +79,7 @@ const performaStaticRemarksBlock: ReactNode = (
   <>
     <div className="qs-notes-banner">Remarks :</div>
     <ol className="qs-remarks-list qs-notes-fill">
-      {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
+      {WMW_ROUTE_REMARK_ITEMS.map((text) => (
         <li key={text}>{text}</li>
       ))}
     </ol>
@@ -93,7 +99,7 @@ function performaRemarksFooterBlock(data: QuotationData): ReactNode {
           <tr>
             <td className="wmw-footer-slot__body-pad">
               <ol className="qs-remarks-list">
-                {WMW_PERFORMA_REMARK_ITEMS.map((text) => (
+                {QUOTATION_ROUTE_REMARK_ITEMS.map((text) => (
                   <li key={text}>{text}</li>
                 ))}
               </ol>
