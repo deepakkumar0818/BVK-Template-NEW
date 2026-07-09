@@ -6,6 +6,7 @@ import type { QuotationData } from '@/lib/types'
 import GoodsDescriptionPaginatedBlock from './GoodsDescriptionPaginatedBlock'
 import {
   formatCurrency,
+  formatCurrencyRounded,
   formatAmountInWords,
   parseQuotationTaxForSummary,
   parseOverallGrandTotalInclAccessories,
@@ -222,14 +223,14 @@ export default function PerformaInvoiceContent({
     const discountAbsorbedIntoLines = !isQuotationDiscountSummaryEnabled(rawQuotationData ?? null)
     /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; when discount is absorbed in lines, use net line sum. */
     const totalInrBandFormatted = discountAbsorbedIntoLines
-      ? formatCurrency(wmwd1NetLineTotal, cur)
+      ? formatCurrencyRounded(wmwd1NetLineTotal, cur)
       : (() => {
           const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
           if (v !== undefined && v !== null && String(v).trim() !== '') {
             const n = parseFloat(String(v).replace(/,/g, '').trim())
-            if (Number.isFinite(n)) return formatCurrency(n, cur)
+            if (Number.isFinite(n)) return formatCurrencyRounded(n, cur)
           }
-          return formatCurrency(
+          return formatCurrencyRounded(
             parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined),
             cur
           )

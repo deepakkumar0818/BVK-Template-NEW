@@ -116,7 +116,7 @@ export default function QuotationHeaderThead({
               </tr>
               <tr>
                 <td>
-                  <strong>Buyer, S Enquiry No</strong>
+                  <strong>Buyer&apos;s Enquiry No.</strong>
                 </td>
                 <td>{data.buyerEnquiryNo || ''}</td>
                 <td className="qh-meta-date-stack">

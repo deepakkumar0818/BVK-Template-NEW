@@ -2,7 +2,12 @@
 
 import Link from 'next/link'
 import { QuotationData } from '@/lib/types'
-import { formatCurrency, parseQuotationTaxForSummary, parseOverallGrandTotalInclAccessories } from '@/lib/quotation-utils'
+import {
+  formatCurrency,
+  formatCurrencyRounded,
+  parseQuotationTaxForSummary,
+  parseOverallGrandTotalInclAccessories,
+} from '@/lib/quotation-utils'
 import { resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import GoodsDescriptionPaginatedBlock from './GoodsDescriptionPaginatedBlock'
 import QuotationSummarySection from './QuotationSummarySection'
@@ -29,7 +34,7 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
     totalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, data.totalAmount)
 
-  const totalAmount = formatCurrency(
+  const totalAmount = formatCurrencyRounded(
     parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined)
   )
   const lineItems = data.lineItems ?? []

@@ -267,7 +267,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.d,
-                        textAlign: 'left',
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
@@ -281,7 +281,7 @@ export default function GoodsDescriptionPaginatedBlock({
                       <th
                         style={{
                           width: w.h,
-                          textAlign: 'left',
+                          textAlign: 'center',
                           border: '1px solid #000',
                           padding: '8px',
                           backgroundColor: '#f5f5f5',
@@ -295,6 +295,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.del,
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
@@ -307,6 +308,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.u,
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
@@ -319,6 +321,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.q,
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
@@ -331,7 +334,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.r,
-                        textAlign: 'right',
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',
@@ -344,7 +347,7 @@ export default function GoodsDescriptionPaginatedBlock({
                     <th
                       style={{
                         width: w.a,
-                        textAlign: 'right',
+                        textAlign: 'center',
                         border: '1px solid #000',
                         padding: '8px',
                         backgroundColor: '#f5f5f5',

@@ -120,6 +120,16 @@ export function formatCurrency(value: string | number | undefined, currency: str
   return num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/** Whole currency units (paise rounded off) for Amount / summary totals on WMW quotation docs. */
+export function formatCurrencyRounded(value: string | number | undefined, currency: string = 'INR'): string {
+  if (value === null || value === undefined || value === '') return '0'
+  const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value
+  if (!Number.isFinite(num)) return '0'
+  const rounded = Math.round(num)
+  const locale = currency === 'USD' ? 'en-US' : 'en-IN'
+  return rounded.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
 /** WMWD1 goods “Quantity” column: fixed 4 fractional digits; locale matches {@link formatCurrency}. */
 export function formatQuantityDisplay(value: unknown, currency: string = 'INR'): string {
   if (value === null || value === undefined || value === '') return '0.0000'
@@ -947,7 +957,7 @@ function addQuotationLineItemsFromWmwJoin(
       unit,
       pieces,
       rate: formatCurrency(row.ratePerSqmDisplay, currency),
-      amount: formatCurrency(row.amountDisplay, currency),
+      amount: formatCurrencyRounded(row.amountDisplay, currency),
       ...(isAccessoriesLine ? { isAccessoriesLine: true } : {}),
     })
   }
@@ -985,10 +995,11 @@ export function applyWmwd1LineDiscountAbsorption(
     const gross = parseLineItemAmountNumber(item.amount)
     const discountValue = joinedRow ? parseDiscountValueNumber(joinedRow.discountValueDisplay) : 0
     const net = gross - discountValue
-    netTotal += net
+    const roundedNet = Math.round(net)
+    netTotal += roundedNet
     return {
       ...item,
-      amount: formatCurrency(net, currency),
+      amount: formatCurrencyRounded(roundedNet, currency),
     }
   })
 
