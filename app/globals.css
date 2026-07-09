@@ -4,12 +4,26 @@
   margin: 0;
 }
 
-/* Printed quotation: top inset on every sheet (theader spacer + goods continuation segments). Match A4 side inset (25mm). */
+/* Printed quotation: top inset on every sheet (theader spacer + goods continuation segments). */
 :root {
   --quotation-print-top-inset: 25mm;
+  --quotation-print-side-inset: 25mm;
+  --quotation-print-bottom-inset: 25mm;
   --quotation-font-size: 11px;
   --quotation-font-size-sm: 10px;
   --quotation-line-height: 1.25;
+}
+
+/* WMW / Performa / quotation replica: narrow side gutters, content uses full sheet width. */
+.quotation-doc--wmw-numbered {
+  --quotation-print-side-inset: 8mm;
+  --quotation-print-bottom-inset: 13mm;
+}
+
+.quotation-doc--wmw-numbered .print-container {
+  padding-left: var(--quotation-print-side-inset);
+  padding-right: var(--quotation-print-side-inset);
+  box-sizing: border-box;
 }
 
 /*
@@ -21,10 +35,10 @@
   margin: 0;
 }
 
-/* Standard Conditions pages: top/bottom margin on every sheet */
+/* Standard Conditions pages: small margin on every sheet (matches WMW side inset). */
 @page conditions-sheet {
   size: A4;
-  margin: 12mm 12mm 12mm 12mm;
+  margin: 8mm 8mm 8mm 8mm;
 }
 
 html,
@@ -204,15 +218,20 @@ body {
     box-sizing: border-box !important;
   }
 
-  /* Sides/bottom 25mm; top comes from --quotation-print-top-inset (thead spacer + continuation segments). */
+  /* Sides/bottom from CSS vars; WMW numbered route overrides --quotation-print-side-inset to 8mm. */
   .quotation-doc .print-container {
-    padding: 0 25mm 25mm 25mm !important;
+    padding: 0 var(--quotation-print-side-inset) var(--quotation-print-bottom-inset)
+      var(--quotation-print-side-inset) !important;
     box-sizing: border-box !important;
   }
 
   /* WMWD1: keep a touch more right inset so CIN is not clipped at the page edge */
   .quotation-doc .print-container:has(.quotation-header-master-table--wmwd1) {
-    padding-right: 24mm !important;
+    padding-right: calc(var(--quotation-print-side-inset) + 1mm) !important;
+  }
+
+  .quotation-doc--wmw-numbered .print-container:has(.quotation-header-master-table--wmwd1) {
+    padding-right: 9mm !important;
   }
 
   .quotation-doc .print-container:has(.export-quotation-container),
@@ -503,11 +522,51 @@ body {
     break-after: avoid;
   }
 
-  /* Keep each numbered section + sub-points together; move block to next page if it won't fit. */
+  /* Keep each numbered section + sub-points together when paginating; allow splits when compact single-page mode. */
   .conditions-doc .section,
   .conditions-for-print .section {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* T&C: compact typography to fit standard conditions on one A4 sheet. */
+  .conditions-for-print.conditions-doc,
+  main.conditions-doc {
+    font-size: 8.5px !important;
+    line-height: 1.18 !important;
+  }
+
+  .conditions-for-print.conditions-doc h1,
+  main.conditions-doc h1 {
+    font-size: 11px !important;
+    margin-bottom: 6px !important;
+    line-height: 1.2 !important;
+  }
+
+  .conditions-for-print.conditions-doc .section,
+  main.conditions-doc .section {
+    margin-bottom: 5px !important;
+  }
+
+  .conditions-for-print.conditions-doc .section-title,
+  main.conditions-doc .section-title {
+    padding: 3px 5px !important;
+    margin-bottom: 3px !important;
+    font-size: 8.5px !important;
+    line-height: 1.18 !important;
+  }
+
+  .conditions-for-print.conditions-doc p,
+  main.conditions-doc p,
+  .conditions-for-print.conditions-doc .section p {
+    margin-bottom: 3px !important;
+    line-height: 1.18 !important;
+    font-size: 8.5px !important;
+  }
+
+  .conditions-for-print.conditions-doc > p,
+  main.conditions-doc > p {
+    margin-bottom: 6px !important;
   }
 
   .conditions-doc .section-title,
@@ -556,6 +615,7 @@ body {
     padding: 5px 6px !important;
     font-size: var(--quotation-font-size) !important;
     line-height: var(--quotation-line-height) !important;
+    text-align: center !important;
     vertical-align: middle !important;
   }
 
@@ -919,7 +979,9 @@ body {
 
   /* Compensate: @page now eats 12mm of the bottom, so the inner container only needs 13mm. */
   .quotation-doc--wmw-numbered .print-container {
-    padding-bottom: 13mm !important;
+    padding-bottom: var(--quotation-print-bottom-inset) !important;
+    padding-left: var(--quotation-print-side-inset) !important;
+    padding-right: var(--quotation-print-side-inset) !important;
   }
 
   /*
@@ -949,6 +1011,7 @@ body {
   .quotation-print-sheet--wmw-pagination .goods-description-table thead th {
     padding: 4px 6px !important;
     font-size: var(--quotation-font-size-sm) !important;
+    text-align: center !important;
   }
 
   .quotation-print-sheet--wmw-pagination .goods-description-table tfoot td {
@@ -1032,9 +1095,39 @@ body {
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid td {
-    padding: 2px 4px !important;
+    padding: 4px 5px !important;
     font-size: var(--quotation-font-size-sm) !important;
-    line-height: 1.15 !important;
+    line-height: 1.2 !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .quotation-header-tr--main > .quotation-header-td--meta {
+    height: 1px !important;
+    border-bottom: none !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid {
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid tbody {
+    height: 100% !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid tbody tr {
+    height: 20% !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-grid td strong {
+    white-space: nowrap !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-col--label {
+    width: 32% !important;
+  }
+
+  .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-meta-col--val {
+    width: 46% !important;
   }
 
   .quotation-print-sheet--wmw-pagination .quotation-header-master-table .qh-line {
@@ -1193,26 +1286,58 @@ body {
     border: 1px solid #000 !important;
   }
 
+  /* Meta grid: no bottom on last row — address header top draws the single seam. */
   .quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr:last-child td {
     border-bottom: none !important;
   }
 
-  .quotation-doc .quotation-header-master-table .quotation-header-td--addresses {
-    border-left: 1px solid #000 !important;
+  .quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr:last-child td:last-child {
     border-right: 1px solid #000 !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .quotation-header-tr--main > .quotation-header-td--supplier {
+    border-bottom: none !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .quotation-header-tr--main > .quotation-header-td--meta {
+    height: 1px !important;
+    border-bottom: none !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .qh-meta-grid {
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .qh-meta-grid tbody {
+    height: 100% !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr {
+    height: 20% !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .quotation-header-tr--addresses .quotation-address-pair-table {
+    margin-top: 0 !important;
+  }
+
+  .quotation-doc .quotation-header-master-table .quotation-header-td--addresses {
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
   }
 
   .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > th,
   .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > td {
-    border-top: none !important;
+    border-top: 1px solid #000 !important;
   }
 
   .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr > :first-child {
-    border-left: none !important;
+    border-left: 1px solid #000 !important;
   }
 
   .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr > :last-child {
-    border-right: none !important;
+    border-right: 1px solid #000 !important;
   }
 
   .quotation-doc .quotation-address-pair-table .qap-header {
@@ -1557,8 +1682,8 @@ body {
   font-weight: bold !important;
   border: 1px solid #000 !important;
   padding: 6px 8px;
-  text-align: left;
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
   font-size: var(--quotation-font-size);
   line-height: var(--quotation-line-height);
 }
@@ -1875,21 +2000,39 @@ tr.goods-description-data-row--accessories td.goods-description-table-body-cell 
   vertical-align: middle;
 }
 
+.quotation-doc .quotation-header-master-table .quotation-header-td--title,
+.quotation-doc .quotation-header-master-table .quotation-header-td--supplier,
+.quotation-doc .quotation-header-master-table .quotation-header-td--addresses,
+.quotation-doc .quotation-header-master-table .qh-meta-grid td,
+.quotation-doc .quotation-header-master-table .quotation-address-pair-table th,
+.quotation-doc .quotation-header-master-table .quotation-address-pair-table td,
+.quotation-doc .quotation-header-master-table .quotation-address-state-grid th,
+.quotation-doc .quotation-header-master-table .quotation-address-state-grid td {
+  border-color: #000 !important;
+  border-style: solid !important;
+  border-width: 1px !important;
+}
+
 .quotation-doc .quotation-header-master-table .quotation-header-td--supplier {
   width: 56%;
   box-sizing: border-box;
   padding: 4px 6px 5px;
   border-left: 1px solid #000 !important;
   border-right: 1px solid #000 !important;
-  border-bottom: 1px solid #000 !important;
 }
 
-/* Outer right edge comes from qh-meta-grid cells only (avoids double line vs nested table) */
-.quotation-doc .quotation-header-master-table .quotation-header-td--meta {
+/* One shared rule under main row: address table top only (avoids bold double line). */
+.quotation-doc .quotation-header-master-table .quotation-header-tr--main > .quotation-header-td--supplier {
+  border-bottom: none !important;
+}
+
+/* Meta column: stretch nested grid to supplier row height (no dead space below Terms Of Delivery) */
+.quotation-doc .quotation-header-master-table .quotation-header-tr--main > .quotation-header-td--meta {
   width: 44%;
+  height: 1px;
   padding: 0 !important;
   border-right: none !important;
-  border-bottom: 1px solid #000 !important;
+  border-bottom: none !important;
   vertical-align: top;
 }
 
@@ -1901,28 +2044,37 @@ tr.goods-description-data-row--accessories td.goods-description-table-body-cell 
 .quotation-doc .quotation-header-master-table .quotation-header-td--addresses {
   padding: 0 !important;
   vertical-align: top;
+  border-top: none !important;
   border-bottom: none !important;
-  border-left: 1px solid #000 !important;
-  border-right: 1px solid #000 !important;
+  border-left: none !important;
+  border-right: none !important;
 }
 
-/* Single rule under supplier/meta — avoid double line with address table top */
+/* Meta grid: no bottom on last row — address header top draws the single seam. */
 .quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr:last-child td {
   border-bottom: none !important;
 }
 
-.quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > th,
-.quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > td {
-  border-top: none;
+.quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr:last-child td:last-child {
+  border-right: 1px solid #000 !important;
 }
 
-/* Outer verticals from addresses cell; inner table shares the frame */
+.quotation-doc .quotation-header-master-table .quotation-header-tr--addresses .quotation-address-pair-table {
+  margin-top: 0;
+}
+
+.quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > th,
+.quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr:first-child > td {
+  border-top: 1px solid #000;
+}
+
+/* Inner address grid owns the outer left/right frame */
 .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr > :first-child {
-  border-left: none;
+  border-left: 1px solid #000 !important;
 }
 
 .quotation-doc .quotation-header-master-table .quotation-header-td--addresses .quotation-address-pair-table > tbody > tr > :last-child {
-  border-right: none;
+  border-right: 1px solid #000 !important;
 }
 
 /* Seam: address row (thead) + goods block (tbody) share one outer rule */
@@ -2100,6 +2252,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 
 .quotation-doc .quotation-header-master-table .qh-meta-grid {
   width: 100%;
+  height: 100%;
   min-height: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -2107,11 +2260,21 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   border: none !important;
 }
 
+.quotation-doc .quotation-header-master-table .qh-meta-grid tbody {
+  height: 100%;
+}
+
+/* Five meta rows share supplier column height evenly */
+.quotation-doc .quotation-header-master-table .qh-meta-grid tbody tr {
+  height: 20%;
+}
+
 .quotation-doc .quotation-header-master-table .qh-meta-grid td {
   border: 1px solid #000 !important;
-  padding: 2px 5px !important;
+  border-width: 1px !important;
+  padding: 5px 6px !important;
   font-size: var(--quotation-font-size);
-  line-height: 1.15;
+  line-height: 1.2;
   vertical-align: middle;
   box-sizing: border-box;
   word-wrap: break-word;
@@ -2131,8 +2294,20 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   width: 28%;
 }
 
+.quotation-doc--wmw-numbered .quotation-header-master-table .qh-meta-col--label {
+  width: 32%;
+}
+
 .quotation-doc .quotation-header-master-table .qh-meta-col--val {
   width: 50%;
+}
+
+.quotation-doc--wmw-numbered .quotation-header-master-table .qh-meta-col--val {
+  width: 46%;
+}
+
+.quotation-doc--wmw-numbered .quotation-header-master-table .qh-meta-grid td strong {
+  white-space: nowrap;
 }
 
 .quotation-doc .quotation-header-master-table .qh-meta-col--date {
@@ -2829,8 +3004,8 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 @media print {
   .conditions-doc .section,
   .conditions-for-print .section {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 }
 

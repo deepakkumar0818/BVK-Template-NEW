@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QuotationData } from '@/lib/types'
 import {
   formatCurrency,
+  formatCurrencyRounded,
   formatAmountInWords,
   resolveQuotationValidity,
   DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
@@ -82,7 +83,7 @@ export default function QuotationSummarySection({
 }: QuotationSummarySectionProps) {
   const quotationValidityDisplay = resolveQuotationValidity(rawQuotationData ?? undefined, quotationValidityDefault)
   const cur = data.currency || 'INR'
-  const totalAfterFormatted = formatCurrency(totalAfterTax, cur)
+  const totalAfterFormatted = formatCurrencyRounded(totalAfterTax, cur)
 
   const wmwChargeVisible = (n: number) => Number.isFinite(n) && n !== 0
 
@@ -142,19 +143,19 @@ export default function QuotationSummarySection({
 
   // Standard GST split: CGST 9% + SGST 9% = IGST 18%; rate labels are fixed when an amount exists, rows are hidden otherwise.
   const summaryTaxRows: { label: string; value: string; bold?: boolean }[] = [
-    { label: 'Total Amount Before Tax', value: formatCurrency(totalBeforeTax, cur), bold: true },
+    { label: 'Total Amount Before Tax', value: formatCurrencyRounded(totalBeforeTax, cur), bold: true },
   ]
   if (summaryTaxAmountHasValue(cgstAmount)) {
-    summaryTaxRows.push({ label: 'Add CGST @ 9%', value: formatCurrency(cgstAmount) })
+    summaryTaxRows.push({ label: 'Add CGST @ 9%', value: formatCurrencyRounded(cgstAmount) })
   }
   if (summaryTaxAmountHasValue(sgstAmount)) {
-    summaryTaxRows.push({ label: 'Add SGST @ 9%', value: formatCurrency(sgstAmount) })
+    summaryTaxRows.push({ label: 'Add SGST @ 9%', value: formatCurrencyRounded(sgstAmount) })
   }
   if (summaryTaxAmountHasValue(igstAmount)) {
-    summaryTaxRows.push({ label: 'Add IGST @ 18%', value: formatCurrency(igstAmount) })
+    summaryTaxRows.push({ label: 'Add IGST @ 18%', value: formatCurrencyRounded(igstAmount) })
   }
   if (summaryTaxAmountHasValue(taxAmount)) {
-    summaryTaxRows.push({ label: 'Tax Amount GST', value: formatCurrency(taxAmount) })
+    summaryTaxRows.push({ label: 'Tax Amount GST', value: formatCurrencyRounded(taxAmount) })
   }
   summaryTaxRows.push({ label: 'Total Amount After GST', value: totalAfterFormatted, bold: true })
 
@@ -284,7 +285,7 @@ export default function QuotationSummarySection({
           <td className="qs-cell qs-cell--amount-words" colSpan={amountWordsColSpan}>
             <strong>Amount Chargeable (In words):-</strong>{' '}
             <span className="qs-amount-words-inline">
-              {formatAmountInWords(totalAfterTax, data.currency || 'INR')}
+              {formatAmountInWords(Math.round(totalAfterTax), data.currency || 'INR')}
             </span>
           </td>
         </tr>
