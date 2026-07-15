@@ -178,23 +178,23 @@ export default function GoodsDescriptionLineRow({
         )}
       </td>
       {showHsnCodeColumn ? (
-        <td className="goods-description-table-body-cell" style={pad}>
+        <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
           {wrapAccessoriesFirstRowData(hsnCode || '—')}
         </td>
       ) : null}
-      <td className="goods-description-table-body-cell" style={pad}>
+      <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
         {wrapAccessoriesFirstRowData(delivery || '—')}
       </td>
-      <td className="goods-description-table-body-cell" style={pad}>
+      <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
         {wrapAccessoriesFirstRowData(uom || '—')}
       </td>
-      <td className="goods-description-table-body-cell" style={pad}>
+      <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
         {wrapAccessoriesFirstRowData(qtyCell)}
       </td>
-      <td className="goods-description-table-body-cell text-right" style={pad}>
+      <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
         {wrapAccessoriesFirstRowData(rate || '—')}
       </td>
-      <td className="goods-description-table-body-cell text-right" style={pad}>
+      <td className="goods-description-table-body-cell goods-description-table-body-cell--center" style={pad}>
         {wrapAccessoriesFirstRowData(amount || '—')}
       </td>
     </tr>
