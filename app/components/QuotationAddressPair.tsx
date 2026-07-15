@@ -204,16 +204,16 @@ export default function QuotationAddressPair({
     <div className="quotation-stack-segment quotation-address-pair">
       <table className="quotation-address-pair-table">
         <colgroup>
-          {/* Shipped To (56%) — align with supplier column above */}
-          <col style={{ width: '18%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '16%' }} />
-          <col style={{ width: '12%' }} />
-          {/* Billed To (44%) — align with meta column above */}
+          {/* Shipped To (56%) — align with supplier column above; State value wide enough for a single line */}
           <col style={{ width: '14%' }} />
+          <col style={{ width: '6%' }} />
           <col style={{ width: '8%' }} />
-          <col style={{ width: '12%' }} />
-          <col style={{ width: '10%' }} />
+          <col style={{ width: '28%' }} />
+          {/* Billed To (44%) — align with meta column above */}
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '7%' }} />
+          <col style={{ width: '21%' }} />
         </colgroup>
         <tbody>
           <tr>

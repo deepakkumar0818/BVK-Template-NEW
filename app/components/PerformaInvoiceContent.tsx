@@ -73,6 +73,8 @@ const QUOTATION_ROUTE_REMARK_ITEMS: readonly string[] = [
   'Mentioned delivery date is from date of confirmed PO other terms if any',
   'Subjects to terms and conditions enclosed.',
   'For details Terms and conditions please refer to our website.',
+  'The seller is registered under MSME Udyam No. RJ-17-0011844.'
+ 
 ]
 
 /** Static Performa remarks (unchanged copy) — left column beside tax rows (original WMW position). */

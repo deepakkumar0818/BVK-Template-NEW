@@ -1,0 +1,273 @@
+/* ── Sales Order documents (isolated from quotation templates) ── */
+
+.sales-order-doc--bvk-ods {
+  --ods-font: Arial, Helvetica, sans-serif;
+  --ods-font-size: 9px;
+  --ods-font-size-sm: 8px;
+  --ods-font-size-title: 11px;
+  --ods-line-height: 1.15;
+  --ods-border: 1px solid #000;
+  --ods-pad-x: 3px;
+  --ods-pad-y: 2px;
+  --ods-page-width: 210mm;
+  --ods-screen-pad: 10mm;
+}
+
+.sales-order-doc {
+  font-family: var(--ods-font);
+  font-size: var(--ods-font-size);
+  line-height: var(--ods-line-height);
+  color: #000;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--bvk-ods {
+  max-width: var(--ods-page-width);
+  margin: 0 auto;
+  padding: var(--ods-screen-pad);
+}
+
+.sales-order-screen-toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sales-order-print-button {
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sales-order-print-button:hover {
+  background: #1e3a8a;
+}
+
+.sales-order-print-sheet {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--bvk-ods table.ods-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-family: var(--ods-font);
+  font-size: var(--ods-font-size);
+  line-height: var(--ods-line-height);
+}
+
+.sales-order-doc--bvk-ods .ods-table th,
+.sales-order-doc--bvk-ods .ods-table td {
+  border: var(--ods-border);
+  padding: var(--ods-pad-y) var(--ods-pad-x);
+  vertical-align: top;
+  text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.sales-order-doc--bvk-ods .ods-table--nested {
+  border: none !important;
+}
+
+.sales-order-doc--bvk-ods .ods-table--nested th,
+.sales-order-doc--bvk-ods .ods-table--nested td {
+  border: var(--ods-border);
+}
+
+.sales-order-doc--bvk-ods .ods-title-cell {
+  text-align: center;
+  font-weight: bold;
+  font-size: var(--ods-font-size-title);
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+
+.sales-order-doc--bvk-ods .ods-label {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.sales-order-doc--bvk-ods .ods-section-label {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.sales-order-doc--bvk-ods .ods-section-label--center {
+  text-align: center;
+}
+
+.sales-order-doc--bvk-ods .ods-delivery-label-col {
+  width: 38%;
+  vertical-align: top;
+  font-weight: bold;
+}
+
+.sales-order-doc--bvk-ods .ods-delivery-line {
+  height: 16px;
+}
+
+.sales-order-doc--bvk-ods .ods-delivery-helper {
+  font-weight: normal;
+  font-size: var(--ods-font-size-sm);
+}
+
+.sales-order-doc--bvk-ods .ods-address-body {
+  white-space: pre-line;
+  min-height: 52px;
+}
+
+.sales-order-doc--bvk-ods .ods-doc-control {
+  font-size: var(--ods-font-size-sm);
+  line-height: 1.2;
+}
+
+.sales-order-doc--bvk-ods .ods-doc-control td {
+  padding: 1px 3px;
+  border: var(--ods-border);
+}
+
+.sales-order-doc--bvk-ods .ods-logo-wrap {
+  text-align: right;
+  vertical-align: top;
+  padding: 2px 4px;
+}
+
+.sales-order-doc--bvk-ods .ods-logo-img {
+  display: block;
+  margin-left: auto;
+  max-width: 108px;
+  max-height: 52px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.sales-order-doc--bvk-ods .ods-logo-fallback {
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-align: right;
+  line-height: 1.1;
+}
+
+.sales-order-doc--bvk-ods .ods-delivery-commit {
+  min-height: 28px;
+}
+
+.sales-order-doc--bvk-ods .ods-urgent-box {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: var(--ods-border);
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.sales-order-doc--bvk-ods .ods-product-table th {
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+  font-size: var(--ods-font-size-sm);
+  padding: 2px 2px;
+}
+
+.sales-order-doc--bvk-ods .ods-product-table td {
+  vertical-align: top;
+}
+
+.sales-order-doc--bvk-ods .ods-product-table .ods-num {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.sales-order-doc--bvk-ods .ods-product-table .ods-amount {
+  text-align: right;
+  vertical-align: middle;
+}
+
+.sales-order-doc--bvk-ods .ods-product-table .ods-desc {
+  font-size: var(--ods-font-size-sm);
+  line-height: 1.2;
+  white-space: pre-line;
+}
+
+.sales-order-doc--bvk-ods .ods-product-foot-label {
+  text-align: right;
+  font-weight: bold;
+  border-left: none !important;
+  border-bottom: none !important;
+}
+
+.sales-order-doc--bvk-ods .ods-product-foot-value {
+  text-align: right;
+  font-weight: bold;
+  border-bottom: none !important;
+}
+
+.sales-order-doc--bvk-ods .ods-terms-label {
+  width: 38%;
+  font-weight: bold;
+}
+
+.sales-order-doc--bvk-ods .ods-remarks-body {
+  min-height: 22px;
+}
+
+.sales-order-doc--bvk-ods .ods-signatures td {
+  min-height: 48px;
+  vertical-align: bottom;
+  width: 50%;
+}
+
+.sales-order-doc--bvk-ods .ods-sign-name {
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.sales-order-doc--bvk-ods .ods-helper-text {
+  font-size: var(--ods-font-size-sm);
+  font-weight: normal;
+}
+
+@page sales-order-bvk-ods {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
+@media print {
+  .sales-order-screen-only {
+    display: none !important;
+  }
+
+  .sales-order-doc--bvk-ods {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .sales-order-print-sheet {
+    page: sales-order-bvk-ods;
+  }
+
+  .sales-order-doc--bvk-ods .ods-product-table thead {
+    display: table-header-group;
+  }
+
+  .sales-order-doc--bvk-ods .ods-table {
+    page-break-inside: auto;
+  }
+
+  .sales-order-doc--bvk-ods .ods-product-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
