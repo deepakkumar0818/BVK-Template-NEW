@@ -71,7 +71,7 @@ const QUOTATION_ROUTE_REMARK_ITEMS: readonly string[] = [
   'Please mention this quotation number on your PO and all communications.',
   'This quotation is valid only for the products & quantity mentioned.',
   'Mentioned delivery date is from date of confirmed PO other terms if any',
-  'Subjects to terms and conditions closed.',
+  'Subjects to terms and conditions enclosed.',
   'For details Terms and conditions please refer to our website.',
 ]
 
@@ -120,13 +120,17 @@ function performaRemarksFooterBlock(data: QuotationData): ReactNode {
   )
 }
 
+/** Static bank identifiers shown under Zoho `Our_Bank_Details` on `/wmw/[id]`. */
+const WMW_BANK_EXTRA_LINES = ['IFSC Code: IOBA0000158', 'Branch Code: 0158'] as const
+
 function performaBankDetailsBlock(
   data: QuotationData,
   options?: { ourBankDetails?: string; showWmwBankSplit?: boolean }
 ): ReactNode {
   const bankText = String(options?.ourBankDetails ?? '').trim()
   const bankLines = bankText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
-  const splitLayout = Boolean(options?.showWmwBankSplit) && bankLines.length > 0
+  const splitLayout = Boolean(options?.showWmwBankSplit)
+  const displayBankLines = splitLayout ? [...bankLines, ...WMW_BANK_EXTRA_LINES] : bankLines
 
   if (splitLayout) {
     return (
@@ -139,7 +143,7 @@ function performaBankDetailsBlock(
             </tr>
             <tr>
               <td className="wmw-footer-slot__body-pad">
-                {bankLines.map((line, idx) => (
+                {displayBankLines.map((line, idx) => (
                   <div key={idx}>{line}</div>
                 ))}
               </td>

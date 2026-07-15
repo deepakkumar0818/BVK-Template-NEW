@@ -642,7 +642,15 @@ body {
     text-align: right !important;
   }
 
-  .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right) {
+  .goods-description-table tbody td.goods-description-table-body-cell--center {
+    text-align: center !important;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell--center .goods-description-qty-grid {
+    display: inline-grid;
+  }
+
+  .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right):not(.goods-description-table-body-cell--center) {
     text-align: left !important;
   }
 
@@ -1713,8 +1721,19 @@ body {
   text-align: right;
 }
 
-.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right),
-.goods-description-table tbody td.goods-description-table-body-cell:not(.text-right) {
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell--center,
+.goods-description-table tbody td.goods-description-table-body-cell--center {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell--center .goods-description-qty-grid,
+.goods-description-table tbody td.goods-description-table-body-cell--center .goods-description-qty-grid {
+  display: inline-grid;
+}
+
+.quotation-doc .goods-description-table tbody td.goods-description-table-body-cell:not(.text-right):not(.goods-description-table-body-cell--center),
+.goods-description-table tbody td.goods-description-table-body-cell:not(.text-right):not(.goods-description-table-body-cell--center) {
   text-align: left;
 }
 
