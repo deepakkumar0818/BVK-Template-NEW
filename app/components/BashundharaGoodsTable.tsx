@@ -504,29 +504,29 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                 }}
               >
                 <colgroup>
-                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '22%' }} />
                   <col style={{ width: '28%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '11%' }} />
                   <col style={{ width: '12%' }} />
-                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '13%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="bashundhara-goods-title-row">
-                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
+                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       Description of Goods
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       HSN Code
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Quantity<br />UOM
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Quantity / UOM
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Rate / {currencySymbol === 'USD' ? 'USD' : currencySymbol}
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Amount<br />{currencySymbol}
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Amount {currencySymbol}
                     </td>
                   </tr>
 
@@ -588,10 +588,10 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                                 <span>Pcs</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {formatCurrency(row.amount, currency)}
                             </td>
                           </tr>
@@ -651,7 +651,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', ...discountColor }}>
                               {formatCurrency(chargeAmt, currency)}
                             </td>
                           </tr>
@@ -678,7 +678,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
                         </td>
                       </tr>
@@ -693,7 +693,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
                         </td>
                       </tr>

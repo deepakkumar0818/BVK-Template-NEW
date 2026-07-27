@@ -426,8 +426,17 @@ function buildJoinedLineRowsForSubformBundle(
           coalesceLinkedFirst(ext2, ext3, main, 'Seam_Type')
         )
 
-    /** Rate column: Zoho `Selling_Price` only (WMW + Product Fitment). */
-    const ratePerSqmDisplay = coalesceMainFirst(main, ext2, ext3, 'Selling_Price')
+    /**
+     * Rate column follows the same toggle as the Amount column:
+     *   `Discount` = true  → List_Price (pre-discount rate)
+     *   `Discount` = false → Selling_Price (post-discount rate)
+     */
+    const ratePerSqmDisplay = coalesceMainFirst(
+      main,
+      ext2,
+      ext3,
+      isQuotationDiscountSummaryEnabled(raw) ? 'List_Price' : 'Selling_Price'
+    )
 
     const amountDisplay = (() => {
       if (isProductFitment) {
@@ -444,15 +453,21 @@ function buildJoinedLineRowsForSubformBundle(
         if (Number.isFinite(computedPf)) return computedPf.toFixed(2)
         return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
       }
-      // WMW: amount = quantity × unit rate (same basis as the rate column), not Qty × Total_SQM.
+      // WMW: amount = Total_SQM × rate (falls back to Qty × rate when Total_SQM is empty/0).
+      //   When quotation `Discount` = true  → rate = List_Price (pre-discount; discount is shown
+      //     as a separate summary row + subtracted from the grand total).
+      //   When quotation `Discount` = false → rate = Selling_Price (post-discount; no summary row).
+      // No other fallback — if the chosen rate is missing, the cell is empty.
+      const useListPriceForAmount = isQuotationDiscountSummaryEnabled(raw)
+      const totalSqmNum = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Total_SQM'))
       const qtyNum = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Qty'))
-      let unitRate = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'Selling_Price'))
-      if (!Number.isFinite(unitRate) || unitRate <= 0) {
-        unitRate = parseNumeric(coalesceMainFirst(main, ext2, ext3, 'List_Price'))
-      }
-      const computed = qtyNum * unitRate
+      const baseQty = Number.isFinite(totalSqmNum) && totalSqmNum > 0 ? totalSqmNum : qtyNum
+      const unitRate = parseNumeric(
+        coalesceMainFirst(main, ext2, ext3, useListPriceForAmount ? 'List_Price' : 'Selling_Price')
+      )
+      const computed = baseQty * unitRate
       if (Number.isFinite(computed) && computed >= 0) return computed.toFixed(2)
-      return coalesceMainFirst(main, ext2, ext3, 'Total_Price')
+      return ''
     })()
 
     return {
@@ -537,22 +552,21 @@ export function buildAccessoriesJoinedLineRows(
     const ext2 = pickFirstRowForRef(byRef2, lastItemRef)
     const mainId = stringifyField(main.ID) || `acc-main-${idx}`
 
-    const ratePerSqmDisplay = coalesceMainFirst(main, ext2, undefined, 'Selling_Price')
+    // Accessories follow the same Discount toggle as the Category WMW rows:
+    //   `Discount` = true  → List_Price (pre-discount), Discount row shown in summary
+    //   `Discount` = false → Selling_Price (post-discount), no Discount row
+    // Base: Total_SQM × rate when Total_SQM > 0; else Qty × rate (accessories typically have SQM = 0).
+    const useListPriceForAmount = isQuotationDiscountSummaryEnabled(raw)
+    const rateFieldForAccessories = useListPriceForAmount ? 'List_Price' : 'Selling_Price'
+    const ratePerSqmDisplay = coalesceMainFirst(main, ext2, undefined, rateFieldForAccessories)
 
     const amountDisplay = (() => {
+      const totalSqmNum = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'Total_SQM'))
       const qtyNum = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'Qty'))
-      let unitRate = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'Selling_Price'))
-      if (!Number.isFinite(unitRate) || unitRate <= 0) {
-        unitRate = parseNumeric(coalesceMainFirst(main, ext2, undefined, 'List_Price'))
-      }
-      const computed = qtyNum * unitRate
+      const baseQty = Number.isFinite(totalSqmNum) && totalSqmNum > 0 ? totalSqmNum : qtyNum
+      const unitRate = parseNumeric(coalesceMainFirst(main, ext2, undefined, rateFieldForAccessories))
+      const computed = baseQty * unitRate
       if (Number.isFinite(computed) && computed >= 0) return computed.toFixed(2)
-      const totalSelling = coalesceMainFirst(main, ext2, undefined, 'Total_Selling_Price')
-      if (totalSelling) return totalSelling
-      const totalPrice = coalesceMainFirst(main, ext2, undefined, 'Total_Price')
-      if (totalPrice) return totalPrice
-      const beforeTax = ext2 ? stringifyField(ext2.Cost_Before_Tax) : ''
-      if (beforeTax) return beforeTax
       return ''
     })()
 
@@ -716,6 +730,10 @@ export function sumWmwLineDiscountValueOnly(raw: ZohoQuotation | null | undefine
     for (const row of toRowArray(raw, key)) {
       sum += parseChargeNumber(stringifyField(row.Discount_Value))
     }
+  }
+  // Accessories subform: same Discount_Value field lives on Accessories2_0[] rows.
+  for (const row of toRowArray(raw, 'Accessories2_0')) {
+    sum += parseChargeNumber(stringifyField(row.Discount_Value))
   }
   return sum
 }

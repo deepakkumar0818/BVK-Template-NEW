@@ -19,7 +19,7 @@ interface EkamasInvoiceContentProps {
   rawQuotationData?: Record<string, unknown> | null
 }
 
-const outerBorder: CSSProperties = { border: '2px solid #000' }
+const outerBorder: CSSProperties = { border: '1px solid #000' }
 const cellBorder: CSSProperties = { border: '1px solid #000' }
 
 export default function EkamasInvoiceContent({

@@ -311,7 +311,40 @@ function amountFromTotalOrLegacy(
 }
 
 /**
- * Tax rows for quotation / performa summary: Creator rollups (Total_*) with legacy field fallback.
+ * When the top-level `Total_*` tax fields are all zero but the record has Accessories, sum the
+ * per-row tax fields from `Accessories2_0[]`. Zoho doesn't roll accessory taxes up into the
+ * quotation-level totals when a record has only accessories.
+ */
+function sumAccessoriesTaxField(
+  raw: Record<string, unknown> | null | undefined,
+  field: string
+): number {
+  const rows = (raw?.Accessories2_0 as unknown[]) ?? []
+  if (!Array.isArray(rows) || rows.length === 0) return 0
+  let sum = 0
+  for (const row of rows) {
+    if (row && typeof row === 'object') {
+      sum += parseNumericField((row as Record<string, unknown>)[field])
+    }
+  }
+  return sum
+}
+
+/** Read the top-level `Total_*` field first; fall back to summing the same tax field across Accessories2_0[]. */
+function amountFromTotalOrAccessoriesSum(
+  raw: Record<string, unknown> | null | undefined,
+  totalKey: string,
+  legacyKey: string,
+  accessoryField: string
+): number {
+  const direct = amountFromTotalOrLegacy(raw, totalKey, legacyKey)
+  if (direct !== 0) return direct
+  return sumAccessoriesTaxField(raw, accessoryField)
+}
+
+/**
+ * Tax rows for quotation / performa summary: Creator rollups (Total_*) with legacy field fallback,
+ * then Accessories subform fallback when the top-level rollups are empty.
  */
 function resolveTotalCostBeforeTax(
   r: Record<string, unknown> | null | undefined,
@@ -319,8 +352,12 @@ function resolveTotalCostBeforeTax(
 ): number {
   const v = r?.Total_Cost_Before_Tax
   if (v !== undefined && v !== null && String(v).trim() !== '') {
-    return parseNumericField(v)
+    const n = parseNumericField(v)
+    if (n !== 0) return n
   }
+  // Fallback: sum Accessories2_0[].Cost_Before_Tax (Zoho leaves the top-level at 0 when only accessories are present).
+  const accSum = sumAccessoriesTaxField(r, 'Cost_Before_Tax')
+  if (accSum !== 0) return accSum
   return lineItemsTotalFallback
 }
 
@@ -328,12 +365,21 @@ export function parseQuotationTaxForSummary(raw: unknown, lineItemsTotalFallback
   const r = raw as Record<string, unknown> | null | undefined
   return {
     cgstRate: parseNumericField(r?.CGST_Rate),
-    cgstAmount: amountFromTotalOrLegacy(r, 'Total_CGST', 'CGST_Amount'),
+    cgstAmount: amountFromTotalOrAccessoriesSum(r, 'Total_CGST', 'CGST_Amount', 'CGST_in_Rupees'),
     sgstRate: parseNumericField(r?.SGST_Rate),
-    sgstAmount: amountFromTotalOrLegacy(r, 'Total_SGST', 'SGST_Amount'),
+    sgstAmount: amountFromTotalOrAccessoriesSum(r, 'Total_SGST', 'SGST_Amount', 'SGST_in_Rupess'),
     igstRate: parseNumericField(r?.IGST_Rate),
-    igstAmount: amountFromTotalOrLegacy(r, 'Total_IGST', 'IGST_Amount'),
-    taxAmount: amountFromTotalOrLegacy(r, 'Total_Tax_Amount_IGST_CGST', 'Tax_Amount'),
+    igstAmount: amountFromTotalOrAccessoriesSum(r, 'Total_IGST', 'IGST_Amount', 'IGST_in_Rupees'),
+    taxAmount: (() => {
+      const direct = amountFromTotalOrLegacy(r, 'Total_Tax_Amount_IGST_CGST', 'Tax_Amount')
+      if (direct !== 0) return direct
+      // Fallback: sum accessory-level IGST + CGST + SGST when the top-level rollup is empty.
+      return (
+        sumAccessoriesTaxField(r, 'IGST_in_Rupees') +
+        sumAccessoriesTaxField(r, 'CGST_in_Rupees') +
+        sumAccessoriesTaxField(r, 'SGST_in_Rupess')
+      )
+    })(),
     totalBeforeTax: resolveTotalCostBeforeTax(r, lineItemsTotalFallback),
     /** Zoho `Overall_Grand_Total_incl_Accessories` only (no other keys, no line-sum fallback). */
     totalAfterTax: parseOverallGrandTotalInclAccessories(r ?? undefined),
@@ -975,35 +1021,21 @@ function parseDiscountValueNumber(value: string | undefined): number {
 }
 
 /**
- * WMWD1 / WMW pagination: when quotation `Discount` is `false`, subtract each joined line’s
- * `Discount_Value` from the goods amount and return the net line total for summary bands.
+ * WMWD1 / WMW pagination: line amounts are computed upstream via `Qty × List_Price` (when
+ * quotation `Discount` = true) or `Qty × Selling_Price` (when false). No per-line absorption
+ * is applied here — the discount is shown as a separate summary row (only when `Discount`=true)
+ * and deducted at the grand-total level via {@link resolveWmwChargeTotals}.
+ * This function is kept for compatibility and just returns the sum of already-computed amounts.
  */
 export function applyWmwd1LineDiscountAbsorption(
   lineItems: QuotationLineItem[],
   raw: ZohoQuotation | null | undefined,
   currency: string
 ): { lineItems: QuotationLineItem[]; netTotal: number } {
-  if (isQuotationDiscountSummaryEnabled(raw)) {
-    const netTotal = lineItems.reduce((sum, item) => sum + parseLineItemAmountNumber(item.amount), 0)
-    return { lineItems, netTotal }
-  }
-
-  const joined = buildJoinedLineRowsForWmwPerforma(raw)
-  let netTotal = 0
-  const adjusted = lineItems.map((item, index) => {
-    const joinedRow = joined[index]
-    const gross = parseLineItemAmountNumber(item.amount)
-    const discountValue = joinedRow ? parseDiscountValueNumber(joinedRow.discountValueDisplay) : 0
-    const net = gross - discountValue
-    const roundedNet = Math.round(net)
-    netTotal += roundedNet
-    return {
-      ...item,
-      amount: formatCurrencyRounded(roundedNet, currency),
-    }
-  })
-
-  return { lineItems: adjusted, netTotal }
+  void raw
+  void currency
+  const netTotal = lineItems.reduce((sum, item) => sum + parseLineItemAmountNumber(item.amount), 0)
+  return { lineItems, netTotal }
 }
 
 /**
