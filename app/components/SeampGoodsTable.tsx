@@ -475,31 +475,31 @@ export default function SeampGoodsTable({ data, rawQuotationData, shippingData, 
                 <colgroup>
                   <col style={{ width: '19%' }} />
                   <col style={{ width: '26%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '16%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '11%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="seamp-goods-title-row">
-                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
+                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       Description of Goods
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       HSN Code
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Quantity<br />UOM
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Quantity / UOM
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', whiteSpace: 'nowrap' }}>
                       Delivery
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Rate / {currencySymbol === 'USD' ? 'USD' : currencySymbol}
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Amount<br />{currencySymbol}
+                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Amount {currencySymbol}
                     </td>
                   </tr>
 
@@ -566,10 +566,10 @@ export default function SeampGoodsTable({ data, rawQuotationData, shippingData, 
                             <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontSize: '9px', wordBreak: 'break-word' }}>
                               {row.delivery || ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {formatCurrency(row.amount, '')}
                             </td>
                           </tr>
@@ -634,7 +634,7 @@ export default function SeampGoodsTable({ data, rawQuotationData, shippingData, 
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', ...discountColor }}>
                               {formatCurrency(chargeAmt, '')}
                             </td>
                           </tr>
@@ -673,7 +673,7 @@ export default function SeampGoodsTable({ data, rawQuotationData, shippingData, 
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>
@@ -688,7 +688,7 @@ export default function SeampGoodsTable({ data, rawQuotationData, shippingData, 
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>

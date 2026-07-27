@@ -7,7 +7,8 @@
 /* Printed quotation: top inset on every sheet (theader spacer + goods continuation segments). */
 :root {
   --quotation-print-top-inset: 25mm;
-  --quotation-print-side-inset: 25mm;
+  /* Narrow side gutters across every template (matches /wmw/[id] + /quotation/[id]). */
+  --quotation-print-side-inset: 8mm;
   --quotation-print-bottom-inset: 25mm;
   --quotation-font-size: 11px;
   --quotation-font-size-sm: 10px;
@@ -21,6 +22,20 @@
 }
 
 .quotation-doc--wmw-numbered .print-container {
+  padding-left: var(--quotation-print-side-inset);
+  padding-right: var(--quotation-print-side-inset);
+  box-sizing: border-box;
+}
+
+/*
+ * Bashundhara: use the same narrow side gutters as the WMW / Quotation route so the
+ * printable content area matches.
+ */
+.quotation-doc:has(.bashundhara-goods-table) {
+  --quotation-print-side-inset: 8mm;
+}
+
+.quotation-doc:has(.bashundhara-goods-table) .print-container {
   padding-left: var(--quotation-print-side-inset);
   padding-right: var(--quotation-print-side-inset);
   box-sizing: border-box;
@@ -143,8 +158,10 @@ body {
 
 /* Hide parent border in print for export template */
 @media print {
-  /* SLS: remove extra bottom padding so conditions follow immediately. */
+  /* SLS: narrow side gutters + remove extra bottom padding so conditions follow immediately. */
   .sls-quotation-container {
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
     padding-bottom: 2mm !important;
   }
   /* SLS: reduce end-of-document whitespace so conditions follow immediately. */
@@ -166,7 +183,7 @@ body {
     border: none !important;
     max-width: 100% !important;
     width: 100% !important;
-    padding: 0 10mm 5mm 10mm !important;
+    padding: 0 8mm 5mm 8mm !important;
   }
 
   /* Prevent page breaks inside sections - move whole div to next page */
@@ -1420,7 +1437,7 @@ body {
   .gkd-quotation-container {
     max-width: 100% !important;
     width: 100% !important;
-    padding: 0 10mm 5mm 10mm !important;
+    padding: 0 8mm 5mm 8mm !important;
   }
 
   .gkd-print-table {
@@ -1512,7 +1529,7 @@ body {
   .bvk-quotation-container {
     max-width: 100% !important;
     width: 100% !important;
-    padding: 0 10mm 5mm 10mm !important;
+    padding: 0 8mm 5mm 8mm !important;
   }
 
   .bvk-print-table {
@@ -1968,6 +1985,40 @@ tr.goods-description-data-row--accessories td.goods-description-table-body-cell 
   border-bottom: none !important;
   border-left: 1px solid #000 !important;
   border-right: 1px solid #000 !important;
+}
+
+/*
+ * Bashundhara / Seamp / Wmwquotation border-doubling fix — the header uses nested tables inside
+ * cells that already have their own 1px border. Because each nested table is a separate
+ * border-collapse context, the inner cells' borders stack on top of the outer cell's border →
+ * visually 2px. Neutralize the inner-table outer edges so only the parent cell's 1px border shows.
+ */
+.quotation-doc .bashundhara-quotation-header-table td > table,
+.quotation-doc .seamp-quotation-header-table td > table,
+.quotation-doc .everite-quotation-header-table td > table,
+.quotation-doc .ekamas-quotation-header-table td > table,
+.quotation-doc .adhunik-quotation-header-table td > table {
+  border: none !important;
+  margin: 0 !important;
+}
+
+.quotation-doc .bashundhara-quotation-header-table td > table > tbody > tr > td,
+.quotation-doc .seamp-quotation-header-table td > table > tbody > tr > td,
+.quotation-doc .everite-quotation-header-table td > table > tbody > tr > td,
+.quotation-doc .ekamas-quotation-header-table td > table > tbody > tr > td,
+.quotation-doc .adhunik-quotation-header-table td > table > tbody > tr > td {
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid #000 !important;
+}
+
+.quotation-doc .bashundhara-quotation-header-table td > table > tbody > tr:last-child > td,
+.quotation-doc .seamp-quotation-header-table td > table > tbody > tr:last-child > td,
+.quotation-doc .everite-quotation-header-table td > table > tbody > tr:last-child > td,
+.quotation-doc .ekamas-quotation-header-table td > table > tbody > tr:last-child > td,
+.quotation-doc .adhunik-quotation-header-table td > table > tbody > tr:last-child > td {
+  border-bottom: none !important;
 }
 
 /* ── Quotation header (invoice): full-width title row + supplier | bordered meta ── */

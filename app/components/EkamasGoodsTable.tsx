@@ -453,7 +453,7 @@ export default function EkamasGoodsTable({
                 style={{
                   width: '100%',
                   borderCollapse: 'collapse',
-                  border: '2px solid #000',
+                  border: '1px solid #000',
                   borderTop: 'none',
                   marginTop: '-2px',
                   tableLayout: 'fixed',
@@ -462,17 +462,17 @@ export default function EkamasGoodsTable({
               >
                 <colgroup>
                   <col style={{ width: '46%' }} />
-                  <col style={{ width: '10%' }} />
                   <col style={{ width: '12%' }} />
                   <col style={{ width: '14%' }} />
-                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '14%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="ekamas-goods-title-row">
                     <td
                       style={{
                         ...bdTitleRow,
-                        borderTop: '2px solid #000',
+                        borderTop: '1px solid #000',
                         padding: '8px',
                         textAlign: 'center',
                         fontWeight: 'bold',
@@ -484,7 +484,7 @@ export default function EkamasGoodsTable({
                     <td
                       style={{
                         ...bdTitleRow,
-                        borderTop: '2px solid #000',
+                        borderTop: '1px solid #000',
                         padding: '8px',
                         textAlign: 'center',
                         fontWeight: 'bold',
@@ -497,44 +497,41 @@ export default function EkamasGoodsTable({
                     <td
                       style={{
                         ...bdTitleRow,
-                        borderTop: '2px solid #000',
+                        borderTop: '1px solid #000',
                         padding: '8px',
                         textAlign: 'center',
                         fontWeight: 'bold',
                         fontSize: '10px',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      Quantity
-                      <br />
-                      UOM
+                      Quantity / UOM
                     </td>
                     <td
                       style={{
                         ...bdTitleRow,
-                        borderTop: '2px solid #000',
+                        borderTop: '1px solid #000',
                         padding: '8px',
                         textAlign: 'center',
                         fontWeight: 'bold',
                         fontSize: '10px',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      Rate
-                      <br />
-                      {currencySymbol} / UOM
+                      Rate / {currencySymbol}
                     </td>
                     <td
                       style={{
                         ...bdTitleRow,
-                        borderTop: '2px solid #000',
+                        borderTop: '1px solid #000',
                         padding: '8px',
                         textAlign: 'center',
                         fontWeight: 'bold',
                         fontSize: '10px',
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      Amount
-                      <br />
-                      {currencySymbol}
+                      Amount {currencySymbol}
                     </td>
                   </tr>
 
@@ -788,13 +785,13 @@ export default function EkamasGoodsTable({
                       </tr>
 
                       <tr>
-                        <td style={{ ...bd, borderTop: '2px solid #000', padding: '6px 10px', verticalAlign: 'middle' }} />
-                        <td style={{ ...bd, borderTop: '2px solid #000', padding: '6px', verticalAlign: 'middle' }} />
+                        <td style={{ ...bd, borderTop: '1px solid #000', padding: '6px 10px', verticalAlign: 'middle' }} />
+                        <td style={{ ...bd, borderTop: '1px solid #000', padding: '6px', verticalAlign: 'middle' }} />
                         <td
                           colSpan={2}
                           style={{
                             ...bd,
-                            borderTop: '2px solid #000',
+                            borderTop: '1px solid #000',
                             padding: '8px 6px',
                             textAlign: 'center',
                             fontWeight: 'bold',
@@ -807,9 +804,9 @@ export default function EkamasGoodsTable({
                         <td
                           style={{
                             ...bd,
-                            borderTop: '2px solid #000',
+                            borderTop: '1px solid #000',
                             padding: '8px 6px',
-                            textAlign: 'right',
+                            textAlign: 'center',
                             fontWeight: 'bold',
                             verticalAlign: 'middle',
                             fontSize: '11px',
@@ -877,7 +874,7 @@ export default function EkamasGoodsTable({
                                 <td
                                   style={{
                                     padding: '8px 10px',
-                                    textAlign: 'right',
+                                    textAlign: 'center',
                                     verticalAlign: 'middle',
                                     fontWeight: 'bold',
                                     fontSize: '14px',
@@ -925,7 +922,7 @@ export default function EkamasGoodsTable({
                             textAlign: 'center',
                             verticalAlign: 'middle',
                             fontSize: '11px',
-                            borderBottom: '2px solid #000',
+                            borderBottom: '1px solid #000',
                           }}
                         >
                           For WMW Metal Fabrics Ltd.

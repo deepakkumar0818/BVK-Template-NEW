@@ -227,35 +227,118 @@ export default function PerformaInvoiceContent({
       rawQuotationData ?? null
     )
     const discountAbsorbedIntoLines = !isQuotationDiscountSummaryEnabled(rawQuotationData ?? null)
-    /** Summary band “Total INR”: Zoho `Total_Net_Sale_Value_Before_Tax`; when discount is absorbed in lines, use net line sum. */
-    const totalInrBandFormatted = discountAbsorbedIntoLines
-      ? formatCurrencyRounded(wmwd1NetLineTotal, cur)
-      : (() => {
-          const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
-          if (v !== undefined && v !== null && String(v).trim() !== '') {
-            const n = parseFloat(String(v).replace(/,/g, '').trim())
-            if (Number.isFinite(n)) return formatCurrencyRounded(n, cur)
+    /**
+     * Summary band "Total INR":
+     *   - Both Discount=true and Discount=false use the **actual sum of line-item amounts**
+     *     (`wmwd1NetLineTotal`). This guarantees Total INR = what's shown in the goods table
+     *     tfoot, and the downstream `Total Before Tax = Total INR − Discount` reconciles.
+     *   - Only when the line-items sum is zero do we fall back to Zoho's stored rollups
+     *     (accessories-only or empty records).
+     */
+    const totalInrBandFormatted = (() => {
+      if (Number.isFinite(wmwd1NetLineTotal) && wmwd1NetLineTotal !== 0) {
+        return formatCurrencyRounded(wmwd1NetLineTotal, cur)
+      }
+      const v = rawQuotationData?.Total_Net_Sale_Value_Before_Tax
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        const n = parseFloat(String(v).replace(/,/g, '').trim())
+        if (Number.isFinite(n) && n !== 0) return formatCurrencyRounded(n, cur)
+      }
+      return formatCurrencyRounded(
+        parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined),
+        cur
+      )
+    })()
+    /*
+     * ALWAYS recompute the summary tax band locally from the line-items sum for both
+     * Discount = true and Discount = false. Formula:
+     *
+     *   Total INR               = Σ line amounts (already reflects Total_SQM × chosen rate)
+     *   Total Before Tax        = Total INR − Total Discount   (discount is 0 when Discount=false)
+     *   IGST / CGST / SGST amt  = Total Before Tax × rate / 100
+     *   Tax Amount GST          = IGST + CGST + SGST
+     *   Total After GST         = Total Before Tax + Tax Amount GST
+     *
+     * Rates come from Zoho top-level (`IGST_Rate` etc.), falling back to the first non-zero
+     * value in the subform rows (each row stores its own rate in `IGST`/`CGST`/`SGST`).
+     */
+    const wmwd1RateOnly = (raw: Record<string, unknown> | null | undefined, topLevel: string, fallbackSubforms: readonly string[]): number => {
+      if (!raw) return 0
+      const direct = parseFloat(String(raw[topLevel] ?? '').replace(/,/g, ''))
+      if (Number.isFinite(direct) && direct > 0) return direct
+      for (const key of fallbackSubforms) {
+        const rows = (raw[key] as unknown[]) ?? []
+        if (Array.isArray(rows)) {
+          for (const row of rows) {
+            const v = parseFloat(String((row as Record<string, unknown>)?.[topLevel] ?? '').replace(/,/g, ''))
+            if (Number.isFinite(v) && v > 0) return v
           }
-          return formatCurrencyRounded(
-            parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined),
-            cur
-          )
-        })()
-    const wmwd1TotalBeforeTax = discountAbsorbedIntoLines ? wmwd1NetLineTotal : totalBeforeTax
+        }
+      }
+      return 0
+    }
+    const wmwd1RecomputedTax = (() => {
+      const lineTotal = Math.max(0, wmwd1NetLineTotal)
+      // Only subtract the discount row when the Discount toggle is ON; when it's OFF the
+      // Selling_Price used in each line already reflects the discounted rate, so there's
+      // nothing more to subtract.
+      const effDiscount = discountAbsorbedIntoLines ? 0 : Math.max(0, discountTotal)
+      const totalBeforeTaxNew = Math.max(0, lineTotal - effDiscount)
+      const rawRecord = rawQuotationData as Record<string, unknown> | null | undefined
+      const subformKeys = [
+        'Category_1_MM_Database_WMW_2_0',
+        'Category_1_MM_Database_WMW_3_0',
+        'Category_2_MM_Database_WMW_2_0',
+        'Category_2_MM_Database_WMW_3_0',
+        'Accessories2_0',
+      ]
+      const cgstRateEff = cgstRate > 0 ? cgstRate : wmwd1RateOnly(rawRecord, 'CGST', subformKeys)
+      const sgstRateEff = sgstRate > 0 ? sgstRate : wmwd1RateOnly(rawRecord, 'SGST', subformKeys)
+      const igstRateEff = igstRate > 0 ? igstRate : wmwd1RateOnly(rawRecord, 'IGST', subformKeys)
+      const cgstAmt = totalBeforeTaxNew * (cgstRateEff / 100)
+      const sgstAmt = totalBeforeTaxNew * (sgstRateEff / 100)
+      const igstAmt = totalBeforeTaxNew * (igstRateEff / 100)
+      const taxAmt = cgstAmt + sgstAmt + igstAmt
+      return {
+        totalBeforeTax: totalBeforeTaxNew,
+        cgstRate: cgstRateEff,
+        sgstRate: sgstRateEff,
+        igstRate: igstRateEff,
+        cgstAmount: cgstAmt,
+        sgstAmount: sgstAmt,
+        igstAmount: igstAmt,
+        taxAmount: taxAmt,
+        totalAfterTax: totalBeforeTaxNew + taxAmt,
+      }
+    })()
+    const wmwd1TotalBeforeTax = wmwd1RecomputedTax.totalBeforeTax
+    const wmwd1CgstRate = wmwd1RecomputedTax.cgstRate
+    const wmwd1SgstRate = wmwd1RecomputedTax.sgstRate
+    const wmwd1IgstRate = wmwd1RecomputedTax.igstRate
+    const wmwd1CgstAmount = wmwd1RecomputedTax.cgstAmount
+    const wmwd1SgstAmount = wmwd1RecomputedTax.sgstAmount
+    const wmwd1IgstAmount = wmwd1RecomputedTax.igstAmount
+    const wmwd1TaxAmount = wmwd1RecomputedTax.taxAmount
+    const wmwd1TotalAfterTax = wmwd1RecomputedTax.totalAfterTax
+    // Silence unused-warning: legacy Zoho-rollup values are the fallback path retained for
+    // records where the line-items sum evaluates to 0 (accessories-only / empty datasets).
+    void totalBeforeTax
+    void totalAfterTax
+    void taxAmount
     const wmwd1SummaryFollowSlot = (
       <>
         <QuotationSummarySection
           data={data}
           totalAmountFormatted={totalInrBandFormatted}
-          cgstRate={cgstRate}
-          cgstAmount={cgstAmount}
-          sgstRate={sgstRate}
-          sgstAmount={sgstAmount}
-          igstRate={igstRate}
-          igstAmount={igstAmount}
-          taxAmount={taxAmount}
+          cgstRate={wmwd1CgstRate}
+          cgstAmount={wmwd1CgstAmount}
+          sgstRate={wmwd1SgstRate}
+          sgstAmount={wmwd1SgstAmount}
+          igstRate={wmwd1IgstRate}
+          igstAmount={wmwd1IgstAmount}
+          taxAmount={wmwd1TaxAmount}
           totalBeforeTax={wmwd1TotalBeforeTax}
-          totalAfterTax={totalAfterTax}
+          totalAfterTax={wmwd1TotalAfterTax}
           wmwDiscountTotal={discountTotal}
           wmwDiscountRowLabel={discountLabel}
           wmwFreightChargeTotal={freightTotal}

@@ -455,12 +455,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                 <colgroup>
                   <col style={{ width: '20%' }} />
                   <col style={{ width: '22%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '8%' }} />
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '8%' }} />
                   <col style={{ width: '10%' }} />
-                  <col style={{ width: '14%' }} />
+                  <col style={{ width: '10%' }} />
                 </colgroup>
                 <tbody>
                   <tr className="adhunik-goods-title-row">
@@ -473,14 +473,14 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                     <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
                       Net Weight (Kg.)
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Quantity<br />UOM
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Quantity / UOM
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Rate / {currencySymbol === 'USD' ? 'USD' : currencySymbol}
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Amount<br />{currencySymbol}
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Amount {currencySymbol}
                     </td>
                   </tr>
                   <tr className="adhunik-goods-title-row-2">
@@ -548,10 +548,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                             <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
                               {row.hsnCode || ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {row.perPc?.toFixed(1) || ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {row.totalWeight?.toFixed(1) || ''}
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -560,10 +560,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                                 <span>Pcs</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               {formatCurrency(row.amount, '')}
                             </td>
                           </tr>
@@ -597,7 +597,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
+                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', ...discountColor }}>
                               {formatCurrency(chargeAmt, '')}
                             </td>
                           </tr>
@@ -637,7 +637,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle', width: '14%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>
@@ -652,7 +652,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
                         </td>
                       </tr>

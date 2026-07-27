@@ -396,30 +396,27 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
           >
             <colgroup>
               <col style={{ width: '44%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '20%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
             </colgroup>
             <tbody>
               <tr>
-                <td style={{ ...bd, padding: '12px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                <td style={{ ...bd, padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                   Description of Goods
                 </td>
-                <td style={{ ...bd, padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                <td style={{ ...bd, padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                   HSN Code
                 </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                  <div style={{ marginBottom: '4px' }}>Quantity</div>
-                  <div>UOM</div>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Quantity / UOM
                 </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                  <div style={{ marginBottom: '4px' }}>Rate</div>
-                  <div style={{ fontSize: '10px' }}>{currencySymbol} / UOM</div>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Rate / {currencySymbol}
                 </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                  <div style={{ marginBottom: '4px' }}>Amount</div>
-                  <div>{currencySymbol}</div>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                  Amount {currencySymbol}
                 </td>
               </tr>
 
@@ -579,10 +576,10 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             <td style={{ ...contentBdSides, padding: '4px 8px', verticalAlign: 'top' }}>
                               {renderQtyUomCell(row.quantity || '', row.uom)}
                             </td>
-                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
+                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
                             </td>
-                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'right', verticalAlign: 'top' }}>
+                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
                               {formatCurrency(row.amount, currency)}
                             </td>
                         </tr>
@@ -604,7 +601,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                 <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
                   Total Ex-Works Price
                 </td>
-                <td style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
                   {formatCurrency(baseAmount, currency)}
                 </td>
               </tr>
@@ -614,7 +611,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
                     {discountRowLabel}
                   </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold', color: '#c00000' }}>
                     {formatCurrency(discountChargeAmt, currency)}
                   </td>
                 </tr>
@@ -628,10 +625,10 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                 <td style={{ ...bd, padding: '6px 8px', verticalAlign: 'middle' }}>
                   {renderQtyUomCell(primaryQty > 0 ? primaryQty : '', primaryLine?.uom || 'Rolls')}
                 </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                   {dapChargesTotal > 0 && primaryQty > 0 ? formatCurrency(dapRate, currency) : ''}
                 </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
                   {formatCurrency(dapChargesTotal, currency)}
                 </td>
               </tr>
@@ -701,7 +698,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   style={{
                     ...bd,
                     padding: '8px 10px',
-                    textAlign: 'right',
+                    textAlign: 'center',
                     fontWeight: 'bold',
                     fontSize: '14px',
                     verticalAlign: 'middle',
