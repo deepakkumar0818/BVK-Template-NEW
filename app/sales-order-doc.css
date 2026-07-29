@@ -1,6 +1,6 @@
 /* ── Sales Order documents (isolated from quotation templates) ── */
 
-.sales-order-doc--bvk-ods {
+.sales-order-doc {
   --ods-font: Arial, Helvetica, sans-serif;
   --ods-font-size: 9px;
   --ods-font-size-sm: 8px;
@@ -12,21 +12,24 @@
   --ods-pad-y: 2px;
   --ods-page-width: 210mm;
   --ods-screen-pad: 10mm;
-}
-
-.sales-order-doc {
   font-family: var(--ods-font);
   font-size: var(--ods-font-size);
   line-height: var(--ods-line-height);
   color: #000;
   background: #fff;
   box-sizing: border-box;
-}
-
-.sales-order-doc--bvk-ods {
   max-width: var(--ods-page-width);
   margin: 0 auto;
   padding: var(--ods-screen-pad);
+}
+
+/* Variant-specific typography tweaks: WMW-44 has more columns/rows, needs to shrink */
+.sales-order-doc--sls-ods-no-44 {
+  --ods-font-size: 8px;
+  --ods-font-size-sm: 7px;
+  --ods-font-size-title: 10px;
+  --ods-pad-x: 2px;
+  --ods-pad-y: 1px;
 }
 
 .sales-order-screen-toolbar {
@@ -55,7 +58,7 @@
   box-sizing: border-box;
 }
 
-.sales-order-doc--bvk-ods table.ods-table {
+.sales-order-doc table.ods-table {
   width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
@@ -65,8 +68,8 @@
   line-height: var(--ods-line-height);
 }
 
-.sales-order-doc--bvk-ods .ods-table th,
-.sales-order-doc--bvk-ods .ods-table td {
+.sales-order-doc .ods-table th,
+.sales-order-doc .ods-table td {
   border: var(--ods-border);
   padding: var(--ods-pad-y) var(--ods-pad-x);
   vertical-align: top;
@@ -76,47 +79,47 @@
 }
 
 /* Stacked tables inside one section share one edge */
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table + .ods-table {
+.sales-order-doc .ods-section-outline .ods-table + .ods-table {
   margin-top: -1px;
 }
 
 /* Thick outer outline per section; inner cell borders stay thin */
-.sales-order-doc--bvk-ods .ods-section-outline {
+.sales-order-doc .ods-section-outline {
   border: var(--ods-border-outline);
   border-top: none;
   margin-top: 0;
   box-sizing: border-box;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline:first-child {
+.sales-order-doc .ods-section-outline:first-child {
   border-top: var(--ods-border-outline);
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table {
+.sales-order-doc .ods-section-outline .ods-table {
   margin-top: 0;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table > :is(thead, tbody) > tr > :first-child {
+.sales-order-doc .ods-section-outline .ods-table > :is(thead, tbody) > tr > :first-child {
   border-left: none;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table > :is(thead, tbody) > tr > :last-child {
+.sales-order-doc .ods-section-outline .ods-table > :is(thead, tbody) > tr > :last-child {
   border-right: none;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table:first-child > thead > tr:first-child > :is(th, td) {
+.sales-order-doc .ods-section-outline .ods-table:first-child > thead > tr:first-child > :is(th, td) {
   border-top: none;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table:first-child > tbody:first-child > tr:first-child > :is(th, td) {
+.sales-order-doc .ods-section-outline .ods-table:first-child > tbody:first-child > tr:first-child > :is(th, td) {
   border-top: none;
 }
 
-.sales-order-doc--bvk-ods .ods-section-outline .ods-table:last-child > tbody > tr:last-child > :is(th, td) {
+.sales-order-doc .ods-section-outline .ods-table:last-child > tbody > tr:last-child > :is(th, td) {
   border-bottom: none;
 }
 
-.sales-order-doc--bvk-ods .ods-title-cell {
+.sales-order-doc .ods-title-cell {
   text-align: center;
   font-weight: bold;
   font-size: var(--ods-font-size-title);
@@ -124,67 +127,67 @@
   vertical-align: middle;
 }
 
-.sales-order-doc--bvk-ods .ods-doc-top {
+.sales-order-doc .ods-doc-top {
   font-size: var(--ods-font-size-sm);
   font-weight: bold;
   vertical-align: middle;
   white-space: nowrap;
 }
 
-.sales-order-doc--bvk-ods .ods-doc-rev {
+.sales-order-doc .ods-doc-rev {
   font-weight: bold;
 }
 
-.sales-order-doc--bvk-ods .ods-label {
+.sales-order-doc .ods-label {
   font-weight: bold;
   white-space: nowrap;
 }
 
-.sales-order-doc--bvk-ods .ods-section-label {
+.sales-order-doc .ods-section-label {
   font-weight: bold;
   text-transform: uppercase;
 }
 
-.sales-order-doc--bvk-ods .ods-table .ods-section-label--center {
+.sales-order-doc .ods-table .ods-section-label--center {
   text-align: center;
 }
 
-.sales-order-doc--bvk-ods .ods-delivery-label-col {
+.sales-order-doc .ods-delivery-label-col {
   width: 38%;
   vertical-align: top;
   font-weight: bold;
 }
 
-.sales-order-doc--bvk-ods .ods-delivery-line {
+.sales-order-doc .ods-delivery-line {
   height: 16px;
 }
 
-.sales-order-doc--bvk-ods .ods-delivery-helper {
+.sales-order-doc .ods-delivery-helper {
   font-weight: normal;
   font-size: var(--ods-font-size-sm);
 }
 
-.sales-order-doc--bvk-ods .ods-address-col {
+.sales-order-doc .ods-address-col {
   width: 50%;
   vertical-align: top;
 }
 
-.sales-order-doc--bvk-ods .ods-address-line {
+.sales-order-doc .ods-address-line {
   vertical-align: top;
   padding: var(--ods-pad-y) var(--ods-pad-x);
 }
 
-.sales-order-doc--bvk-ods .ods-address-line--name {
+.sales-order-doc .ods-address-line--name {
   font-weight: bold;
 }
 
-.sales-order-doc--bvk-ods .ods-logo-wrap {
+.sales-order-doc .ods-logo-wrap {
   text-align: center;
   vertical-align: middle;
   padding: 4px 6px;
 }
 
-.sales-order-doc--bvk-ods .ods-logo-img {
+.sales-order-doc .ods-logo-img {
   display: block;
   margin: 0 auto;
   max-width: 120px;
@@ -194,7 +197,7 @@
   object-fit: contain;
 }
 
-.sales-order-doc--bvk-ods .ods-logo-fallback {
+.sales-order-doc .ods-logo-fallback {
   font-weight: bold;
   font-size: 16px;
   letter-spacing: 0.04em;
@@ -202,11 +205,27 @@
   line-height: 1.1;
 }
 
-.sales-order-doc--bvk-ods .ods-delivery-commit {
+.sales-order-doc .ods-logo-tagline {
+  margin-top: 2px;
+  font-weight: bold;
+  font-size: var(--ods-font-size-sm);
+  text-align: center;
+  line-height: 1.15;
+}
+
+.sales-order-doc .ods-logo-tagline-sub {
+  margin-top: 1px;
+  font-weight: normal;
+  font-size: 7px;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.sales-order-doc .ods-delivery-commit {
   min-height: 28px;
 }
 
-.sales-order-doc--bvk-ods .ods-urgent-box {
+.sales-order-doc .ods-urgent-box {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -215,7 +234,7 @@
   margin-left: 4px;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table th {
+.sales-order-doc .ods-product-table th {
   font-weight: bold;
   text-align: center;
   vertical-align: middle;
@@ -223,62 +242,857 @@
   padding: 2px 2px;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table td {
+.sales-order-doc .ods-product-table td {
   vertical-align: top;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table .ods-num {
+.sales-order-doc .ods-product-table .ods-num {
   text-align: center;
   vertical-align: middle;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table .ods-amount {
+.sales-order-doc .ods-product-table .ods-amount {
   text-align: right;
   vertical-align: middle;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table .ods-desc {
+.sales-order-doc .ods-product-table .ods-desc {
   font-size: var(--ods-font-size-sm);
   line-height: 1.2;
   white-space: pre-line;
 }
 
-.sales-order-doc--bvk-ods .ods-product-table td.ods-product-foot-label,
-.sales-order-doc--bvk-ods .ods-product-table td.ods-product-foot-value {
+.sales-order-doc .ods-product-table td.ods-product-foot-label,
+.sales-order-doc .ods-product-table td.ods-product-foot-value {
   text-align: right;
   font-weight: bold;
   vertical-align: middle;
   border-bottom: none !important;
 }
 
-.sales-order-doc--bvk-ods .ods-terms-label {
+.sales-order-doc .ods-terms-label {
   width: 38%;
   font-weight: bold;
 }
 
-.sales-order-doc--bvk-ods .ods-remarks-body {
-  min-height: 22px;
+.sales-order-doc .ods-terms-value {
+  white-space: pre-line;
 }
 
-.sales-order-doc--bvk-ods .ods-signatures td {
+.sales-order-doc .ods-gst-split {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.sales-order-doc .ods-gst-rate {
+  font-weight: bold;
+}
+
+.sales-order-doc .ods-remarks-body {
+  min-height: 22px;
+  white-space: pre-line;
+  line-height: 1.35;
+  padding: 4px 6px;
+}
+
+.sales-order-doc .ods-remarks-label {
+  padding: 3px 6px;
+}
+
+.sales-order-doc .ods-signatures td {
   min-height: 48px;
   vertical-align: bottom;
   width: 50%;
 }
 
-.sales-order-doc--bvk-ods .ods-sign-name {
+.sales-order-doc .ods-sign-line {
+  min-height: 34px;
+}
+
+.sales-order-doc .ods-sign-name {
   margin-top: 4px;
   font-weight: bold;
 }
 
-.sales-order-doc--bvk-ods .ods-helper-text {
+.sales-order-doc .ods-helper-text {
   font-size: var(--ods-font-size-sm);
   font-weight: normal;
 }
 
-@page sales-order-bvk-ods {
+/* ── Acceptance of Order (letter format) ─────────────────────────── */
+
+.sales-order-doc--wacker-ao {
+  --ao-font: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+  --ao-font-size: 11px;
+  --ao-line-height: 1.5;
+  --ao-brand: #1e3a8a;
+  --ao-accent: #2563eb;
+  --ao-side-inset: 14mm;
+  font-family: var(--ao-font);
+  font-size: var(--ao-font-size);
+  line-height: var(--ao-line-height);
+  color: #000;
+}
+
+.sales-order-doc--wacker-ao.ao-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 277mm;
+  padding: 10mm 0 8mm;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--wacker-ao .ao-content {
+  flex: 1 1 auto;
+}
+
+.sales-order-doc--wacker-ao .ao-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--ao-side-inset);
+  margin-bottom: 20px;
+}
+
+.sales-order-doc--wacker-ao .ao-header-logo {
+  max-width: 84px;
+  max-height: 84px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.sales-order-doc--wacker-ao .ao-header-fallback {
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--ao-brand);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.sales-order-doc--wacker-ao .ao-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.sales-order-doc--wacker-ao .ao-header-brand {
+  font-weight: bold;
+  font-size: 18px;
+  color: var(--ao-brand);
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--wacker-ao .ao-header-tagline {
+  font-size: 10px;
+  color: var(--ao-accent);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.sales-order-doc--wacker-ao .ao-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 6px 0 22px;
+}
+
+.sales-order-doc--wacker-ao .ao-to-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 var(--ao-side-inset);
+  margin-bottom: 12px;
+}
+
+.sales-order-doc--wacker-ao .ao-recipient {
+  padding: 0 var(--ao-side-inset);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.sales-order-doc--wacker-ao .ao-recipient > div + div {
+  margin-top: 1px;
+}
+
+.sales-order-doc--wacker-ao .ao-subject {
+  padding: 0 var(--ao-side-inset);
+  font-weight: bold;
+  margin-bottom: 18px;
+}
+
+.sales-order-doc--wacker-ao .ao-subject span {
+  text-decoration: underline;
+}
+
+.sales-order-doc--wacker-ao .ao-body-para {
+  padding: 0 var(--ao-side-inset);
+  margin-bottom: 14px;
+  white-space: pre-line;
+}
+
+.sales-order-doc--wacker-ao .ao-table {
+  width: calc(100% - (var(--ao-side-inset) * 2));
+  margin: 6px var(--ao-side-inset) 18px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.sales-order-doc--wacker-ao .ao-table th,
+.sales-order-doc--wacker-ao .ao-table td {
+  border: 1px solid #000;
+  padding: 10px 8px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.sales-order-doc--wacker-ao .ao-table th {
+  font-weight: bold;
+  vertical-align: top;
+  line-height: 1.25;
+}
+
+.sales-order-doc--wacker-ao .ao-table td.ao-item-cell,
+.sales-order-doc--wacker-ao .ao-table td.ao-num-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.sales-order-doc--wacker-ao .ao-table td.ao-product-cell {
+  white-space: pre-line;
+  line-height: 1.35;
+}
+
+.sales-order-doc--wacker-ao .ao-signature-company {
+  padding: 0 var(--ao-side-inset);
+  margin-top: 10px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.sales-order-doc--wacker-ao .ao-signer-role {
+  padding: 0 var(--ao-side-inset);
+}
+
+.sales-order-doc--wacker-ao .ao-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: auto;
+  padding: 10mm var(--ao-side-inset) 0;
+  font-size: 8.5px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-col {
+  min-width: 0;
+  flex: 1;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-right {
+  text-align: right;
+  max-width: 40%;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-company-name {
+  font-weight: bold;
+  font-size: 12px;
+  color: var(--ao-brand);
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-former {
+  font-style: italic;
+  font-size: 9px;
+  color: var(--ao-brand);
+  margin-bottom: 3px;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-plain {
+  color: #000;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-legal em {
+  font-style: italic;
+  color: #444;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-group {
+  font-style: italic;
+  color: var(--ao-brand);
+  font-size: 11px;
+}
+
+.sales-order-doc--wacker-ao .ao-footer-reg-label {
+  font-style: italic;
+  color: var(--ao-brand);
+  margin-top: 4px;
+}
+
+/* ── Multi-Order Acceptance of Order (letter with data table) ─────── */
+
+.sales-order-doc--argo-multi-ao {
+  --mao-font: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
+  --mao-font-size: 11px;
+  --mao-line-height: 1.5;
+  --mao-brand: #1e3a8a;
+  --mao-accent: #2563eb;
+  --mao-side-inset: 14mm;
+  font-family: var(--mao-font);
+  font-size: var(--mao-font-size);
+  line-height: var(--mao-line-height);
+  color: #000;
+}
+
+.sales-order-doc--argo-multi-ao.mao-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 277mm;
+  padding: 10mm 0 8mm;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--argo-multi-ao .mao-content {
+  flex: 1 1 auto;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--mao-side-inset);
+  margin-bottom: 18px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header-logo {
+  max-width: 84px;
+  max-height: 84px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header-fallback {
+  font-weight: bold;
+  font-size: 16px;
+  color: var(--mao-brand);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.1;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header-brand {
+  font-weight: bold;
+  font-size: 18px;
+  color: var(--mao-brand);
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--argo-multi-ao .mao-header-tagline {
+  font-size: 10px;
+  color: var(--mao-accent);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin: 6px 0 8px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-title span {
+  text-decoration: underline;
+}
+
+.sales-order-doc--argo-multi-ao .mao-date-row {
+  text-align: right;
+  padding: 0 var(--mao-side-inset);
+  margin-bottom: 18px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-recipient {
+  padding: 0 var(--mao-side-inset);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.sales-order-doc--argo-multi-ao .mao-recipient > div + div {
+  margin-top: 1px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-subject {
+  padding: 0 var(--mao-side-inset);
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-subject span {
+  text-decoration: underline;
+}
+
+.sales-order-doc--argo-multi-ao .mao-body-para {
+  padding: 0 var(--mao-side-inset);
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+
+.sales-order-doc--argo-multi-ao .mao-table {
+  width: calc(100% - (var(--mao-side-inset) * 2));
+  margin: 4px var(--mao-side-inset) 18px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--argo-multi-ao .mao-table th,
+.sales-order-doc--argo-multi-ao .mao-table td {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.sales-order-doc--argo-multi-ao .mao-table th {
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 4px;
+  line-height: 1.2;
+}
+
+.sales-order-doc--argo-multi-ao .mao-table td.mao-cell-center {
+  text-align: center;
+}
+
+.sales-order-doc--argo-multi-ao .mao-table td.mao-cell-left {
+  text-align: left;
+}
+
+.sales-order-doc--argo-multi-ao .mao-signature-line {
+  padding: 0 var(--mao-side-inset);
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: auto;
+  padding: 10mm var(--mao-side-inset) 0;
+  font-size: 8.5px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-col {
+  min-width: 0;
+  flex: 1;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-right {
+  text-align: right;
+  max-width: 40%;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-company-name {
+  font-weight: bold;
+  font-size: 12px;
+  color: var(--mao-brand);
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-former {
+  font-style: italic;
+  font-size: 9px;
+  color: var(--mao-brand);
+  margin-bottom: 3px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-plain {
+  color: #000;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-spacer {
+  height: 4px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-legal em {
+  font-style: italic;
+  color: #444;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-group {
+  font-style: italic;
+  color: var(--mao-brand);
+  font-size: 11px;
+}
+
+.sales-order-doc--argo-multi-ao .mao-footer-reg-label {
+  font-style: italic;
+  color: var(--mao-brand);
+  margin-top: 4px;
+}
+
+/* ── Export Acceptance of Order (bordered international form) ─────── */
+
+.sales-order-doc--export-ao-ekamas {
+  --xao-font: Arial, Helvetica, sans-serif;
+  --xao-font-size: 9.5px;
+  --xao-font-size-sm: 8px;
+  --xao-line-height: 1.25;
+  --xao-border: 1px solid #000;
+  font-family: var(--xao-font);
+  font-size: var(--xao-font-size);
+  line-height: var(--xao-line-height);
+  color: #000;
+}
+
+.sales-order-doc--export-ao-ekamas.xao-sheet {
+  padding: 6mm 6mm 4mm;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--export-ao-ekamas table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-outer,
+.sales-order-doc--export-ao-ekamas .xao-product,
+.sales-order-doc--export-ao-ekamas .xao-bottom {
+  border: var(--xao-border);
+}
+
+.sales-order-doc--export-ao-ekamas .xao-outer + .xao-product,
+.sales-order-doc--export-ao-ekamas .xao-product + .xao-amount-in-words,
+.sales-order-doc--export-ao-ekamas .xao-amount-in-words + .xao-bottom {
+  border-top: none;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-outer td,
+.sales-order-doc--export-ao-ekamas .xao-product th,
+.sales-order-doc--export-ao-ekamas .xao-product td,
+.sales-order-doc--export-ao-ekamas .xao-bottom td {
+  border: var(--xao-border);
+  padding: 3px 5px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-title-cell {
+  text-align: center;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-label,
+.sales-order-doc--export-ao-ekamas .xao-corner-label {
+  font-weight: bold;
+  font-style: italic;
+  font-size: var(--xao-font-size-sm);
+  color: #000;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-corner-label {
+  margin-bottom: 2px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-labeled {
+  display: block;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-value {
+  margin-top: 1px;
+  min-height: 1em;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exporter-cell {
+  padding: 4px 6px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-logo {
+  max-width: 50px;
+  max-height: 40px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-logo-fallback {
+  font-weight: bold;
+  font-size: 10px;
+  color: #1e3a8a;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-brand-text {
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-brand-1 {
+  font-weight: bold;
+  font-size: 10px;
+  color: #1e3a8a;
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-brand-2 {
+  font-size: 8px;
+  color: #2563eb;
+  font-style: italic;
+  margin-top: 1px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-name {
+  font-weight: bold;
+  text-align: center;
+  margin-top: 3px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-exp-address,
+.sales-order-doc--export-ao-ekamas .xao-exp-tel {
+  text-align: center;
+  margin-top: 2px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-consignee-cell,
+.sales-order-doc--export-ao-ekamas .xao-buyer-other-cell {
+  padding: 4px 6px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-party-name {
+  font-weight: bold;
+  font-style: italic;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-party-line {
+  min-height: 1em;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-terms-delivery-cell {
+  padding: 3px 5px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-terms-delivery-value {
+  margin-left: 12px;
+  font-weight: bold;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-payment-cell {
+  padding: 4px 6px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-banker-line {
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-dispatch-label {
+  font-weight: bold;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* ── Product table ─────────────────────────────────────────────── */
+
+.sales-order-doc--export-ao-ekamas .xao-product th {
+  font-weight: bold;
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 4px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-product .xao-desc-head {
+  text-align: center;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-product td.xao-desc-cell {
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-desc-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-height: 1.15em;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-desc-label {
+  min-width: 96px;
+  display: inline-block;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-desc-value {
+  flex: 1;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-product td.xao-qty-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-product td.xao-num-cell {
+  text-align: right;
+  vertical-align: middle;
+  padding-right: 8px;
+}
+
+/* Product data rows: the whole "Description Of Goods" section has NO horizontal
+ * separators — only vertical column dividers run straight from the header down
+ * to the total row.
+ *   - Data-row cells: `border-bottom-style: hidden` on every column.
+ *   - `hidden` wins over `solid` in border-collapse conflict resolution, so
+ *     adjacent rows share no horizontal border regardless of what the other
+ *     side inherited from the default td rule.
+ *   - The header keeps its bottom border (data row 1's top is still solid from
+ *     the default td rule, and the header's bottom is solid — both solid = one
+ *     border shown between header and data row 1). ✓
+ *   - Filler row already has `border-top: none` and `border-bottom: none`, so
+ *     the last data row → filler → total transition also shows no line except
+ *     the total row's own solid top border. ✓
+ */
+.sales-order-doc--export-ao-ekamas .xao-product .xao-data-row > td {
+  border-bottom-style: hidden !important;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-filler-row td {
+  height: 60mm;
+  border-left: var(--xao-border);
+  border-right: var(--xao-border);
+  border-top: none;
+  border-bottom: none;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-total-row td {
+  font-weight: bold;
+  vertical-align: middle;
+  padding: 4px 8px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-total-label {
+  text-align: center;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-total-currency {
+  text-align: center;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-total-amount {
+  text-align: right;
+}
+
+/* ── Amount in words ──────────────────────────────────────────── */
+
+.sales-order-doc--export-ao-ekamas .xao-amount-in-words {
+  border: var(--xao-border);
+  border-top: none;
+  padding: 4px 8px;
+  font-weight: normal;
+}
+
+/* ── Bottom section ────────────────────────────────────────────── */
+
+.sales-order-doc--export-ao-ekamas .xao-bottom td {
+  padding: 4px 8px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-other-terms-cell {
+  vertical-align: top;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-terms-header {
+  font-weight: bold;
+  line-height: 1.3;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-terms-note {
+  margin-top: 1px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-force-majeure {
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-signature-cell {
+  vertical-align: top;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-signature-company {
+  font-weight: bold;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-signature-spacer {
+  height: 22mm;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-signature-date {
+  margin-bottom: 3px;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-signature-note {
+  font-style: italic;
+  line-height: 1.35;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-doc-no {
+  text-align: right;
+  padding: 3px 2px;
+  font-size: var(--xao-font-size-sm);
+}
+
+/* ── Print sizing ────────────────────────────────────────────────── */
+
+@page sales-order-ods {
   size: A4 portrait;
   margin: 8mm;
+}
+
+@page sales-order-ao {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@page sales-order-xao {
+  size: A4 portrait;
+  margin: 6mm;
+}
+
+@page sales-order-mao {
+  size: A4 portrait;
+  margin: 10mm;
 }
 
 @media print {
@@ -286,25 +1100,63 @@
     display: none !important;
   }
 
-  .sales-order-doc--bvk-ods {
+  .sales-order-doc {
     padding: 0 !important;
     margin: 0 !important;
     max-width: none !important;
   }
 
   .sales-order-print-sheet {
-    page: sales-order-bvk-ods;
+    page: sales-order-ods;
   }
 
-  .sales-order-doc--bvk-ods .ods-product-table thead {
+  .sales-order-doc--wacker-ao.ao-sheet {
+    page: sales-order-ao;
+    padding: 0 !important;
+    min-height: auto;
+  }
+
+  .sales-order-doc--export-ao-ekamas.xao-sheet {
+    page: sales-order-xao;
+    padding: 0 !important;
+  }
+
+  .sales-order-doc--argo-multi-ao.mao-sheet {
+    page: sales-order-mao;
+    padding: 0 !important;
+    min-height: auto;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-table thead {
     display: table-header-group;
   }
 
-  .sales-order-doc--bvk-ods .ods-table {
+  .sales-order-doc--argo-multi-ao .mao-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .sales-order-doc .ods-product-table thead {
+    display: table-header-group;
+  }
+
+  .sales-order-doc .ods-table {
     page-break-inside: auto;
   }
 
-  .sales-order-doc--bvk-ods .ods-product-table tr {
+  .sales-order-doc .ods-product-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .sales-order-doc--wacker-ao .ao-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .sales-order-doc--export-ao-ekamas .xao-product tr,
+  .sales-order-doc--export-ao-ekamas .xao-outer tr,
+  .sales-order-doc--export-ao-ekamas .xao-bottom tr {
     page-break-inside: avoid;
     break-inside: avoid;
   }
