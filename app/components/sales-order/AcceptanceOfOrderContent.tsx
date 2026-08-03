@@ -105,6 +105,16 @@ export default function AcceptanceOfOrderContent({ data }: { data: AcceptanceOfO
           </div>
         ))}
 
+        {/* Quality Harmonisation Number + Date — stacked, above the signature block */}
+        <div className="ao-body-para ao-qh-line">
+          <span className="ao-qh-label">Quality Harmonisation Number :</span>{' '}
+          <span>{data.qualityHarmonisationNumber || ' '}</span>
+        </div>
+        <div className="ao-body-para ao-qh-line">
+          <span className="ao-qh-label">Date :</span>{' '}
+          <span>{data.qualityHarmonisationDate || ' '}</span>
+        </div>
+
         <div className="ao-body-para">{data.yoursTruly}</div>
 
         <div className="ao-signature-company">{data.companySignature}</div>

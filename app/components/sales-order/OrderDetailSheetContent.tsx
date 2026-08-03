@@ -84,10 +84,23 @@ function GstValueCell({ value, rate }: { value?: string; rate?: string }): React
   )
 }
 
+/** WMW 12-col ODS family (adds Position / SAP NO. / Delivery Request columns; merged Qty col). */
+const WMW44_FAMILY: readonly OdsVariant[] = [
+  'sls-ods-no-44',
+  'sls-ods-44-hydrotech',
+  'sls-ods-no-44-p',
+  'sls-ods-44-p-hydrotech',
+]
+
+/** WMW-44 "_P" (price-redacted) sub-family — stores price in `priceUnit` (not `priceSqm`). */
+const WMW44_P_FAMILY: readonly OdsVariant[] = ['sls-ods-no-44-p', 'sls-ods-44-p-hydrotech']
+
+const SLS50_FAMILY: readonly OdsVariant[] = ['sls-ods-50-a', 'sls-ods-50-p']
+
 /** Product-column configuration derived from the variant. */
 function resolveVariantLayout(variant: OdsVariant) {
-  const isSlsOds50 = variant === 'sls-ods-50-a' || variant === 'sls-ods-50-p'
-  const isWmw44 = variant === 'sls-ods-no-44'
+  const isSlsOds50 = SLS50_FAMILY.includes(variant)
+  const isWmw44 = WMW44_FAMILY.includes(variant)
   return {
     isWmw44,
     isSlsOds50,
@@ -100,8 +113,8 @@ function resolveVariantLayout(variant: OdsVariant) {
 }
 
 function resolveProductHeaders(data: SalesOrderData) {
-  const isWmw44 = data.variant === 'sls-ods-no-44'
-  const isSls50 = data.variant === 'sls-ods-50-a' || data.variant === 'sls-ods-50-p'
+  const isWmw44 = WMW44_FAMILY.includes(data.variant)
+  const isSls50 = SLS50_FAMILY.includes(data.variant)
   const overrides = data.productHeaders ?? {}
   const defaults = {
     lengthLabel: isSls50 ? 'LENGTH' : 'LENGTH (Meter)',
@@ -123,9 +136,10 @@ function resolveProductHeaders(data: SalesOrderData) {
 
 /** Render the effective price for a line, honoring variant precedence. */
 function resolveLinePrice(line: SalesOrderData['lines'][number], variant: OdsVariant): string {
-  if (variant === 'sls-ods-no-44') return line.priceSqm ?? line.priceUnit ?? line.pricePcs ?? ''
-  if (variant === 'sls-ods-50-a' || variant === 'sls-ods-50-p')
-    return line.priceUnit ?? line.pricePcs ?? line.priceSqm ?? ''
+  // Redacted "PRICE / UNIT" WMW-44 variants store their value in `priceUnit`.
+  if (WMW44_P_FAMILY.includes(variant)) return line.priceUnit ?? line.priceSqm ?? line.pricePcs ?? ''
+  if (WMW44_FAMILY.includes(variant)) return line.priceSqm ?? line.priceUnit ?? line.pricePcs ?? ''
+  if (SLS50_FAMILY.includes(variant)) return line.priceUnit ?? line.pricePcs ?? line.priceSqm ?? ''
   return line.pricePcs ?? line.priceUnit ?? line.priceSqm ?? ''
 }
 
@@ -404,6 +418,21 @@ export default function OrderDetailSheetContent({ data }: { data: SalesOrderData
                 </tr>
               )
             })}
+          </tbody>
+        </table>
+
+        {/* Quality Harmonisation Number + Date — stacked, rendered as two extra
+         * terms-style rows just above REMARKS. */}
+        <table className="ods-table" role="presentation">
+          <tbody>
+            <tr>
+              <td className="ods-terms-label">Quality Harmonisation Number :</td>
+              <td className="ods-terms-value">{data.qualityHarmonisationNumber || ' '}</td>
+            </tr>
+            <tr>
+              <td className="ods-terms-label">Date :</td>
+              <td className="ods-terms-value">{data.qualityHarmonisationDate || ' '}</td>
+            </tr>
           </tbody>
         </table>
 

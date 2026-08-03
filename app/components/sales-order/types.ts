@@ -1,4 +1,11 @@
-export type OdsVariant = 'bvk' | 'sls-ods-no-44' | 'sls-ods-50-a' | 'sls-ods-50-p'
+export type OdsVariant =
+  | 'bvk'
+  | 'sls-ods-no-44'
+  | 'sls-ods-44-hydrotech'
+  | 'sls-ods-no-44-p'
+  | 'sls-ods-44-p-hydrotech'
+  | 'sls-ods-50-a'
+  | 'sls-ods-50-p'
 
 export interface OdsLogo {
   src: string
@@ -123,6 +130,10 @@ export interface SalesOrderData {
   productHeaders?: OdsProductHeaders
   /** When true, skip the two `GST` / `Total Value` rows at the bottom of the product table. */
   hideProductFooter?: boolean
+  /** Optional Quality Harmonisation Number — rendered as its own row before REMARKS. */
+  qualityHarmonisationNumber?: string
+  /** Optional Quality Harmonisation Date — rendered as its own row before REMARKS. */
+  qualityHarmonisationDate?: string
   remarks: string
   signerName: string
 }
@@ -181,6 +192,8 @@ export interface AcceptanceOfOrderData {
   bodyOpening: string
   lines: AoLine[]
   bodyClosingParas: string[]
+  qualityHarmonisationNumber?: string
+  qualityHarmonisationDate?: string
   yoursTruly: string
   companySignature: string
   signerRole: string
@@ -188,9 +201,125 @@ export interface AcceptanceOfOrderData {
   footerRight: AoFooterRight
 }
 
+/* ── Secondary Sales Order Detail Sheet (17-col wire details + RNA + credit limit) ─── */
+
+export type SecondarySalesOdsVariant = 'sls-ods-0254'
+
+export interface SecondarySalesOdsHeader {
+  odsNo: string
+  odsDate: string
+  clientName: string
+  salesCategory: string
+  fileNo: string
+  custCode: string
+  location: string
+  creditLimit: string
+  noOfCd: string
+  gstNo: string
+  tinNo: string
+}
+
+export interface SecondarySalesOdsOrderDetails {
+  customerPoNo: string
+  poDate: string
+  deliveryRequested: string
+  deliveryCommit: string
+  consValues: string
+  tillDateSold: string
+  targetValue: string
+  zone: string
+  industryType: string
+  osAsOn: string
+  odsInHand: string
+  pdcAmountInHand: string
+}
+
+export interface WireDetailRow {
+  sno: string
+  itemName: string
+  wire: string
+  type: string
+  len: string
+  wid: string
+  qty: string
+  unit: string
+  priceStd: string
+  priceAgreed: string
+  priceBilled: string
+  itemCode: string
+  brand: string
+  dDate: string
+  quality: string
+  valuesInr: string
+  hsnCode: string
+}
+
+export interface SecondarySalesOdsTerms {
+  paymentTerms: string
+  paymentMode: string
+  packingCharges: string
+  insurance: string
+  bankerName: string
+  destination: string
+  roadPermit: string
+  transporter: string
+  directTruckSmall: string
+  freightToPayPaid: string
+  freightCharges: string
+  transactionCharges: string
+}
+
+export interface RnaRow {
+  label: string
+  amount: string
+}
+
+export interface SecondarySalesOdsRnaBlock {
+  heading: string
+  rnaHeader: string
+  amountHeader: string
+  rows: RnaRow[]
+}
+
+export interface ChecklistItem {
+  label: string
+  checked: boolean
+}
+
+export interface CreditLimitExceededBlock {
+  title: string
+  openBalance: string
+  currentOrder: string
+  otherPendingOrder: string
+  newBalance: string
+  creditLimit: string
+  processingLimit: string
+  creditExcess: string
+}
+
+export interface SecondarySalesOdsData {
+  variant: SecondarySalesOdsVariant
+  logo: OdsLogo
+  title: string
+  header: SecondarySalesOdsHeader
+  orderDetails: SecondarySalesOdsOrderDetails
+  wireDetails: WireDetailRow[]
+  qtyTotal: string
+  terms: SecondarySalesOdsTerms
+  totalAmount: string
+  qualityHarmonisationNumber?: string
+  qualityHarmonisationDate?: string
+  remarks: string
+  remarksIfAnyLabel: string
+  rnaBlock: SecondarySalesOdsRnaBlock
+  checklist: ChecklistItem[]
+  creditLimitExceeded: CreditLimitExceededBlock
+  systemTimestamp: string
+}
+
 /* ── Multi-Order Acceptance of Order (letter with data table) ─────── */
 
-export type MultiOrderAoVariant = 'argo-multi-ao'
+export type MultiOrderAoVariant = 'argo-multi-ao' | 'argo-multi-ao-hydrotech'
 
 export interface MultiOrderAoRecipient {
   toLabel: string
@@ -231,6 +360,8 @@ export interface MultiOrderAcceptanceOfOrderData {
   columnHeaders: MultiOrderAoColumnHeaders
   rows: MultiOrderAoRow[]
   bodyClosingParas: string[]
+  qualityHarmonisationNumber?: string
+  qualityHarmonisationDate?: string
   /** Bold sign-off lines rendered stacked after the closing paragraphs. */
   signatureLines: string[]
   footerLeft: AoFooterLeft
@@ -310,6 +441,8 @@ export interface ExportAcceptanceOfOrderData {
   termsHeaderLines: string[]
   otherTermsNotes: string[]
   forceMajeureLines: string[]
+  qualityHarmonisationNumber?: string
+  qualityHarmonisationDate?: string
   signatureCompany: string
   signatureDate: string
   electronicNote: string

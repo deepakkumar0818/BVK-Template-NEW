@@ -8,14 +8,18 @@
       "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/wacker-ao/[id]\")",
       "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/sls-ods-50-a/[id]\" \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/sls-ods-50-p/[id]\")",
       "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/export-ao-ekamas/[id]\")",
-      "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/argo-multi-ao/[id]\")"
+      "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/argo-multi-ao/[id]\")",
+      "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/sls-ods-44-hydrotech/[id]\")",
+      "Bash(mkdir -p \"c:/Users/Manish/Desktop/New folder/BVK-Template-NEW/app/sales-order/argo-multi-ao-hydrotech/[id]\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\sls-ods-no-44",
       "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\wacker-ao",
       "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\sls-ods-50-a",
       "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\export-ao-ekamas",
-      "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\argo-multi-ao"
+      "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\argo-multi-ao",
+      "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\sls-ods-44-hydrotech",
+      "c:\\Users\\Manish\\Desktop\\New folder\\BVK-Template-NEW\\app\\sales-order\\argo-multi-ao-hydrotech"
     ]
   }
 }

@@ -1,17 +1,20 @@
 import type { SalesOrderData } from '../types'
 
+/**
+ * Clone of sls-ods-no-44 with the header logo swapped to BVK Hydrotech.
+ * Everything else — columns, rows, terms, remarks — is identical.
+ */
+
 const description = 'PET/AISI304L\nHybrid Mesh (Q-17)'
 const internalCode = 'FG.PM.OER.TW.25x22.P\nExSS.PExSS.V01'
 const application = 'HYDRAULIC FILTER'
 
-export const slsOdsNo44Fixture: SalesOrderData = {
-  variant: 'sls-ods-no-44',
+export const slsOds44HydrotechFixture: SalesOrderData = {
+  variant: 'sls-ods-44-hydrotech',
   logo: {
-    src: '/wmw-logo.png',
-    alt: 'WMW INDUSTRIES LTD',
-    fallbackText: 'WMW\nINDUSTRIES LTD',
-    tagline: 'WMW INDUSTRIES LTD',
-    taglineSub: 'A BVK Group Company\nWeaving Technical Mesh Solutions',
+    src: '/hydrotech-logo.png',
+    alt: 'BVK HYDROTECH',
+    fallbackText: 'BVK\nHYDROTECH',
   },
   internalCodeHeader: 'WMW (I) INTERNAL PRODUCT CODE',
   header: {

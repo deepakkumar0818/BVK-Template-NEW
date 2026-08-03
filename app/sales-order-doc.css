@@ -469,6 +469,15 @@
   line-height: 1.35;
 }
 
+.sales-order-doc--wacker-ao .ao-qh-line {
+  padding: 0 var(--ao-side-inset);
+  margin-bottom: 4px;
+}
+
+.sales-order-doc--wacker-ao .ao-qh-label {
+  font-weight: bold;
+}
+
 .sales-order-doc--wacker-ao .ao-signature-company {
   padding: 0 var(--ao-side-inset);
   margin-top: 10px;
@@ -535,9 +544,380 @@
   margin-top: 4px;
 }
 
+/* ── Secondary Sales ODS (Century-style 17-col wire table + RNA + credit limit) ─── */
+
+.sales-order-doc--sls-ods-0254 {
+  --sos-font: Arial, Helvetica, sans-serif;
+  --sos-font-size: 9px;
+  --sos-font-size-sm: 8px;
+  --sos-line-height: 1.25;
+  --sos-border: 1px solid #000;
+  --sos-brand: #0a2a6b;
+  font-family: var(--sos-font);
+  font-size: var(--sos-font-size);
+  line-height: var(--sos-line-height);
+  color: #000;
+}
+
+.sales-order-doc--sls-ods-0254.sos-sheet {
+  padding: 6mm 6mm;
+  box-sizing: border-box;
+}
+
+/* Brand header */
+.sales-order-doc--sls-ods-0254 .sos-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-brand-logo {
+  max-width: 46px;
+  max-height: 46px;
+  object-fit: contain;
+  display: block;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-brand-fallback {
+  font-weight: bold;
+  font-size: 12px;
+  color: var(--sos-brand);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-brand-text {
+  line-height: 1.1;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-brand-name {
+  font-weight: bold;
+  font-size: 10px;
+  color: var(--sos-brand);
+  letter-spacing: 0.02em;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-brand-tagline {
+  font-size: 8px;
+  color: var(--sos-brand);
+  font-style: italic;
+  margin-top: 1px;
+}
+
+/* Title strip */
+.sales-order-doc--sls-ods-0254 .sos-title-strip {
+  margin: 4px 0 2px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-title {
+  font-weight: bold;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-ods-strip {
+  margin: 2px 0;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-ods-date-label {
+  margin-left: 20px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-client-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 2px 0 4px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-client {
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-sales-category {
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-label {
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-value {
+  font-weight: normal;
+}
+
+/* Info strip (File No / Credit Limit / etc.) */
+.sales-order-doc--sls-ods-0254 .sos-info-strip {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-bottom: 0;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-info-strip td {
+  border: var(--sos-border);
+  padding: 2px 4px;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+/* Section headings (Order Details / Wire Details) */
+.sales-order-doc--sls-ods-0254 .sos-section-heading {
+  font-weight: bold;
+  padding: 2px 0;
+  margin-top: 4px;
+}
+
+/* Bordered box that wraps a section heading + its grid (Order Details). */
+.sales-order-doc--sls-ods-0254 .sos-outlined-box {
+  border: var(--sos-border);
+  margin-top: 4px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-outlined-box > .sos-section-heading {
+  border-bottom: var(--sos-border);
+  padding: 3px 6px;
+  margin-top: 0;
+  background: #f6f6f6;
+}
+
+/* Order Details grid */
+.sales-order-doc--sls-ods-0254 .sos-order-details {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-order-details td {
+  padding: 2px 6px;
+  vertical-align: top;
+}
+
+/* Wire Details (17-col) */
+.sales-order-doc--sls-ods-0254 .sos-wire-details {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--sos-font-size-sm);
+  margin-top: 2px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-wire-details th,
+.sales-order-doc--sls-ods-0254 .sos-wire-details td {
+  border: var(--sos-border);
+  padding: 2px 2px;
+  vertical-align: middle;
+  text-align: center;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-wire-details th {
+  font-weight: bold;
+  background: transparent;
+  line-height: 1.15;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-wire-details td.sos-num {
+  text-align: right;
+}
+
+/* Qty total (underlined value under wire table) */
+.sales-order-doc--sls-ods-0254 .sos-qty-total {
+  display: flex;
+  justify-content: center;
+  margin: 3px 0 6px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-qty-total-underline {
+  border-top: 1px solid #000;
+  padding-top: 1px;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Terms table (Payment / Freight / Total Amount / Remarks) */
+.sales-order-doc--sls-ods-0254 .sos-terms {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-terms td {
+  border: var(--sos-border);
+  padding: 2px 4px;
+  vertical-align: top;
+}
+
+/* Total Amount / Remarks label / Remarks body — three horizontal strips
+ * stacked inside a single cell that spans all 12 terms rows. */
+.sales-order-doc--sls-ods-0254 .sos-terms td.sos-total-remarks-cell {
+  padding: 0;
+  vertical-align: top;
+  height: 100%;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-total-amount-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 8px;
+  border-bottom: var(--sos-border);
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-total-value {
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-remarks-strip {
+  text-align: center;
+  padding: 3px 8px;
+  border-bottom: var(--sos-border);
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-remarks-fill {
+  padding: 6px 8px;
+  min-height: 40mm;
+  white-space: pre-line;
+}
+
+/* Remarks if any + RNA sub-block */
+.sales-order-doc--sls-ods-0254 .sos-qh-line {
+  margin: 2px 0;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-remarks-if-any {
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-heading {
+  text-align: center;
+  font-weight: bold;
+  margin: 2px 0 2px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-table th,
+.sales-order-doc--sls-ods-0254 .sos-rna-table td {
+  border: var(--sos-border);
+  padding: 2px 6px;
+  vertical-align: top;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-table th {
+  font-weight: bold;
+  text-align: center;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-label {
+  text-align: center;
+  border-bottom: 1px dashed #666;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-rna-table td.sos-num {
+  text-align: right;
+}
+
+/* Bottom: checklist + credit limit exceeded */
+.sales-order-doc--sls-ods-0254 .sos-bottom {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  align-items: flex-start;
+}
+
+/* Checklist: outer box around the whole set of 9 items; each row is
+ * separated by a solid line (not dashed). Checkbox column sits on the right
+ * with its own vertical divider and per-row bordered squares. */
+.sales-order-doc--sls-ods-0254 .sos-checklist {
+  flex: 1;
+  border: var(--sos-border);
+  border-collapse: collapse;
+  font-size: var(--sos-font-size);
+  align-self: stretch;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-checklist td {
+  padding: 3px 6px;
+  vertical-align: middle;
+  border-bottom: var(--sos-border);
+}
+
+.sales-order-doc--sls-ods-0254 .sos-checklist tr:last-child td {
+  border-bottom: none;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-checklist-label {
+  padding-right: 8px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-checklist-box {
+  border-left: var(--sos-border);
+  width: 34px;
+  min-width: 34px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 3px 6px;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-checkbox {
+  display: inline-block;
+  width: 20px;
+  height: 12px;
+  border: var(--sos-border);
+  vertical-align: middle;
+  line-height: 10px;
+  font-size: 10px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-check {
+  font-weight: bold;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-credit-limit {
+  flex: 0 0 45%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-credit-limit th,
+.sales-order-doc--sls-ods-0254 .sos-credit-limit td {
+  border: var(--sos-border);
+  padding: 3px 6px;
+  vertical-align: middle;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-credit-limit th {
+  font-weight: bold;
+  text-align: center;
+}
+
+.sales-order-doc--sls-ods-0254 .sos-credit-limit td.sos-num {
+  text-align: right;
+}
+
+/* System timestamp */
+.sales-order-doc--sls-ods-0254 .sos-timestamp {
+  text-align: right;
+  margin-top: 10mm;
+  font-size: 8px;
+  color: #444;
+}
+
 /* ── Multi-Order Acceptance of Order (letter with data table) ─────── */
 
-.sales-order-doc--argo-multi-ao {
+.mao-sheet {
   --mao-font: Calibri, "Segoe UI", Arial, Helvetica, sans-serif;
   --mao-font-size: 11px;
   --mao-line-height: 1.5;
@@ -550,7 +930,7 @@
   color: #000;
 }
 
-.sales-order-doc--argo-multi-ao.mao-sheet {
+.mao-sheet {
   display: flex;
   flex-direction: column;
   min-height: 277mm;
@@ -558,11 +938,11 @@
   box-sizing: border-box;
 }
 
-.sales-order-doc--argo-multi-ao .mao-content {
+.mao-sheet .mao-content {
   flex: 1 1 auto;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header {
+.mao-sheet .mao-header {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -570,7 +950,7 @@
   margin-bottom: 18px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header-logo {
+.mao-sheet .mao-header-logo {
   max-width: 84px;
   max-height: 84px;
   width: auto;
@@ -579,7 +959,7 @@
   display: block;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header-fallback {
+.mao-sheet .mao-header-fallback {
   font-weight: bold;
   font-size: 16px;
   color: var(--mao-brand);
@@ -587,71 +967,71 @@
   text-align: center;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header-text {
+.mao-sheet .mao-header-text {
   display: flex;
   flex-direction: column;
   justify-content: center;
   line-height: 1.1;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header-brand {
+.mao-sheet .mao-header-brand {
   font-weight: bold;
   font-size: 18px;
   color: var(--mao-brand);
   letter-spacing: 0.02em;
 }
 
-.sales-order-doc--argo-multi-ao .mao-header-tagline {
+.mao-sheet .mao-header-tagline {
   font-size: 10px;
   color: var(--mao-accent);
   font-style: italic;
   margin-top: 4px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-title {
+.mao-sheet .mao-title {
   text-align: center;
   font-weight: bold;
   font-size: 16px;
   margin: 6px 0 8px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-title span {
+.mao-sheet .mao-title span {
   text-decoration: underline;
 }
 
-.sales-order-doc--argo-multi-ao .mao-date-row {
+.mao-sheet .mao-date-row {
   text-align: right;
   padding: 0 var(--mao-side-inset);
   margin-bottom: 18px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-recipient {
+.mao-sheet .mao-recipient {
   padding: 0 var(--mao-side-inset);
   margin-bottom: 18px;
   line-height: 1.5;
 }
 
-.sales-order-doc--argo-multi-ao .mao-recipient > div + div {
+.mao-sheet .mao-recipient > div + div {
   margin-top: 1px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-subject {
+.mao-sheet .mao-subject {
   padding: 0 var(--mao-side-inset);
   font-weight: bold;
   margin-bottom: 14px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-subject span {
+.mao-sheet .mao-subject span {
   text-decoration: underline;
 }
 
-.sales-order-doc--argo-multi-ao .mao-body-para {
+.mao-sheet .mao-body-para {
   padding: 0 var(--mao-side-inset);
   margin-bottom: 12px;
   white-space: pre-line;
 }
 
-.sales-order-doc--argo-multi-ao .mao-table {
+.mao-sheet .mao-table {
   width: calc(100% - (var(--mao-side-inset) * 2));
   margin: 4px var(--mao-side-inset) 18px;
   border-collapse: collapse;
@@ -660,8 +1040,8 @@
   line-height: 1.35;
 }
 
-.sales-order-doc--argo-multi-ao .mao-table th,
-.sales-order-doc--argo-multi-ao .mao-table td {
+.mao-sheet .mao-table th,
+.mao-sheet .mao-table td {
   border: 1px solid #000;
   padding: 4px 6px;
   vertical-align: middle;
@@ -669,7 +1049,7 @@
   overflow-wrap: break-word;
 }
 
-.sales-order-doc--argo-multi-ao .mao-table th {
+.mao-sheet .mao-table th {
   font-weight: bold;
   text-align: center;
   vertical-align: middle;
@@ -677,21 +1057,30 @@
   line-height: 1.2;
 }
 
-.sales-order-doc--argo-multi-ao .mao-table td.mao-cell-center {
+.mao-sheet .mao-table td.mao-cell-center {
   text-align: center;
 }
 
-.sales-order-doc--argo-multi-ao .mao-table td.mao-cell-left {
+.mao-sheet .mao-table td.mao-cell-left {
   text-align: left;
 }
 
-.sales-order-doc--argo-multi-ao .mao-signature-line {
+.mao-sheet .mao-qh-line {
+  padding: 0 var(--mao-side-inset);
+  margin-bottom: 4px;
+}
+
+.mao-sheet .mao-qh-label {
+  font-weight: bold;
+}
+
+.mao-sheet .mao-signature-line {
   padding: 0 var(--mao-side-inset);
   font-weight: bold;
   margin-bottom: 8px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer {
+.mao-sheet .mao-footer {
   display: flex;
   justify-content: space-between;
   gap: 24px;
@@ -701,50 +1090,50 @@
   line-height: 1.35;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-col {
+.mao-sheet .mao-footer-col {
   min-width: 0;
   flex: 1;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-right {
+.mao-sheet .mao-footer-right {
   text-align: right;
   max-width: 40%;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-company-name {
+.mao-sheet .mao-footer-company-name {
   font-weight: bold;
   font-size: 12px;
   color: var(--mao-brand);
   letter-spacing: 0.02em;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-former {
+.mao-sheet .mao-footer-former {
   font-style: italic;
   font-size: 9px;
   color: var(--mao-brand);
   margin-bottom: 3px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-plain {
+.mao-sheet .mao-footer-plain {
   color: #000;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-spacer {
+.mao-sheet .mao-footer-spacer {
   height: 4px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-legal em {
+.mao-sheet .mao-footer-legal em {
   font-style: italic;
   color: #444;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-group {
+.mao-sheet .mao-footer-group {
   font-style: italic;
   color: var(--mao-brand);
   font-size: 11px;
 }
 
-.sales-order-doc--argo-multi-ao .mao-footer-reg-label {
+.mao-sheet .mao-footer-reg-label {
   font-style: italic;
   color: var(--mao-brand);
   margin-top: 4px;
@@ -1050,6 +1439,15 @@
   vertical-align: top;
 }
 
+.sales-order-doc--export-ao-ekamas .xao-qh-line {
+  margin-bottom: 3px;
+  line-height: 1.35;
+}
+
+.sales-order-doc--export-ao-ekamas .xao-qh-label {
+  font-weight: bold;
+}
+
 .sales-order-doc--export-ao-ekamas .xao-signature-company {
   font-weight: bold;
 }
@@ -1095,6 +1493,11 @@
   margin: 10mm;
 }
 
+@page sales-order-sos {
+  size: A4 portrait;
+  margin: 8mm;
+}
+
 @media print {
   .sales-order-screen-only {
     display: none !important;
@@ -1121,17 +1524,27 @@
     padding: 0 !important;
   }
 
-  .sales-order-doc--argo-multi-ao.mao-sheet {
+  .mao-sheet {
     page: sales-order-mao;
     padding: 0 !important;
     min-height: auto;
   }
 
-  .sales-order-doc--argo-multi-ao .mao-table thead {
+  .sales-order-doc--sls-ods-0254.sos-sheet {
+    page: sales-order-sos;
+    padding: 0 !important;
+  }
+
+  .sales-order-doc--sls-ods-0254 .sos-wire-details tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .mao-sheet .mao-table thead {
     display: table-header-group;
   }
 
-  .sales-order-doc--argo-multi-ao .mao-table tr {
+  .mao-sheet .mao-table tr {
     page-break-inside: avoid;
     break-inside: avoid;
   }

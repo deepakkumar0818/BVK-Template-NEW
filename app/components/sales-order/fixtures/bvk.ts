@@ -89,5 +89,5 @@ export const bvkOdsFixture: SalesOrderData = {
     applicationCode: '',
   },
   remarks: '',
-  signerName: 'Manju',
+  signerName: '',
 }
