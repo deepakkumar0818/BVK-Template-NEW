@@ -290,6 +290,11 @@ export default function PerformaInvoiceContent({
         'Category_1_MM_Database_WMW_3_0',
         'Category_2_MM_Database_WMW_2_0',
         'Category_2_MM_Database_WMW_3_0',
+        'Category_1_MM_Database_WI_2_0',
+        'Category_1_MM_Database_WI_3_0',
+        'Category_2_MM_Database_WI_2_0',
+        'Category_2_MM_Database_WI_3_0',
+        'Product_Fitments2_0',
         'Accessories2_0',
       ]
       const cgstRateEff = cgstRate > 0 ? cgstRate : wmwd1RateOnly(rawRecord, 'CGST', subformKeys)

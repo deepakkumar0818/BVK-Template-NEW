@@ -106,6 +106,16 @@ export default function MultiOrderAcceptanceOfOrderContent({
           </div>
         ))}
 
+        {/* Quality Harmonisation Number + Date — stacked, above the sign-off lines */}
+        <div className="mao-body-para mao-qh-line">
+          <span className="mao-qh-label">Quality Harmonisation Number :</span>{' '}
+          <span>{data.qualityHarmonisationNumber || ' '}</span>
+        </div>
+        <div className="mao-body-para mao-qh-line">
+          <span className="mao-qh-label">Date :</span>{' '}
+          <span>{data.qualityHarmonisationDate || ' '}</span>
+        </div>
+
         {/* ── Bold sign-off lines ────────────────────────────── */}
         {data.signatureLines.map((line, i) => (
           <div key={i} className="mao-signature-line">

@@ -118,5 +118,5 @@ export const slsOds50PFixture: SalesOrderData = {
     'Please Note: 1.NEAT AND CLEAN PACKAGING\n' +
     '     2. ALUMINIUM FRAME TO BE MAKED WITH FILTER SCREEN OPENING SIZE 160 X 50 MIC\n' +
     '     3. Number of our Purchase Order as well as the respective line item number has to be stated on the shipping documents.',
-  signerName: 'Manju',
+  signerName: '',
 }
