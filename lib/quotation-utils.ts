@@ -1698,8 +1698,14 @@ export function transformQuotationData(
     date: formatDate(zohoData.Created_Date_and_time),
     buyerEnquiryNo: zohoData.customer_Reference || '',
     termsOfPayment: zohoData.Term_of_Payment || zohoData.Method_of_Payment || '',
-    incoTerms: '',
-    termsOfDelivery: zohoData.Delivery_Terms || zohoData.Mode_of_Delivery || '',
+    // Inco Terms → Zoho `Delivery_Terms`, forced to ALL CAPS (e.g. "exw" → "EXW").
+    incoTerms: String(zohoData.Delivery_Terms ?? '').toUpperCase(),
+    // Terms Of Delivery → Zoho `Mode_of_Delivery`, first letter capitalised only
+    // (e.g. "road" → "Road", "by sea" → "By sea").
+    termsOfDelivery: (() => {
+      const v = String(zohoData.Mode_of_Delivery ?? '')
+      return v ? v.charAt(0).toUpperCase() + v.slice(1) : ''
+    })(),
     deliveryDate: formatDate(zohoData.Delivery_Date_Control),
     followUpDate: formatDate(zohoData.Follow_up_Date),
     dueDate: formatDate(zohoData.Due_Date),
