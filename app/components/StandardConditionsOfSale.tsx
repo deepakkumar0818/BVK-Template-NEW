@@ -199,7 +199,7 @@ export function StandardConditionsOfSaleBody() {
 export default function StandardConditionsOfSale() {
   return (
     <div
-      className="conditions-for-print conditions-doc"
+      className="conditions-for-print conditions-doc standard-conditions-doc"
       style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}
     >
       <StandardConditionsOfSaleBody />

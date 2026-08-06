@@ -594,6 +594,27 @@ body {
     -webkit-print-color-adjust: exact;
   }
 
+  /* Shared 18-section STANDARD CONDITIONS OF SALE — force onto a single A4
+   * page by rendering the sections in two balanced columns. Only targets the
+   * `.standard-conditions-doc` marker on the shared component, so per-customer
+   * legacy conditions blocks are unaffected. */
+  .standard-conditions-doc {
+    column-count: 2 !important;
+    column-gap: 6mm !important;
+    column-fill: balance !important;
+    padding: 8px 10px !important;
+  }
+  .standard-conditions-doc h1 {
+    column-span: all !important;
+    -webkit-column-span: all !important;
+    text-align: center;
+  }
+  .standard-conditions-doc .section {
+    break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   /* Accessories first row: data columns align with product name in print (padding, not margin). */
   .goods-description-accessories-stack--first,
   .goods-description-accessories-stack--first .goods-description-accessories-stack__heading {
