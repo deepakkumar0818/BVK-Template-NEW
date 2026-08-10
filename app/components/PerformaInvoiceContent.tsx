@@ -283,8 +283,25 @@ export default function PerformaInvoiceContent({
       // Selling_Price used in each line already reflects the discounted rate, so there's
       // nothing more to subtract.
       const effDiscount = discountAbsorbedIntoLines ? 0 : Math.max(0, discountTotal)
-      const totalBeforeTaxNew = Math.max(0, lineTotal - effDiscount)
       const rawRecord = rawQuotationData as Record<string, unknown> | null | undefined
+      // Toggle-driven charges. `Packing_Charge` / `Freight_Charge` are Zoho booleans
+      // (may arrive as literal true/false OR the string "true"/"false"): only when the
+      // toggle is TRUE does the corresponding `Total_*_Charges` amount enter Total
+      // Before Tax. Seam has no toggle — include it whenever the amount is non-zero.
+      const isChargeToggleTrue = (v: unknown): boolean => {
+        if (v === true) return true
+        if (v === false || v == null) return false
+        return String(v).trim().toLowerCase() === 'true'
+      }
+      const packingToAdd = isChargeToggleTrue(rawRecord?.Packing_Charge) ? Math.max(0, packingTotal) : 0
+      const freightToAdd = isChargeToggleTrue(rawRecord?.Freight_Charge) ? Math.max(0, freightTotal) : 0
+      const seamToAdd = Math.max(0, seamTotal)
+      // Charges land in Total Before Tax so that GST is charged on top of them
+      // (i.e. `Total After GST = (lineTotal − discount + charges) × (1 + rate/100)`).
+      const totalBeforeTaxNew = Math.max(
+        0,
+        lineTotal - effDiscount + packingToAdd + freightToAdd + seamToAdd
+      )
       const subformKeys = [
         'Category_1_MM_Database_WMW_2_0',
         'Category_1_MM_Database_WMW_3_0',
