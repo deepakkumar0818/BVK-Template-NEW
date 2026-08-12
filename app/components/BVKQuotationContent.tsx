@@ -120,7 +120,6 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     cgstAmount: bvkCgstAmount,
     sgstAmount: bvkSgstAmount,
     igstAmount: bvkIgstAmount,
-    taxAmount: bvkTaxAmount,
     totalBeforeTax: bvkTotalBeforeTax,
     totalAfterTax: bvkTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, bvkLineItemsTotalFallback)
@@ -173,12 +172,6 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     bvkSummaryRows.push({
       label: 'Add IGST @ 18%',
       value: formatCurrency(bvkIgstAmount, displayCurrency),
-    })
-  }
-  if (bvkTaxHasValue(bvkTaxAmount)) {
-    bvkSummaryRows.push({
-      label: 'Tax Amount GST',
-      value: formatCurrency(bvkTaxAmount, displayCurrency),
     })
   }
   bvkSummaryRows.push({
@@ -265,9 +258,13 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
                     Quotation Ref. No.: {quotationRef}
                   </div>
-                  <div style={{ marginBottom: '15px' }}>
-                    With reference to our discussions / your inquiry vide your email, we are pleased to quote our price hereunder.
-                  </div>
+                  {/* Opening paragraph — from Zoho `Quotation_Reference`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Quotation_Reference ?? '').trim()
+                    if (!v) return null
+                    return <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                  })()}
                   <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
                 </div>
 
@@ -277,9 +274,10 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <thead>
                       <tr>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '5%' }}>Item</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '45%' }}>Product</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '12%' }}>Qty/Pcs</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '18%' }}>{`Unit Price / ${displayCurrency}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '38%' }}>Product</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '10%' }}>HSN Code</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '11%' }}>Qty/UOM</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '16%' }}>{`Unit Price / ${displayCurrency}`}</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>{`Total Price / ${displayCurrency}`}</th>
                       </tr>
                     </thead>
@@ -306,7 +304,12 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                             <div>Weave : {row.weaveDisplay?.trim() || '---------'}</div>
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
-                            {row.qty ? `${formatPiecesInteger(row.qty)} Pcs` : '--- Pcs'}
+                            {row.hsnCode || ''}
+                          </td>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
+                            {row.qty
+                              ? `${formatPiecesInteger(row.qty)}${row.uomBilling ? ` ${row.uomBilling}` : ''}`
+                              : '---'}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
                             {row.unitPrice > 0 ? formatCurrency(row.unitPrice, displayCurrency) : ''}
@@ -319,7 +322,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                       {bvkShowDiscountRow ? (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={5}
                             style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'top', color: '#c00000' }}
                           >
                             {bvkDiscountLabel}
@@ -332,7 +335,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                       {bvkSummaryRows.map((srow) => (
                         <tr key={srow.label} className="bvk-summary-row">
                           <td
-                            colSpan={4}
+                            colSpan={5}
                             style={{
                               border: '1px solid #000',
                               padding: srow.big ? '12px 8px' : '6px 8px',
@@ -392,23 +395,46 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   ) : null}
                 </div>
 
-                {/* Exclusions Section */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
-                  <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
-                    The following is not included in this quotation:
-                  </div>
-                  <ul style={{ marginLeft: '20px', marginBottom: '15px', paddingLeft: '20px' }}>
-                    <li style={{ marginBottom: '6px' }}>Material Test Certificate (If needed will be charged Rs. 5000).</li>
-                    <li style={{ marginBottom: '6px' }}>The Mesh will be without any post coating treatment.</li>
-                    <li style={{ marginBottom: '6px' }}>Any third-party test report required by you, will be charged separately.</li>
-                    <li style={{ marginBottom: '6px' }}>Any fixture, gasket etc. for making of stack.</li>
-                    <li style={{ marginBottom: '6px' }}>Special sample testing.</li>
-                    <li style={{ marginBottom: '6px' }}>Charges towards supply of samples for testing</li>
-                    <li style={{ marginBottom: '6px' }}>Disposal of all packing materials.</li>
-                    <li style={{ marginBottom: '6px' }}>Any financial charges related to the order.</li>
-                  </ul>
-                </div>
+                {/* Exclusions Section — bullets come from Zoho
+                 * `The_following_is_not_included_in_this_quotation` (textarea,
+                 * split on newlines). The heading label is a fixed section title.
+                 * Whole section is skipped when the Zoho field is empty. No
+                 * hardcoded bullet fallback. `whiteSpace: pre-wrap` on each
+                 * bullet preserves line breaks / spacing exactly as typed. */}
+                {(() => {
+                  const body = String(
+                    rawQuotationData?.The_following_is_not_included_in_this_quotation ?? ''
+                  ).trim()
+                  if (!body) return null
+                  const items = body
+                    .split(/\r?\n/)
+                    .map((s) => s.trim())
+                    .filter((s) => s.length > 0)
+                  if (items.length === 0) return null
+                  return (
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
+                        The following is not included in this quotation:
+                      </div>
+                      <ul
+                        style={{
+                          marginLeft: '20px',
+                          marginBottom: '15px',
+                          paddingLeft: '20px',
+                          listStyleType: 'disc',
+                          listStylePosition: 'outside',
+                        }}
+                      >
+                        {items.map((item, i) => (
+                          <li key={i} style={{ marginBottom: '6px', whiteSpace: 'pre-wrap' }}>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )
+                })()}
 
                 {/* Terms and Conditions Section */}
                 <div style={{ marginBottom: '20px' }}>
@@ -419,50 +445,112 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     All items not mentioned, insurance, Taxes & Duties, Freight, Demurrage, Detention charges.
                   </div>
 
-                  {/* Transit Insurance */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Transit Insurance:</div>
-                    <div style={{ marginLeft: '20px' }}>By Customer</div>
-                  </div>
+                  {/* Transit Insurance — from Zoho `Transit_Insurance`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Transit_Insurance ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Transit Insurance:</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
-                  {/* Warranty */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Warranty</div>
-                    <div style={{ marginLeft: '20px' }}>
-                      BVK Hydrotech will extend standard warranty towards manufacturing defects Only. We declare that our products are wearing parts. Therefore, they are excluded from any warranty regulation.
-                    </div>
-                  </div>
+                  {/* Warranty — from Zoho `Warranty`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Warranty ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Warranty</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Packing and Transport Cost */}
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Packing and Transport Cost:</div>
-                    <div style={{ marginLeft: '20px', marginBottom: '4px' }}>Packing: Included.</div>
+                    {/* Packing line — body comes from Zoho `Packing`
+                     * (e.g. "Normal Box packing included in above price").
+                     * The word "included" (case-insensitive, whole-word) is
+                     * swapped to "excluded" when Zoho `Packing_Charge` toggle
+                     * is false. Whole line is skipped if `Packing` is empty
+                     * (no hardcoded fallback). `whiteSpace: pre-wrap`
+                     * preserves line breaks / spacing as typed. */}
+                    {(() => {
+                      const packingText = String(rawQuotationData?.Packing ?? '').trim()
+                      if (!packingText) return null
+                      const v = rawQuotationData?.Packing_Charge
+                      const isTrue =
+                        v === true ||
+                        (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+                      const finalText = isTrue
+                        ? packingText
+                        : packingText.replace(/\bincluded\b/gi, (m) =>
+                            m === m.toUpperCase()
+                              ? 'EXCLUDED'
+                              : m[0] === m[0].toUpperCase()
+                                ? 'Excluded'
+                                : 'excluded'
+                          )
+                      return (
+                        <div
+                          style={{
+                            marginLeft: '20px',
+                            marginBottom: '4px',
+                            whiteSpace: 'pre-wrap',
+                          }}
+                        >
+                          Packing: {finalText}
+                        </div>
+                      )
+                    })()}
                     <div style={{ marginLeft: '20px', marginBottom: '4px' }}>Incoterms: Ex-Works, BVK Hydrotech</div>
                     <div style={{ marginLeft: '20px' }}>Freight cost to site: To be paid as per actual by the client directly.</div>
                   </div>
 
-                  {/* Delivery time */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Delivery time</div>
-                    <div style={{ marginLeft: '20px' }}>35 to 40 Days from the date of PO along with advance payment.</div>
-                  </div>
+                  {/* Delivery time — from Zoho `Delivery_Time`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Delivery_Time ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Delivery time</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
-                  {/* Payment conditions */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Payment conditions:</div>
-                    <div style={{ marginLeft: '20px' }}>100% Advance with an acceptance of offer and a confirmed purchase order of the total invoice value.</div>
-                  </div>
+                  {/* Payment conditions — from Zoho `Payment_Condition`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Payment_Condition ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Payment conditions:</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
-                  {/* Quotation Valid Till */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Valid Till</div>
-                    <div style={{ marginLeft: '20px' }}>
-                      {resolveQuotationValidity(
-                        rawQuotationData as Record<string, unknown> | undefined,
-                        '15 Days from the date of quotation.'
-                      )}
-                    </div>
-                  </div>
+                  {/* Quotation Valid Till — from Zoho `Quotation_Validity`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Quotation_Validity ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Valid Till</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Quantity Validity */}
                   <div style={{ marginBottom: '12px' }}>
@@ -481,15 +569,18 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     </ul>
                   </div>
 
-                  {/* General Remarks */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>General Remarks:</div>
-                    <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
-                      <li style={{ marginBottom: '4px' }}>Receipt of damaged material/quality deviation will be informed to BVK Hydrotech by ------ within 3 days of receipt of material.</li>
-                      <li style={{ marginBottom: '4px' }}>All prices are net, excluding any duties, taxes and alike.</li>
-                      <li style={{ marginBottom: '4px' }}>Prices are valid for this single total order.</li>
-                    </ul>
-                  </div>
+                  {/* General Remarks — from Zoho `General_Remarks`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.General_Remarks ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>General Remarks:</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
                   {/* General Conditions */}
                   <div style={{ marginBottom: '12px' }}>
@@ -504,24 +595,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     </div>
                   </div>
 
-                  {/* Additional Remarks */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ borderTop: '1px solid #000', marginTop: '15px', marginBottom: '15px' }}></div>
-                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Additional remarks:</div>
-                    <div style={{ marginBottom: '8px', marginLeft: '20px' }}>
-                      The confirmed delivery schedule will be subject to the following conditions and non-compliance of any of these conditions will result in revision of schedule.
-                    </div>
-                    <ol style={{ marginLeft: '20px', paddingLeft: '20px' }}>
-                      <li style={{ marginBottom: '4px' }}>Receipt of Purchase Order.</li>
-                      <li style={{ marginBottom: '4px' }}>Receipt of payment as per agreed terms.</li>
-                      <li style={{ marginBottom: '4px' }}>Receipt of approved drawings and quality harmonization documents*.</li>
-                      <li style={{ marginBottom: '4px' }}>No further changes affecting design and detailing after the approval of specifications and drawings.</li>
-                      <li style={{ marginBottom: '4px' }}>Receipt of complete disc dimensions.</li>
-                    </ol>
-                    <div style={{ marginTop: '8px', marginLeft: '20px', fontSize: '10px' }}>
-                      *Approved Drawings, Quality Harmonization Documents (Receipt of Signed off drawings with design and Quality Harmonization Document detailing from the customer).
-                    </div>
-                  </div>
+                  {/* Additional Remarks — from Zoho `Additional_Remarks`; skip when empty.
+                   * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Additional_Remarks ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ borderTop: '1px solid #000', marginTop: '15px', marginBottom: '15px' }}></div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Additional remarks:</div>
+                        <div style={{ marginBottom: '8px', marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Closing Statement */}
                   <div style={{ marginBottom: '20px', marginLeft: '20px' }}>
