@@ -87,6 +87,8 @@ export interface ZohoQuotation {
   Payment_Condition?: string
   /** BVK terms — "Quotation Valid Till" body. Rendered only when non-empty. */
   Quotation_Validity?: string
+  /** Quotation expiry date (Zoho date field, e.g. "20-Jul-2026"). Used by BVK as the "Quotation Valid Till" value. */
+  Expiry_Date?: string
   /** BVK "The following is not included in this quotation:" heading text. Rendered only when non-empty. */
   The_following_is_not_included_in_this_quotation?: string
   /** BVK opening paragraph ("With reference to our discussions / your inquiry…"). Rendered only when non-empty. */

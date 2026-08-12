@@ -53,7 +53,31 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
-  const recipientAddressBody = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
+  // Recipient address block. Prefer the shipping-consignee display (multi-line
+  // with country). If that's empty (record has no shipping address, only
+  // billing), fall back to composing a single-line billing address from the
+  // record's billing fields — same behavior as BVK so records with billing-only
+  // data still show an address.
+  const recipientAddressShipping = [consignee.addressBlock, consignee.country]
+    .filter(Boolean)
+    .join('\n')
+  const recipientAddressBilling = (() => {
+    const street = String(
+      billingData?.Billing_Street ?? rawQuotationData?.Billing_Street ?? ''
+    ).trim()
+    if (!street) return ''
+    const city = String(
+      billingData?.Billing_City ?? rawQuotationData?.Billing_City ?? ''
+    ).trim()
+    const state = String(
+      billingData?.Billing_State ?? rawQuotationData?.Billing_State ?? ''
+    ).trim()
+    const postal = String(
+      billingData?.Billing_Postal_Code ?? rawQuotationData?.Billing_Postal_Code ?? ''
+    ).trim()
+    return `${street}, ${city}, ${state} ${postal}`.replace(/\s+/g, ' ').trim()
+  })()
+  const recipientAddressBody = recipientAddressShipping || recipientAddressBilling
 
   const displayCurrency = data.currency || 'INR'
   const slsRowsFromWi20 = buildSlsLineItemsFromWi20SubformsShared(
@@ -201,8 +225,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     (rawQuotationData as Record<string, unknown> | undefined)?.Taxes ?? ''
   ).trim()
   const slsShowTaxesRow = slsTaxNoticeLines.length > 0 || slsTaxesScalar !== ''
-  const payment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || ''
-  const quotationValidity = resolveQuotationValidity(rawQuotationData as Record<string, unknown> | null | undefined)
+  // "Payment:" row body — read from Zoho `Payment_Condition` (same field
+  // used by BVK's "Payment conditions:" section). No fallback.
+  const payment = String(rawQuotationData?.Payment_Condition ?? '').trim()
+  // "Quotation Valid Till Time:" row body — read from Zoho `Quotation_Validity`
+  // (same field used by BVK's "Quotation Valid Till" section). No fallback.
+  const quotationValidity = String(rawQuotationData?.Quotation_Validity ?? '').trim()
   const warrantyDisclaimer = rawQuotationData?.Warranty_Disclaimer || 'We declare that our products are wearing parts. Therefore, they are excluded from any warranty regulations.'
   const generalTerms = rawQuotationData?.General_Terms || 'All WMW goods and services are subject to the WMW General Terms and Conditions, a copy of which is available on the WMW website (www.wmwindia.com) or you may request a hard copy which we can send to you. This is in line with the wording on the website.'
   const closingStatement = rawQuotationData?.Closing_Statement || 'We hope that the above quotation is of interest and will gladly be of further help with any request you may have.'
@@ -253,14 +281,21 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           </div>
         </div>
 
-        {/* Recipient Information */}
-        <div style={{ marginBottom: '25px' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '12px' }}>To,</div>
-          <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>{recipientName}</div>
-          <div style={{ marginBottom: '5px' }}>{recipientCompany}</div>
-          {recipientAddressBody ? (
-            <div style={{ marginBottom: '5px', whiteSpace: 'pre-wrap' }}>{recipientAddressBody}</div>
+        {/* Recipient Information — Zoho-driven, no hardcoded lines:
+         *   To,
+         *   <company name>       (Shipping_Address_Name / Billing_Address_Name)
+         *   <address body>       (Consignee address block; billing fallback;
+         *                         pre-wrap so line breaks print as typed)
+         *   - - - - - - - -      (dashed separator)                       */}
+        <div style={{ marginBottom: '15px' }}>
+          <div style={{ marginBottom: '8px' }}>To,</div>
+          {recipientCompany ? (
+            <div style={{ marginBottom: '15px' }}>{recipientCompany}</div>
           ) : null}
+          {recipientAddressBody ? (
+            <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>{recipientAddressBody}</div>
+          ) : null}
+          <div style={{ borderTop: '1px dashed #000', marginBottom: '15px' }}></div>
         </div>
 
         {/* Quotation Reference */}
@@ -268,6 +303,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           <div style={{ marginBottom: '8px' }}>
             <strong>Quotation Ref. No.:</strong> {quotationRefNo}
           </div>
+          {/* Opening paragraph — from Zoho `Quotation_Reference` (same field BVK
+           * uses). Printed verbatim just below the Ref line. Skipped when the
+           * field is empty. `whiteSpace: pre-wrap` preserves line breaks and
+           * spacing exactly as typed. */}
+          {(() => {
+            const v = String(rawQuotationData?.Quotation_Reference ?? '').trim()
+            if (!v) return null
+            return (
+              <div style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{v}</div>
+            )
+          })()}
           {slsRootRemarks ? (
             <div style={{ marginBottom: '20px' }}>{slsRootRemarks}</div>
           ) : null}
@@ -395,12 +441,16 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               )}
             </div>
           ) : null}
-          <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
-            <strong>Payment:</strong> {payment}
-          </div>
-          <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
-            <strong>Quotation Valid Till Time:</strong> {quotationValidity}
-          </div>
+          {payment ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+              <strong>Payment:</strong> {payment}
+            </div>
+          ) : null}
+          {quotationValidity ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+              <strong>Quotation Valid Till Time:</strong> {quotationValidity}
+            </div>
+          ) : null}
           <div style={{ marginBottom: '15px', marginTop: '15px' }}>
             {warrantyDisclaimer}
           </div>

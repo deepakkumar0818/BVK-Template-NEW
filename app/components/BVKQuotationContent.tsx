@@ -235,11 +235,12 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
           <tbody>
             <tr>
               <td colSpan={2} style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Recipient Section */}
+                {/* Recipient Section — Zoho-driven, no hardcoded lines. */}
                 <div style={{ marginBottom: '15px' }}>
                   <div style={{ marginBottom: '8px' }}>To,</div>
-                  <div style={{ marginBottom: '4px' }}>Mr. ---------</div>
-                  <div style={{ marginBottom: '15px' }}>{recipientName}</div>
+                  {recipientName ? (
+                    <div style={{ marginBottom: '15px' }}>{recipientName}</div>
+                  ) : null}
                   {recipientAddress && (
                     <div
                       style={{
@@ -286,22 +287,21 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                         <tr key={index}>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>{index + 1}.</td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
-                            {row.productColumnLines.length === 0 ? (
-                              <div style={{ marginBottom: '4px' }}>---------</div>
-                            ) : (
-                              row.productColumnLines.map((line, i) => (
-                                <div key={`${line.apiName}-${i}`} style={{ marginBottom: '4px' }}>
-                                  <span style={{ fontWeight: 'bold' }}>{line.apiName}</span>
-                                  {' : '}
-                                  {line.value}
-                                </div>
-                              ))
-                            )}
-                            <div style={{ marginBottom: '4px' }}>Mesh : {bvkMeshCellValue(row.meshDisplay)}</div>
-                            <div style={{ marginBottom: '4px' }}>
-                              Material : {row.materialDisplay?.trim() || '---------'}
-                            </div>
-                            <div>Weave : {row.weaveDisplay?.trim() || '---------'}</div>
+                            {/* Line 1: "Product : <Product_Name>" — printed only when the
+                              * Zoho `Product_Name` field on the main product row has a value.
+                              * Line 2: `Remarks` value from the `_2_0` row — printed verbatim
+                              * (line breaks + spacing preserved via `whiteSpace: pre-wrap`).
+                              * No hardcoded Mesh/Material/Weave rows anymore. */}
+                            {row.productName ? (
+                              <div style={{ marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 'bold' }}>Product</span>
+                                {' : '}
+                                {row.productName}
+                              </div>
+                            ) : null}
+                            {row.remarks ? (
+                              <div style={{ whiteSpace: 'pre-wrap' }}>{row.remarks}</div>
+                            ) : null}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
                             {row.hsnCode || ''}
@@ -539,10 +539,10 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     )
                   })()}
 
-                  {/* Quotation Valid Till — from Zoho `Quotation_Validity`; skip when empty.
+                  {/* Quotation Valid Till — from Zoho `Expiry_Date`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
                   {(() => {
-                    const v = String(rawQuotationData?.Quotation_Validity ?? '').trim()
+                    const v = String(rawQuotationData?.Expiry_Date ?? '').trim()
                     if (!v) return null
                     return (
                       <div style={{ marginBottom: '12px' }}>
