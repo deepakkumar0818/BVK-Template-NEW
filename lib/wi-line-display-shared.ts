@@ -129,6 +129,10 @@ export interface BvkQuotationTableRow {
   materialDisplay: string
   /** Weave: `Weave` or `Seam_Type` on the matching Category_*_MM_Database_WI_3_0 row only */
   weaveDisplay: string
+  /** Product name — from the main product subform row's `Product_Name` field (Category_*_MM_Database_WI[i].Product_Name). */
+  productName: string
+  /** Raw `Remarks` value from the `_2_0` linked row — printed verbatim below "Product :" line. */
+  remarks: string
   /** Same as SLS: WI_2_0 `Qty` */
   qty: string
   /** Zoho `UOM_Billing` for this line — rendered after `qty` in the Qty/UOM column. Empty when Zoho didn't send one. */
@@ -202,11 +206,18 @@ export function buildBvkQuotationTableRows(
         // HSN_Code: same precedence as UOM — prefer `_2_0` linked row, then main product row.
         const hsnCode =
           strVal(merged.HSN_Code).trim() || strVal(pd.HSN_Code).trim()
+        // Product_Name comes from the main product row (Category_*_MM_Database_WI[i]).
+        const productName = strVal(pd.Product_Name).trim()
+        // Remarks come raw from the `_2_0` row so the render can preserve line
+        // breaks / spacing exactly as typed.
+        const remarks = strVal(row20.Remarks)
         return {
           productColumnLines,
           meshDisplay,
           materialDisplay,
           weaveDisplay,
+          productName,
+          remarks,
           qty,
           uomBilling,
           hsnCode,
@@ -242,12 +253,18 @@ export function buildBvkQuotationTableRows(
       const uomBilling = (strVal(row.UOM_Billing) || (mainRow ? strVal(mainRow.UOM_Billing) : '')).trim()
       // HSN_Code: prefer the `_2_0` PF row, then the main PF row.
       const hsnCode = (strVal(row.HSN_Code) || (mainRow ? strVal(mainRow.HSN_Code) : '')).trim()
+      // Product_Name: prefer the main PF row, fall back to the `_2_0` PF row.
+      const productName = (mainRow ? strVal(mainRow.Product_Name) : strVal(row.Product_Name)).trim()
+      // Remarks come raw from the `_2_0` PF row (or main row when only main exists).
+      const remarks = strVal(row.Remarks)
       const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit2, fit1, row, index)
       return {
         productColumnLines,
         meshDisplay,
         materialDisplay,
         weaveDisplay,
+        productName,
+        remarks,
         qty,
         uomBilling,
         hsnCode,
@@ -266,6 +283,10 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
     const meshDisplay = item.mesh?.trim() || ''
     const materialDisplay = item.quality || ''
     const weaveDisplay = item.weave?.trim() || ''
+    // Fallback shape has no direct main-row/linked-row split — best-effort use
+    // `product` as the product name and the same string as a remark placeholder.
+    const productName = (item.product ?? '').trim()
+    const remarks = ''
     const qty = item.qty || ''
     const uomBilling = (item.uom || '').trim()
     const hsnCode = (item.hsnCode || '').trim()
@@ -276,6 +297,8 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
       meshDisplay,
       materialDisplay,
       weaveDisplay,
+      productName,
+      remarks,
       qty,
       uomBilling,
       hsnCode,
@@ -409,12 +432,23 @@ export function buildSlsLineItemsFromWi20SubformsShared(
   }
   const key = resolveSlsWi20SubformKey(templateField)
   const rows = subformRows(raw, key)
+  // Main product subform (Category_*_MM_Database_WI) — carries `UOM_Billing` and
+  // sometimes `HSN_Code` for the WI templates. Derived from the `_2_0` key by
+  // dropping the trailing "_2_0" suffix so the mapping stays in one place.
+  const productKey = key.replace(/_2_0$/, '') as
+    | 'Category_1_MM_Database_WI'
+    | 'Category_2_MM_Database_WI'
+  const productRows = subformRows(raw, productKey)
   return rows.map((row, index) => {
     const remarks = strVal(row.Remarks)
     const sp = strVal(row.Selling_Price).replace(/,/g, '')
     const qtyRaw = strVal(row.Qty)
-    const uom = strVal(row.UOM_Billing).trim()
-    const hsnCode = strVal(row.HSN_Code).trim()
+    // UOM / HSN precedence: `_2_0` linked row → main product row (matches how
+    // BVK resolves both fields; typical WI records store `UOM_Billing` on the
+    // main product row, not the `_2_0` row).
+    const pd = productRows[index] ?? {}
+    const uom = (strVal(row.UOM_Billing) || strVal(pd.UOM_Billing)).trim()
+    const hsnCode = (strVal(row.HSN_Code) || strVal(pd.HSN_Code)).trim()
     const unitPrice = parseFloat(sp) || 0
     const totalPrice = slsLineTotalFromRow(row)
     return {
