@@ -77,6 +77,27 @@ export interface ZohoQuotation {
   Tolerances?: string
   /** Quotation-level note under tolerances (Zoho API name: Please_Note) */
   Please_Note?: string
+  /** BVK terms — "Transit Insurance:" body. Rendered only when non-empty. */
+  Transit_Insurance?: string
+  /** BVK terms — "Warranty" body. Rendered only when non-empty. */
+  Warranty?: string
+  /** BVK terms — "Delivery time" body. Rendered only when non-empty. */
+  Delivery_Time?: string
+  /** BVK terms — "Payment conditions:" body. Rendered only when non-empty. */
+  Payment_Condition?: string
+  /** BVK terms — "Quotation Valid Till" body. Rendered only when non-empty. */
+  Quotation_Validity?: string
+  /** BVK "The following is not included in this quotation:" heading text. Rendered only when non-empty. */
+  The_following_is_not_included_in_this_quotation?: string
+  /** BVK opening paragraph ("With reference to our discussions / your inquiry…"). Rendered only when non-empty. */
+  Quotation_Reference?: string
+  /** BVK "General Remarks:" body. Rendered only when non-empty; line breaks preserved. */
+  General_Remarks?: string
+  /** BVK "Additional remarks:" body. Rendered only when non-empty; line breaks preserved. */
+  Additional_Remarks?: string
+  /** BVK "Packing:" body (e.g. "Normal Box packing included in above price"). The word
+   *  "included" gets flipped to "excluded" when `Packing_Charge` toggle is false. */
+  Packing?: string
   /** Preferred source for “Please Note” / notes blocks when non-empty */
   Inside_Quotation_Text?: string
   Type_Of_Quotation?: string

@@ -68,6 +68,8 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
         item: index + 1,
         product: `${item.product || ''}${item.quality ? `; ${item.quality}` : ''}`.trim(),
         qty: item.qty || '',
+        uom: (item.uom || '').trim(),
+        hsnCode: (item.hsnCode || '').trim(),
         unitPrice: parseFloat(item.rate?.replace(/,/g, '') || '0'),
         totalPrice: parseFloat(item.amount?.replace(/,/g, '') || '0'),
       })) || []
@@ -104,7 +106,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     cgstAmount: slsCgstAmount,
     sgstAmount: slsSgstAmount,
     igstAmount: slsIgstAmount,
-    taxAmount: slsTaxAmount,
     totalBeforeTax: slsTotalBeforeTax,
     totalAfterTax: slsTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, slsLineItemsTotalFallback)
@@ -164,12 +165,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     slsSummaryRows.push({
       label: 'Add IGST @ 18%',
       value: formatCurrency(slsIgstAmount, displayCurrency),
-    })
-  }
-  if (slsTaxHasValue(slsTaxAmount)) {
-    slsSummaryRows.push({
-      label: 'Tax Amount GST',
-      value: formatCurrency(slsTaxAmount, displayCurrency),
     })
   }
   slsSummaryRows.push({
@@ -285,7 +280,8 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <tr>
                 <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Item</th>
                 <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Product</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>QTY/KG</th>
+                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>HSN Code</th>
+                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Qty/UOM</th>
                 <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Unit Price/ ${displayCurrency}`}</th>
                 <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Total Price/ ${displayCurrency}`}</th>
               </tr>
@@ -295,7 +291,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                 <tr key={index}>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.item}</td>
                   <td style={{ border: '1px solid #000', padding: '8px' }}>{item.product}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.qty}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.hsnCode || ''}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
+                    {item.qty
+                      ? `${item.qty}${item.uom ? ` ${item.uom}` : ''}`
+                      : ''}
+                  </td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>{formatCurrency(item.unitPrice, displayCurrency)}</td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>{formatCurrency(item.totalPrice, displayCurrency)}</td>
                 </tr>
@@ -303,7 +304,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               {slsShowDiscountRow ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}
                   >
                     Total discount
@@ -316,7 +317,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               {slsSummaryRows.map((srow) => (
                 <tr key={srow.label} className="sls-summary-row">
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     style={{
                       border: '1px solid #000',
                       padding: srow.big ? '12px 8px' : '6px 8px',
@@ -447,16 +448,43 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
         </Link>
       </div>
 
-      {/* SLS: printable conditions block (full content per screenshots) */}
+      {/* SLS: printable conditions block (Zoho-driven bodies; hardcoded section labels) */}
       <div className="conditions-for-print conditions-for-print--sls conditions-doc" style={{ border: '1px solid #000', padding: '16px' }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>The following is not included in this quotation:</div>
-
-        <div style={{ marginBottom: '14px' }}>
-          <div>All items not mentioned, insurance, Taxes &amp; Duties, Freight, Demur rage, Detention charges, Supervision,</div>
-          <div>Static Report, Support construction &amp; installation of mesh panels at site.</div>
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+        {/* Exclusions section — hardcoded heading, bullets from Zoho
+         * `The_following_is_not_included_in_this_quotation` (textarea split on newlines).
+         * Whole section skipped when field is empty. */}
+        {(() => {
+          const body = String(
+            rawQuotationData?.The_following_is_not_included_in_this_quotation ?? ''
+          ).trim()
+          if (!body) return null
+          const items = body
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+          if (items.length === 0) return null
+          return (
+            <>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>The following is not included in this quotation:</div>
+              <ul
+                style={{
+                  marginLeft: '20px',
+                  marginBottom: '14px',
+                  paddingLeft: '20px',
+                  listStyleType: 'disc',
+                  listStylePosition: 'outside',
+                }}
+              >
+                {items.map((item, i) => (
+                  <li key={i} style={{ marginBottom: '6px', whiteSpace: 'pre-wrap' }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
         <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
         <div style={{ marginBottom: '6px' }}>Will be extra as applicable over and above the Ex-factory prices quoted.</div>
@@ -473,9 +501,31 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
 
         <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Packing and Transport:</div>
         <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', rowGap: '6px', marginBottom: '14px' }}>
-          <div>Packing</div>
-          <div>:</div>
-          <div>Normal Box packing included in above price.</div>
+          {/* Packing line — Zoho `Packing`; word "included" flips to "excluded"
+           * when `Packing_Charge` toggle is false. */}
+          {(() => {
+            const packingText = String(rawQuotationData?.Packing ?? '').trim()
+            if (!packingText) return null
+            const v = rawQuotationData?.Packing_Charge
+            const isTrue =
+              v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+            const finalText = isTrue
+              ? packingText
+              : packingText.replace(/\bincluded\b/gi, (m) =>
+                  m === m.toUpperCase()
+                    ? 'EXCLUDED'
+                    : m[0] === m[0].toUpperCase()
+                      ? 'Excluded'
+                      : 'excluded'
+                )
+            return (
+              <>
+                <div>Packing</div>
+                <div>:</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{finalText}</div>
+              </>
+            )
+          })()}
           <div>Freight cost to site</div>
           <div>:</div>
           <div>To be paid as per actual by the client directly.</div>
@@ -483,107 +533,73 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
 
         <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', marginBottom: '10px' }}>
-          <div style={{ fontWeight: 'bold' }}>Delivery time</div>
-          <div>:</div>
-          <div>Delivery will be made based on later of the following below:</div>
-        </div>
+        {/* Delivery time — body from Zoho `Delivery_Time`; skip when empty; pre-wrap. */}
+        {(() => {
+          const v = String(rawQuotationData?.Delivery_Time ?? '').trim()
+          if (!v) return null
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', marginBottom: '14px' }}>
+                <div style={{ fontWeight: 'bold' }}>Delivery time</div>
+                <div>:</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{v}</div>
+              </div>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
-        <div style={{ marginLeft: '18px', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <div style={{ width: '20px' }}>A)</div>
-            <div>
-              Dispatch to be confirmed whenever project will be more concrete and will be dependent on receipt of the last of the following (As per
-              terms or this Offer)
-            </div>
-          </div>
-        </div>
-        <div style={{ marginLeft: '56px', marginBottom: '8px' }}>
-          <div>a) Purchase Order</div>
-          <div>b) Advance</div>
-        </div>
-        <div style={{ marginLeft: '18px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <div style={{ width: '20px' }}>B)</div>
-            <div>
-              Ex-factory Dispatch can only commence <strong>1 to 2 Week</strong> from receipt of all required documents &amp; pending amount.
-            </div>
-          </div>
-        </div>
+        {/* Payment conditions — body from Zoho `Payment_Condition`; skip when empty; pre-wrap. */}
+        {(() => {
+          const v = String(rawQuotationData?.Payment_Condition ?? '').trim()
+          if (!v) return null
+          return (
+            <>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Payment conditions:</div>
+              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+        {/* Quotation Valid Till — body from Zoho `Quotation_Validity`; skip when empty; pre-wrap. */}
+        {(() => {
+          const v = String(rawQuotationData?.Quotation_Validity ?? '').trim()
+          if (!v) return null
+          return (
+            <>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Valid Till:</div>
+              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Payment conditions:</div>
-        <div style={{ marginBottom: '10px' }}>
-          100% Advance with an acceptance of offer and a confirmed purchase order of the total invoice value.
-        </div>
-        <div style={{ marginBottom: '14px' }}>
-          If goods are not picked up within 15days from date of readiness notified by us via email to you / authorized person then we will be
-          compelled to charge interest @24% per annul from the 16<sup>th</sup> day of such delay.
-        </div>
+        {/* General Remarks — body from Zoho `General_Remarks`; skip when empty; pre-wrap. */}
+        {(() => {
+          const v = String(rawQuotationData?.General_Remarks ?? '').trim()
+          if (!v) return null
+          return (
+            <>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>General Remarks:</div>
+              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Valid Till:</div>
-        <div style={{ marginBottom: '14px' }}>
-          Time: {quotationValidity.trim() !== '' ? quotationValidity : '1 months from the date of quotation.'}
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>General Remarks:</div>
-        <div style={{ marginBottom: '10px' }}>If the specifications are changed as the project develops, prices &amp; deliveries may change.</div>
-        <div style={{ marginBottom: '10px' }}>
-          Changes to panel sizes post approval of drawings will be on extra chargeable basis, any decrease in quantity will not change the total order
-          price. Any increase in quantity will be charged additionally on the SQM rate being agreed.
-        </div>
-        <div style={{ marginBottom: '10px' }}>
-          The above quotation is valid for the Mesh panel quantities, dimensions and total quantity as well as for the finish and accessories as
-          described.
-        </div>
-        <div style={{ marginBottom: '12px' }}>
-          Determination of the fixing elements (If considered into quotation) : All fixing elements such as Roundbar, Eyebolt, Flat, Clevis bolt etc.
-          have been defined on the basis of our static calculation. All parts of support construction and the expected loads have to be calculated and
-          confirmed by customer&apos;s civil engineer.
-        </div>
-
-        <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>Only customer will be responsible for the following:</div>
-        <ul style={{ marginTop: 0, marginBottom: '12px' }}>
-          <li>The support construction is built according to drawings and static calculations.</li>
-          <li>Tolerances of support construction at mesh fixing points is &plusmn; 2 mm</li>
-          <li>Mesh panels are stored on building site safely and dry and will be handled according advice of GKD India Ltd.</li>
-          <li>Installation of mesh panels is done according to drawings, static calculations</li>
-          <li>Damage / theft of material on site</li>
-          <li>Damage of mesh during transit / storage/ erection/ installation</li>
-        </ul>
-
-        <div style={{ marginBottom: '14px' }}>
-          Our General conditions of sales and standard terms of supply apply, the copy of same is available on our website.
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Additional remarks:</div>
-        <div style={{ marginBottom: '10px' }}>
-          The confirmed delivery schedule will be subject to the following conditions and noncompliance of any of these conditions will result in
-          revision of schedule.
-        </div>
-        <ol style={{ marginTop: 0, marginBottom: '14px' }}>
-          <li>Receipt of Approved Drawings** from the customer / architect.</li>
-          <li>Receipt of payment as per agreed terms</li>
-          <li>No further changes affecting design and detailing after the approval of drawings.</li>
-          <li>Receipt of complete panel dimensions.</li>
-          <li>
-            GKD India Ltd. will be provided with a GKD verification report duly stamped and approved by principal architects that the tolerances of the
-            support construction at the architectural fixing points is within &plusmn;2mm.
-          </li>
-        </ol>
-
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-          **Approved Drawings (Receipt of Signed off drawings with design and detailing from the customer / architect)
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+        {/* Additional remarks — body from Zoho `Additional_Remarks`; skip when empty; pre-wrap. */}
+        {(() => {
+          const v = String(rawQuotationData?.Additional_Remarks ?? '').trim()
+          if (!v) return null
+          return (
+            <>
+              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Additional remarks:</div>
+              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
+              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
+            </>
+          )
+        })()}
 
         <div style={{ marginBottom: '12px' }}>
           We hope that the above quotation is of interest and will gladly be of further help for any request you may have.

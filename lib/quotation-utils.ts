@@ -1191,9 +1191,34 @@ export function transformQuotationData(
       // Type: Use Brand_Selling_Name or Brand_Category
       const type = productDetail.Brand_Selling_Name || productDetail.Brand_Category || item.Line_Item_ref || ''
 
-      const wmw30Key =
-        templateType === 'WMW2' ? 'Category_2_MM_Database_WMW_3_0' : 'Category_1_MM_Database_WMW_3_0'
-      const wmw30Rows = ((zohoData as Record<string, unknown>)[wmw30Key] as any[]) || []
+      // For WMW / WMW2 templates the "linked" _3_0 row (which carries HSN,
+      // Delivery, Blend_Category, Material_Code, etc.) can live in any one of
+      // three subforms — whichever family the record actually populated:
+      //   1. Category_1_MM_Database_WMW_3_0
+      //   2. Category_2_MM_Database_WMW_3_0
+      //   3. Category_2_MM_Database_WI_3_0
+      // We check them in order and use the first family that has rows so a
+      // /wmw record with `Template = "Category 2 WMW"` (data in Cat 2 WMW _3_0)
+      // gets its HSN + Delivery picked up correctly instead of falling to Cat 1.
+      const wmw30Candidates: readonly string[] =
+        templateType === 'WMW2'
+          ? [
+              'Category_2_MM_Database_WMW_3_0',
+              'Category_1_MM_Database_WMW_3_0',
+              'Category_2_MM_Database_WI_3_0',
+            ]
+          : [
+              'Category_1_MM_Database_WMW_3_0',
+              'Category_2_MM_Database_WMW_3_0',
+              'Category_2_MM_Database_WI_3_0',
+            ]
+      const wmw30Rows = ((): any[] => {
+        for (const key of wmw30Candidates) {
+          const rows = ((zohoData as Record<string, unknown>)[key] as any[]) || []
+          if (rows.length > 0) return rows
+        }
+        return []
+      })()
       const refNorm = String(itemRef ?? '').trim()
       const ext30Row =
         refNorm !== ''
@@ -1246,14 +1271,19 @@ export function transformQuotationData(
       const piecesFromApi = String(item.Pieces ?? productDetail.Pieces ?? '').trim()
       const { unit, pieces } = unitAndPiecesFromQty(qtyNum, piecesFromApi)
 
+      // HSN lookup for /wmw: precedence is `_2_0 row` → active `_3_0 row`
+      // (already resolved above as `ext30` from the correct family) → main
+      // product row. This mirrors the shape of `coalesceLinkedFirst` used by
+      // the join pipeline but reads `ext30` directly so the Cat 2 WMW / Cat 2
+      // WI HSN gets picked up when Cat 1 WMW _3_0 is empty.
       const hsnCodeForWmwTab =
         templateType === 'WMW'
-          ? resolveCategory1WmwHsnCode(
-              zohoData,
-              item as Record<string, unknown>,
-              productDetail as Record<string, unknown>,
-              normalizeLastItemRef(itemRef)
-            )
+          ? String(
+              (item as Record<string, unknown>).HSN_Code ??
+                (ext30 as Record<string, unknown> | undefined)?.HSN_Code ??
+                (productDetail as Record<string, unknown>).HSN_Code ??
+                ''
+            ).trim()
           : ''
 
       const deliveryDesiredWmw =

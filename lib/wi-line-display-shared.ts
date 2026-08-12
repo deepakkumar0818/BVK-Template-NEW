@@ -131,6 +131,10 @@ export interface BvkQuotationTableRow {
   weaveDisplay: string
   /** Same as SLS: WI_2_0 `Qty` */
   qty: string
+  /** Zoho `UOM_Billing` for this line — rendered after `qty` in the Qty/UOM column. Empty when Zoho didn't send one. */
+  uomBilling: string
+  /** Zoho `HSN_Code` for this line — populated from `_2_0` linked row, then main product row. Empty when neither has one. */
+  hsnCode: string
   /** Raw numeric for {@link formatCurrency} */
   unitPrice: number
   /** Raw numeric for {@link formatCurrency} */
@@ -190,12 +194,22 @@ export function buildBvkQuotationTableRows(
         )
 
         const qty = strVal(merged.Qty)
+        // UOM_Billing may live on the `_2_0` linked row OR on the main product row
+        // (e.g. `Category_2_MM_Database_WI[i].UOM_Billing`). Check both, prefer whichever
+        // has a value; return empty if neither does.
+        const uomBilling =
+          strVal(merged.UOM_Billing).trim() || strVal(pd.UOM_Billing).trim()
+        // HSN_Code: same precedence as UOM — prefer `_2_0` linked row, then main product row.
+        const hsnCode =
+          strVal(merged.HSN_Code).trim() || strVal(pd.HSN_Code).trim()
         return {
           productColumnLines,
           meshDisplay,
           materialDisplay,
           weaveDisplay,
           qty,
+          uomBilling,
+          hsnCode,
           unitPrice: unitPriceFromLine(merged),
           totalPrice: slsLineTotalFromRow(merged),
         }
@@ -225,6 +239,9 @@ export function buildBvkQuotationTableRows(
       const qty = useFit2
         ? qtyFromProductFitmentsMainRow(fit1, row, index) || strVal(row.Qty) || strVal(row.Pieces)
         : strVal(row.Qty) || strVal(row.Pieces)
+      const uomBilling = (strVal(row.UOM_Billing) || (mainRow ? strVal(mainRow.UOM_Billing) : '')).trim()
+      // HSN_Code: prefer the `_2_0` PF row, then the main PF row.
+      const hsnCode = (strVal(row.HSN_Code) || (mainRow ? strVal(mainRow.HSN_Code) : '')).trim()
       const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit2, fit1, row, index)
       return {
         productColumnLines,
@@ -232,6 +249,8 @@ export function buildBvkQuotationTableRows(
         materialDisplay,
         weaveDisplay,
         qty,
+        uomBilling,
+        hsnCode,
         unitPrice,
         totalPrice,
       }
@@ -248,6 +267,8 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
     const materialDisplay = item.quality || ''
     const weaveDisplay = item.weave?.trim() || ''
     const qty = item.qty || ''
+    const uomBilling = (item.uom || '').trim()
+    const hsnCode = (item.hsnCode || '').trim()
     const unitPrice = parseFloat(String(item.rate).replace(/,/g, '')) || 0
     const totalPrice = parseFloat(String(item.amount).replace(/,/g, '')) || 0
     return {
@@ -256,6 +277,8 @@ function mapFallbackLineItems(items: QuotationLineItem[]): BvkQuotationTableRow[
       materialDisplay,
       weaveDisplay,
       qty,
+      uomBilling,
+      hsnCode,
       unitPrice,
       totalPrice,
     }
@@ -351,7 +374,7 @@ function slsProductFitmentUnitAndTotal(
 export function buildSlsLineItemsFromWi20SubformsShared(
   raw: Record<string, unknown> | null | undefined,
   templateField?: string
-): Array<{ item: number; product: string; qty: string; unitPrice: number; totalPrice: number }> {
+): Array<{ item: number; product: string; qty: string; uom: string; hsnCode: string; unitPrice: number; totalPrice: number }> {
   if (!raw) return []
   const t = String(templateField ?? '').trim().toLowerCase()
   if (t.includes('product fitment')) {
@@ -369,11 +392,16 @@ export function buildSlsLineItemsFromWi20SubformsShared(
       const qtyRaw = useFit20
         ? qtyFromProductFitmentsMainRow(fitMain, row, index) || strVal(row.Qty) || strVal(row.Pieces)
         : strVal(row.Qty) || strVal(row.Pieces)
+      const mainRow = useFit20 ? fitMain[index] : undefined
+      const uom = (strVal(row.UOM_Billing) || (mainRow ? strVal(mainRow.UOM_Billing) : '')).trim()
+      const hsnCode = (strVal(row.HSN_Code) || (mainRow ? strVal(mainRow.HSN_Code) : '')).trim()
       const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit20, fitMain, row, index)
       return {
         item: index + 1,
         product,
         qty: qtyRaw,
+        uom,
+        hsnCode,
         unitPrice,
         totalPrice,
       }
@@ -385,12 +413,16 @@ export function buildSlsLineItemsFromWi20SubformsShared(
     const remarks = strVal(row.Remarks)
     const sp = strVal(row.Selling_Price).replace(/,/g, '')
     const qtyRaw = strVal(row.Qty)
+    const uom = strVal(row.UOM_Billing).trim()
+    const hsnCode = strVal(row.HSN_Code).trim()
     const unitPrice = parseFloat(sp) || 0
     const totalPrice = slsLineTotalFromRow(row)
     return {
       item: index + 1,
       product: remarks,
       qty: qtyRaw,
+      uom,
+      hsnCode,
       unitPrice,
       totalPrice,
     }
