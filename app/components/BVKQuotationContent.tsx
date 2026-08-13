@@ -474,43 +474,44 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   {/* Packing and Transport Cost */}
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Packing and Transport Cost:</div>
-                    {/* Packing line — body comes from Zoho `Packing`
-                     * (e.g. "Normal Box packing included in above price").
-                     * The word "included" (case-insensitive, whole-word) is
-                     * swapped to "excluded" when Zoho `Packing_Charge` toggle
-                     * is false. Whole line is skipped if `Packing` is empty
-                     * (no hardcoded fallback). `whiteSpace: pre-wrap`
-                     * preserves line breaks / spacing as typed. */}
+                    {/* Packing line — always rendered. Hardcoded phrase
+                     * "Normal Box packing … in above price" where the middle
+                     * word flips between "included" / "excluded" based on the
+                     * Zoho `Packing_Charge` toggle. Zoho `Packing` text field
+                     * is not read here. */}
                     {(() => {
-                      const packingText = String(rawQuotationData?.Packing ?? '').trim()
-                      if (!packingText) return null
                       const v = rawQuotationData?.Packing_Charge
                       const isTrue =
                         v === true ||
                         (typeof v === 'string' && v.trim().toLowerCase() === 'true')
-                      const finalText = isTrue
-                        ? packingText
-                        : packingText.replace(/\bincluded\b/gi, (m) =>
-                            m === m.toUpperCase()
-                              ? 'EXCLUDED'
-                              : m[0] === m[0].toUpperCase()
-                                ? 'Excluded'
-                                : 'excluded'
-                          )
                       return (
-                        <div
-                          style={{
-                            marginLeft: '20px',
-                            marginBottom: '4px',
-                            whiteSpace: 'pre-wrap',
-                          }}
-                        >
-                          Packing: {finalText}
+                        <div style={{ marginLeft: '20px', marginBottom: '4px' }}>
+                          Packing: Normal Box packing {isTrue ? 'included' : 'excluded'} in above price
                         </div>
                       )
                     })()}
-                    <div style={{ marginLeft: '20px', marginBottom: '4px' }}>Incoterms: Ex-Works, BVK Hydrotech</div>
-                    <div style={{ marginLeft: '20px' }}>Freight cost to site: To be paid as per actual by the client directly.</div>
+                    {/* Incoterms line — value comes from Zoho `Delivery_Terms`, forced
+                     * to ALL CAPS (e.g. "exw" → "EXW"). Same convention as the Inco Terms
+                     * cell on /wmw and /quotation. Whole row is skipped when the field
+                     * is empty — no hardcoded fallback. */}
+                    {(() => {
+                      const v = String(rawQuotationData?.Delivery_Terms ?? '').trim().toUpperCase()
+                      if (!v) return null
+                      return (
+                        <div style={{ marginLeft: '20px', marginBottom: '4px' }}>Incoterms: {v}</div>
+                      )
+                    })()}
+                    {/* Freight cost to site — value from Zoho `Transport`. Row is always
+                     * rendered (matches SLS behavior); value is blank when the Zoho
+                     * field is empty. `whiteSpace: pre-wrap` preserves line breaks. */}
+                    {(() => {
+                      const v = String(rawQuotationData?.Transport ?? '').trim()
+                      return (
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>
+                          Freight cost to site: {v || ' '}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Delivery time — from Zoho `Delivery_Time`; skip when empty.
@@ -601,11 +602,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     We hope that the above quotation is of interest and will gladly be of further help for any request you may have.
                   </div>
 
-                  {/* Contact Person */}
+                  {/* Contact Person — name from Zoho `Contact_Person`; phone stays hardcoded. */}
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ fontWeight: 'bold' }}>BVK Hydrotech India Pvt. Ltd..</div>
                     <div style={{ marginTop: '4px' }}>
-                      Contact Person : <strong>Mr. Milap Verma</strong> (9358584002)
+                      Contact Person : <strong>{String(rawQuotationData?.Contact_Person ?? '').trim()}</strong>
                     </div>
                   </div>
                 </div>

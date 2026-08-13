@@ -129,7 +129,9 @@ export interface BvkQuotationTableRow {
   materialDisplay: string
   /** Weave: `Weave` or `Seam_Type` on the matching Category_*_MM_Database_WI_3_0 row only */
   weaveDisplay: string
-  /** Product name — from the main product subform row's `Product_Name` field (Category_*_MM_Database_WI[i].Product_Name). */
+  /** Product name for the BVK template's "Product" column — sourced from the
+   * main product subform row's `Brand_Selling_Name` field (Category_*_MM_Database_WI[i].Brand_Selling_Name).
+   * Falls back to the `QuotationLineItem.product` value when no subform row is available. */
   productName: string
   /** Raw `Remarks` value from the `_2_0` linked row — printed verbatim below "Product :" line. */
   remarks: string
@@ -206,8 +208,9 @@ export function buildBvkQuotationTableRows(
         // HSN_Code: same precedence as UOM — prefer `_2_0` linked row, then main product row.
         const hsnCode =
           strVal(merged.HSN_Code).trim() || strVal(pd.HSN_Code).trim()
-        // Product_Name comes from the main product row (Category_*_MM_Database_WI[i]).
-        const productName = strVal(pd.Product_Name).trim()
+        // BVK "Product" column shows `Brand_Selling_Name` from the main product
+        // row (Category_*_MM_Database_WI[i]).
+        const productName = strVal(pd.Brand_Selling_Name).trim()
         // Remarks come raw from the `_2_0` row so the render can preserve line
         // breaks / spacing exactly as typed.
         const remarks = strVal(row20.Remarks)
@@ -253,8 +256,9 @@ export function buildBvkQuotationTableRows(
       const uomBilling = (strVal(row.UOM_Billing) || (mainRow ? strVal(mainRow.UOM_Billing) : '')).trim()
       // HSN_Code: prefer the `_2_0` PF row, then the main PF row.
       const hsnCode = (strVal(row.HSN_Code) || (mainRow ? strVal(mainRow.HSN_Code) : '')).trim()
-      // Product_Name: prefer the main PF row, fall back to the `_2_0` PF row.
-      const productName = (mainRow ? strVal(mainRow.Product_Name) : strVal(row.Product_Name)).trim()
+      // BVK "Product" column shows `Brand_Selling_Name` — prefer the main PF
+      // row, fall back to the `_2_0` PF row.
+      const productName = (mainRow ? strVal(mainRow.Brand_Selling_Name) : strVal(row.Brand_Selling_Name)).trim()
       // Remarks come raw from the `_2_0` PF row (or main row when only main exists).
       const remarks = strVal(row.Remarks)
       const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit2, fit1, row, index)

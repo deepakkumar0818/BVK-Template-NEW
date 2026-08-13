@@ -211,7 +211,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     return data.remarks || ''
   })()
   const rawRec = rawQuotationData as Record<string, unknown> | undefined
-  const slsPackingTransportPacking = String(rawRec?.Packing ?? '').trim()
+  // "Packing" line in the "Packing and Transport Cost :" grid.
+  // Row is ALWAYS rendered. Hardcoded phrase "Normal Box packing … in above price"
+  // where the inside word flips between "included" / "excluded" based on Zoho
+  // `Packing_Charge` toggle. Zoho `Packing` text field is not read here.
+  const slsPackingTransportPacking = (() => {
+    const charge = rawRec?.Packing_Charge
+    const isTrue =
+      charge === true ||
+      (typeof charge === 'string' && charge.trim().toLowerCase() === 'true')
+    return `Normal Box packing ${isTrue ? 'included' : 'excluded'} in above price`
+  })()
   const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim()
   const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
   // "Taxes:" row content — per-tax notice lines derived from CGST/SGST/IGST amounts (rates hard-coded
@@ -234,8 +244,8 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const warrantyDisclaimer = rawQuotationData?.Warranty_Disclaimer || 'We declare that our products are wearing parts. Therefore, they are excluded from any warranty regulations.'
   const generalTerms = rawQuotationData?.General_Terms || 'All WMW goods and services are subject to the WMW General Terms and Conditions, a copy of which is available on the WMW website (www.wmwindia.com) or you may request a hard copy which we can send to you. This is in line with the wording on the website.'
   const closingStatement = rawQuotationData?.Closing_Statement || 'We hope that the above quotation is of interest and will gladly be of further help with any request you may have.'
-  const contactPerson = rawQuotationData?.Payement || 'Mr. Milap Verma'
-  const contactNumber = rawQuotationData?.Contact_Number || '(+91-9358584002)'
+  const contactPerson = String(rawQuotationData?.Contact_Person ?? '').trim()
+  const contactNumber = rawQuotationData?.Contact_Number || ''
   const companyName = rawQuotationData?.Company_Name || 'WMW Industries Limited.'
   const companyFormerName = rawQuotationData?.Company_Former_Name || 'Formerly known as GKD India Limited'
   const registeredAddress = rawQuotationData?.Registered_Address || '52, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India'
@@ -251,8 +261,19 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   return (
     <>
       <div className="sls-quotation-container" style={{ maxWidth: '210mm', margin: '0 auto', padding: '10mm 20mm 20mm 20mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}>
-        {/* Header with Logo and Date */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', marginTop: 0 }}>
+        {/* Whole page wrapped in a <table> so the browser repeats <thead> on
+         * every printed page (same trick BVK uses). Reuses the `.bvk-print-table`
+         * / `.bvk-print-header-row` classes so the existing print CSS
+         * (display: table-header-group) applies here too. */}
+        <table className="bvk-print-table sls-print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+          <thead className="bvk-print-header-row sls-print-header-row">
+            <tr className="print-page-top-spacer" aria-hidden="true">
+              <td />
+            </tr>
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+                {/* Header with Logo and Date */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', marginTop: 0 }}>
           {/* Left side - Empty for recipient info */}
           <div></div>
 
@@ -280,6 +301,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             </div>
           </div>
         </div>
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
 
         {/* Recipient Information — Zoho-driven, no hardcoded lines:
          *   To,
@@ -412,7 +439,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             >
               <div>Packing</div>
               <div>:</div>
-              <div>{slsPackingTransportPacking || '\u00A0'}</div>
+              <div>{slsPackingTransportPacking}</div>
               <div>Incoterms</div>
               <div>:</div>
               <div>{slsPackingTransportIncoterms || '\u00A0'}</div>
@@ -446,6 +473,55 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <strong>Payment:</strong> {payment}
             </div>
           ) : null}
+          {/* Exclusions — same mapping as BVK: reads Zoho
+           * `The_following_is_not_included_in_this_quotation` (textarea, split
+           * on newlines into bullets), skip when empty. Sits directly below
+           * the Payment row and matches its section framing. */}
+          {(() => {
+            const body = String(
+              rawQuotationData?.The_following_is_not_included_in_this_quotation ?? ''
+            ).trim()
+            if (!body) return null
+            const items = body
+              .split(/\r?\n/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+            if (items.length === 0) return null
+            return (
+              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                  The following is not included in this quotation:
+                </div>
+                <ul
+                  style={{
+                    marginLeft: '20px',
+                    marginBottom: 0,
+                    paddingLeft: '20px',
+                    listStyleType: 'disc',
+                    listStylePosition: 'outside',
+                  }}
+                >
+                  {items.map((item, i) => (
+                    <li key={i} style={{ marginBottom: '4px', whiteSpace: 'pre-wrap' }}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+          })()}
+          {/* General Remarks — same mapping as BVK: reads Zoho `General_Remarks`,
+           * skip when empty, preserve format via `whiteSpace: pre-wrap`. Sits
+           * directly below the Payment row and matches its styling. */}
+          {(() => {
+            const v = String(rawQuotationData?.General_Remarks ?? '').trim()
+            if (!v) return null
+            return (
+              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+                <strong>General Remarks:</strong> {v}
+              </div>
+            )
+          })()}
           {quotationValidity ? (
             <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
               <strong>Quotation Valid Till Time:</strong> {quotationValidity}
@@ -490,177 +566,16 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             </div>
           </div>
         </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div className="no-print" style={{ marginTop: '24px', textAlign: 'center' }}>
         <Link href="/sls-conditions" style={{ color: '#1e40af', textDecoration: 'underline' }}>
           View Standard Conditions of Sale
         </Link>
-      </div>
-
-      {/* SLS: printable conditions block (Zoho-driven bodies; hardcoded section labels) */}
-      <div className="conditions-for-print conditions-for-print--sls conditions-doc" style={{ border: '1px solid #000', padding: '16px' }}>
-        {/* Exclusions section — hardcoded heading, bullets from Zoho
-         * `The_following_is_not_included_in_this_quotation` (textarea split on newlines).
-         * Whole section skipped when field is empty. */}
-        {(() => {
-          const body = String(
-            rawQuotationData?.The_following_is_not_included_in_this_quotation ?? ''
-          ).trim()
-          if (!body) return null
-          const items = body
-            .split(/\r?\n/)
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0)
-          if (items.length === 0) return null
-          return (
-            <>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>The following is not included in this quotation:</div>
-              <ul
-                style={{
-                  marginLeft: '20px',
-                  marginBottom: '14px',
-                  paddingLeft: '20px',
-                  listStyleType: 'disc',
-                  listStylePosition: 'outside',
-                }}
-              >
-                {items.map((item, i) => (
-                  <li key={i} style={{ marginBottom: '6px', whiteSpace: 'pre-wrap' }}>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
-        <div style={{ marginBottom: '6px' }}>Will be extra as applicable over and above the Ex-factory prices quoted.</div>
-        <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>18% IGST will be applicable extra.</div>
-        <div style={{ marginBottom: '10px' }}>
-          However, if there is any change in Tax and any New Statutory Levies is introduced by Government at the time of delivery of the same will be
-          billed as per actual.
-        </div>
-        <div style={{ marginBottom: '14px' }}>
-          <strong>**</strong>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-
-        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Packing and Transport:</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', rowGap: '6px', marginBottom: '14px' }}>
-          {/* Packing line — Zoho `Packing`; word "included" flips to "excluded"
-           * when `Packing_Charge` toggle is false. */}
-          {(() => {
-            const packingText = String(rawQuotationData?.Packing ?? '').trim()
-            if (!packingText) return null
-            const v = rawQuotationData?.Packing_Charge
-            const isTrue =
-              v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
-            const finalText = isTrue
-              ? packingText
-              : packingText.replace(/\bincluded\b/gi, (m) =>
-                  m === m.toUpperCase()
-                    ? 'EXCLUDED'
-                    : m[0] === m[0].toUpperCase()
-                      ? 'Excluded'
-                      : 'excluded'
-                )
-            return (
-              <>
-                <div>Packing</div>
-                <div>:</div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{finalText}</div>
-              </>
-            )
-          })()}
-          <div>Freight cost to site</div>
-          <div>:</div>
-          <div>To be paid as per actual by the client directly.</div>
-        </div>
-
-        <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-
-        {/* Delivery time — body from Zoho `Delivery_Time`; skip when empty; pre-wrap. */}
-        {(() => {
-          const v = String(rawQuotationData?.Delivery_Time ?? '').trim()
-          if (!v) return null
-          return (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 10px 1fr', marginBottom: '14px' }}>
-                <div style={{ fontWeight: 'bold' }}>Delivery time</div>
-                <div>:</div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{v}</div>
-              </div>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        {/* Payment conditions — body from Zoho `Payment_Condition`; skip when empty; pre-wrap. */}
-        {(() => {
-          const v = String(rawQuotationData?.Payment_Condition ?? '').trim()
-          if (!v) return null
-          return (
-            <>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Payment conditions:</div>
-              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        {/* Quotation Valid Till — body from Zoho `Quotation_Validity`; skip when empty; pre-wrap. */}
-        {(() => {
-          const v = String(rawQuotationData?.Quotation_Validity ?? '').trim()
-          if (!v) return null
-          return (
-            <>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Quotation Valid Till:</div>
-              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        {/* General Remarks — body from Zoho `General_Remarks`; skip when empty; pre-wrap. */}
-        {(() => {
-          const v = String(rawQuotationData?.General_Remarks ?? '').trim()
-          if (!v) return null
-          return (
-            <>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>General Remarks:</div>
-              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        {/* Additional remarks — body from Zoho `Additional_Remarks`; skip when empty; pre-wrap. */}
-        {(() => {
-          const v = String(rawQuotationData?.Additional_Remarks ?? '').trim()
-          if (!v) return null
-          return (
-            <>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Additional remarks:</div>
-              <div style={{ marginBottom: '14px', whiteSpace: 'pre-wrap' }}>{v}</div>
-              <hr style={{ border: 0, borderTop: '1px solid #000', margin: '14px 0' }} />
-            </>
-          )
-        })()}
-
-        <div style={{ marginBottom: '12px' }}>
-          We hope that the above quotation is of interest and will gladly be of further help for any request you may have.
-        </div>
-        <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>GKD India Ltd.</div>
-
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ fontWeight: 'bold' }}>Contact Person:</div>
-          <div style={{ fontWeight: 'bold' }}>Mr. Milap Verma</div>
-          <div style={{ fontWeight: 'bold' }}>(9358584002)</div>
-        </div>
       </div>
 
       <div className="no-print" style={{ marginTop: '24px', textAlign: 'center' }}>

@@ -8,6 +8,7 @@ import Wmwe1QuotationContent from './Wmwe1QuotationContent'
 import SLSQuotationContent from './SLSQuotationContent'
 import GKDQuotationContent from './GKDQuotationContent'
 import BVKQuotationContent from './BVKQuotationContent'
+import WIProcessFebricQuotationContent from './WIProcessFebricQuotationContent'
 
 const headerSupplierCell = (
   <td style={{ width: '55%', verticalAlign: 'top', border: '1px solid #000', padding: '12px' }}>
@@ -157,6 +158,15 @@ export default function QuotationTemplateByType({
         />
       ) : templateType === 'BVK' ? (
         <BVKQuotationContent
+          data={quotationData}
+          shippingData={shippingData}
+          billingData={billingData}
+          rawQuotationData={rawQuotationData}
+        />
+      ) : templateType === 'WI_PROCESS_FEBRIC' ? (
+        // Isolated template — the second developer owns this branch and
+        // everything it points at. Do not fold this into another branch.
+        <WIProcessFebricQuotationContent
           data={quotationData}
           shippingData={shippingData}
           billingData={billingData}

@@ -150,7 +150,7 @@ export default function SlsConditionsPage() {
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 'bold' }}>Contact Person:</div>
           <div style={{ fontWeight: 'bold' }}>Mr. Milap Verma</div>
-          <div style={{ fontWeight: 'bold' }}>(9358584002)</div>
+          {/* <div style={{ fontWeight: 'bold' }}>(9358584002)</div> */}
         </div>
       </div>
     </main>
