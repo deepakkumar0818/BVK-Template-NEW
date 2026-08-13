@@ -158,8 +158,17 @@ body {
 
 /* Hide parent border in print for export template */
 @media print {
-  /* SLS: narrow side gutters + remove extra bottom padding so conditions follow immediately. */
+  /* SLS: mirror BVK's print container overrides so the `<thead>` inside
+   * `.bvk-print-table` can repeat on every printed page. Without the
+   * `max-width: 100% / width: 100%` overrides here, the container keeps its
+   * inline 210mm cap and the browser fails to paginate the outer table
+   * across pages (which is what actually breaks thead repetition).
+   * Padding-top is zeroed so the .print-page-top-spacer inside the thead
+   * owns the top inset — same trick BVK uses. */
   .sls-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-top: 0 !important;
     padding-left: 8mm !important;
     padding-right: 8mm !important;
     padding-bottom: 2mm !important;
@@ -3119,4 +3128,89 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 .conditions-doc p {
   margin-bottom: 8px;
   line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WI Process Febric — ISOLATED CSS block
+ * ═══════════════════════════════════════════════════════════════════════════
+ * All selectors here are prefixed with `wi-process-febric-` so this block is
+ * owned entirely by the WI Process Febric template developer. Do NOT reuse
+ * these classes on other templates, and do NOT edit other templates' rules
+ * from inside this block.
+ *
+ * Selectors defined here:
+ *   .wi-process-febric-quotation-container
+ *   .wi-process-febric-print-table
+ *   .wi-process-febric-print-header-row
+ *   .wi-process-febric-print-page-top-spacer
+ *   .wi-process-febric-items-table
+ *   .wi-process-febric-summary-row
+ *   .wi-process-febric-terms-grid
+ *   .wi-process-febric-company-footer
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Screen: on-screen the header row shows once (no repeat behaviour). */
+.wi-process-febric-print-table thead.wi-process-febric-print-header-row {
+  display: table-header-group;
+}
+
+.wi-process-febric-print-page-top-spacer {
+  display: none;
+}
+
+@media print {
+  /* Container in print: full width so the outer <table> can page-break
+   * across pages (that is what unlocks <thead> repetition). */
+  .wi-process-febric-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-top: 0 !important;
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
+    padding-bottom: 5mm !important;
+  }
+
+  .wi-process-febric-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Repeat the header on every printed page. */
+  .wi-process-febric-print-table thead.wi-process-febric-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .wi-process-febric-print-header-row td {
+    display: table-cell !important;
+  }
+
+  /* Top spacer row — matches the page inset used by the other templates. */
+  .wi-process-febric-print-page-top-spacer {
+    display: table-row !important;
+    height: var(--quotation-print-top-inset) !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .wi-process-febric-print-page-top-spacer td {
+    display: table-cell !important;
+    height: var(--quotation-print-top-inset) !important;
+    min-height: var(--quotation-print-top-inset) !important;
+    padding: 0 !important;
+  }
+
+  /* Items table: keep rows on a single page when possible. */
+  .wi-process-febric-items-table {
+    page-break-inside: auto;
+  }
+  .wi-process-febric-items-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Footer: avoid orphaning the small "Registered Office" block. */
+  .wi-process-febric-company-footer {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }
