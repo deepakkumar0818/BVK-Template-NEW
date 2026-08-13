@@ -276,10 +276,10 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                       <tr>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '5%' }}>Item</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '38%' }}>Product</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '10%' }}>HSN Code</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', width: '14%' }}>HSN Code</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '11%' }}>Qty/UOM</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '16%' }}>{`Unit Price / ${displayCurrency}`}</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '20%' }}>{`Total Price / ${displayCurrency}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '16%' }}>{`Total Price / ${displayCurrency}`}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -303,7 +303,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                               <div style={{ whiteSpace: 'pre-wrap' }}>{row.remarks}</div>
                             ) : null}
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {row.hsnCode || ''}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
@@ -581,19 +581,6 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                       </div>
                     )
                   })()}
-
-                  {/* General Conditions */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ borderTop: '1px solid #000', marginTop: '15px', marginBottom: '15px' }}></div>
-                    <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
-                      <li style={{ marginBottom: '4px' }}>If the specifications are changed as the project develops, prices & deliveries may change.</li>
-                      <li style={{ marginBottom: '4px' }}>The above quotation is valid for the Mesh quantities, dimensions and total quantity.</li>
-                      <li style={{ marginBottom: '4px' }}>Only customer will be responsible for unloading and storing material safely and securely without any damage to boxes / material.</li>
-                    </ul>
-                    <div style={{ marginTop: '8px', marginLeft: '20px' }}>
-                      Our general conditions of sales and standard terms of supply apply, the copy of same is available on our website, please see www.bvkgroup.in\hydrotech
-                    </div>
-                  </div>
 
                   {/* Additional Remarks — from Zoho `Additional_Remarks`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
