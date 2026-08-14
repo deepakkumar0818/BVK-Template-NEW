@@ -173,6 +173,24 @@ body {
     padding-right: 8mm !important;
     padding-bottom: 2mm !important;
   }
+
+  /* SLS: dedicated print rules so the outer <table>'s <thead> (logo +
+   * company name + date) repeats on every printed page — same mechanism
+   * WI Decomesh uses, but with `.sls-print-*` selectors so SLS owns its
+   * own repeat behaviour rather than piggy-backing on BVK's classes. */
+  .sls-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+  }
+
+  .sls-print-table thead.sls-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .sls-print-header-row td {
+    display: table-cell !important;
+  }
+
   /* SLS: reduce end-of-document whitespace so conditions follow immediately. */
   .sls-signature-block {
     margin-top: 8px !important;
@@ -3240,3 +3258,84 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
     break-inside: avoid;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * WI Decomesh — ISOLATED CSS block
+ * ═══════════════════════════════════════════════════════════════════════════
+ * All selectors here are prefixed with `wi-decomesh-` so this block is owned
+ * entirely by the WI Decomesh template developer. Do NOT reuse these classes
+ * on other templates, and do NOT edit other templates' rules from inside this
+ * block.
+ *
+ * Selectors defined here:
+ *   .wi-decomesh-quotation-container
+ *   .wi-decomesh-print-table
+ *   .wi-decomesh-print-header-row
+ *   .wi-decomesh-print-page-top-spacer
+ *   .wi-decomesh-item-block
+ *   .wi-decomesh-company-footer
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Screen: on-screen the header row shows once (no repeat behaviour). */
+.wi-decomesh-print-table thead.wi-decomesh-print-header-row {
+  display: table-header-group;
+}
+
+.wi-decomesh-print-page-top-spacer {
+  display: none;
+}
+
+@media print {
+  /* Container in print: full width so the outer <table> can page-break
+   * across pages (that is what unlocks <thead> repetition). */
+  .wi-decomesh-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-top: 0 !important;
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
+    padding-bottom: 5mm !important;
+  }
+
+  .wi-decomesh-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Repeat the header on every printed page. */
+  .wi-decomesh-print-table thead.wi-decomesh-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .wi-decomesh-print-header-row td {
+    display: table-cell !important;
+  }
+
+  /* Top spacer row — matches the page inset used by the other templates. */
+  .wi-decomesh-print-page-top-spacer {
+    display: table-row !important;
+    height: var(--quotation-print-top-inset) !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .wi-decomesh-print-page-top-spacer td {
+    display: table-cell !important;
+    height: var(--quotation-print-top-inset) !important;
+    min-height: var(--quotation-print-top-inset) !important;
+    padding: 0 !important;
+  }
+
+  /* Keep each per-item block on a single page when possible. */
+  .wi-decomesh-item-block {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Footer: avoid orphaning the small "Registered Office" block. */
+  .wi-decomesh-company-footer {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}
+

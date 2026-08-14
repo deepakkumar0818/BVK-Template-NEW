@@ -274,7 +274,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
                     <thead>
                       <tr>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '5%' }}>Item</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '5%', whiteSpace: 'nowrap' }}>Item</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '38%' }}>Product</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', width: '14%' }}>HSN Code</th>
                         <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '11%' }}>Qty/UOM</th>
@@ -530,7 +530,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   {/* Payment conditions — from Zoho `Payment_Condition`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
                   {(() => {
-                    const v = String(rawQuotationData?.Payment_Condition ?? '').trim()
+                    const v = String(rawQuotationData?.Term_of_Payment ?? '').trim()
                     if (!v) return null
                     return (
                       <div style={{ marginBottom: '12px' }}>
@@ -555,7 +555,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
 
                   {/* Quantity Validity */}
                   <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quantity Validity</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Validity</div>
                     <div style={{ marginLeft: '20px' }}>Price valid for the quantity mentioned above in the quotation only.</div>
                   </div>
 
