@@ -450,21 +450,10 @@ export default function WIProcessFebricQuotationContent({
                   </div>
                 ) : null}
 
-                {/* Exclusions — Zoho `The_following_is_not_included_in_this_quotation`, split on newlines */}
+                {/* Exclusions — Zoho `The_following_is_not_included_in_this_quotation`, split on newlines.
+                    Heading always renders; body is blank (no hard-coded fallback) when Zoho has no value. */}
                 {(() => {
                   const body = String(rawRec?.[F.exclusions] ?? '').trim()
-                  if (!body) {
-                    return (
-                      <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
-                        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                          The following is not included in this quotation:
-                        </div>
-                        <div>
-                          All items not mentioned, insurance, Taxes &amp; Duties, Freight, Demurrage, Detention charges.
-                        </div>
-                      </div>
-                    )
-                  }
                   const items = body
                     .split(/\r?\n/)
                     .map((s) => s.trim())
@@ -474,7 +463,7 @@ export default function WIProcessFebricQuotationContent({
                       <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
                         The following is not included in this quotation:
                       </div>
-                      {items.length === 1 ? (
+                      {items.length === 0 ? null : items.length === 1 ? (
                         <div style={{ whiteSpace: 'pre-wrap' }}>{items[0]}</div>
                       ) : (
                         <ul
