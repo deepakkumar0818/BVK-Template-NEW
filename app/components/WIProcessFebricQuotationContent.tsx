@@ -34,6 +34,7 @@ import {
   WI_PROCESS_FEBRIC_ZOHO_FIELDS as F,
   buildWiProcessFebricTableRows,
   resolveWiProcessFebricChargeTotals,
+  resolveWiProcessFebricGstLine,
   resolveWiProcessFebricOtherCharges,
 } from '@/lib/wi-process-febric-line-display'
 import PrintButton from './PrintButton'
@@ -122,9 +123,6 @@ export default function WIProcessFebricQuotationContent({
   )
 
   const {
-    cgstAmount,
-    sgstAmount,
-    igstAmount,
     totalBeforeTax,
     totalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, lineItemsTotal)
@@ -187,31 +185,28 @@ export default function WIProcessFebricQuotationContent({
     rawRec?.[F.deliveryTerms] ?? rawRec?.[F.deliveryTermsAlt] ?? ''
   ).trim()
   const deliveryTime = String(rawRec?.[F.deliveryTime] ?? '').trim()
-  const paymentTerms = String(rawRec?.[F.paymentCondition] ?? '').trim()
+  const paymentTerms = String(rawRec?.[F.paymentTerms] ?? '').trim()
   const quotationValidity = String(rawRec?.[F.quotationValidity] ?? '').trim()
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
-  const additionalRemarks = String(rawRec?.[F.additionalRemarks] ?? '').trim()
 
-  // Taxes narrative — the PDF shows GST rate wording inline, so we render
-  // per-tax notice lines derived from the CGST/SGST/IGST scalars. When the
-  // record has none of those, the Zoho root `Taxes` scalar is shown verbatim.
-  const taxHasValue = (n: number) => Number.isFinite(n) && n !== 0
-  const taxNoticeLines: string[] = []
-  if (taxHasValue(igstAmount)) taxNoticeLines.push('IGST will be applicable extra.')
-  if (taxHasValue(cgstAmount)) taxNoticeLines.push('CGST will be applicable extra.')
-  if (taxHasValue(sgstAmount)) taxNoticeLines.push('SGST will be applicable extra.')
-  const taxesScalar = String(rawRec?.[F.taxes] ?? '').trim()
-  const showTaxesRow = taxNoticeLines.length > 0 || taxesScalar !== ''
+  // Taxes narrative — exactly one of root `IGST` / `CGST` / `SGST` is
+  // expected to be non-zero at a time; shows "<Type> is <rate>%" for that
+  // one only, under the always-shown hard-coded sentence.
+  const gstLine = resolveWiProcessFebricGstLine(rawRec)
 
   // Closing + Contact + Footer strings — same "Zoho with fallback default"
   // pattern SLS uses, but each read goes through the ISOLATED field
   // registry so a rename in the other file is picked up here automatically.
-  const warrantyDisclaimer = String(rawRec?.[F.warrantyDisclaimer] ?? '').trim()
-  const generalTerms = String(rawRec?.[F.generalTerms] ?? '').trim()
   const closingStatement = String(rawRec?.[F.closingStatement] ?? '').trim() ||
     'We hope that the above quotation is of interest and will gladly be of further help for any request you may have.'
-  const contactPerson = String(rawRec?.[F.contactPerson] ?? '').trim()
-  const contactNumber = String(rawRec?.[F.contactNumber] ?? '').trim()
+  // Sample record stores name+phone combined in one string (e.g. "hello world(987654321)"),
+  // so the "9358364921" fallback number is only used alongside the fallback
+  // name — never appended to a real Contact_Person value that already has no
+  // separate Contact_Number field.
+  const contactPersonRaw = String(rawRec?.[F.contactPerson] ?? '').trim()
+  const contactNumberRaw = String(rawRec?.[F.contactNumber] ?? '').trim()
+  const contactPerson = contactPersonRaw || 'Mr. Alok Maheshwari'
+  const contactNumber = contactPersonRaw ? contactNumberRaw : contactNumberRaw || '9358364921'
   const companyName = String(rawRec?.[F.companyName] ?? '').trim() || 'WMW INDUSTRIES LIMITED'
   const companyFormerName = String(rawRec?.[F.companyFormerName] ?? '').trim() || 'Formerly known as GKD India Limited'
   const registeredAddress = String(rawRec?.[F.registeredAddress] ?? '').trim() ||
@@ -362,11 +357,12 @@ export default function WIProcessFebricQuotationContent({
                   >
                     <thead>
                       <tr>
-                        <th style={itemsHeaderCellStyle(6, 'center')}>Item</th>
-                        <th style={itemsHeaderCellStyle(44, 'left')}>Product</th>
+                        <th style={itemsHeaderCellStyle(8, 'center')}>Item</th>
+                        <th style={itemsHeaderCellStyle(27, 'left')}>Product</th>
+                        <th style={itemsHeaderCellStyle(13, 'center')}>HSN Code</th>
                         <th style={itemsHeaderCellStyle(12, 'center')}>Qty</th>
-                        <th style={itemsHeaderCellStyle(19, 'right')}>{`Unit Price / ${displayCurrency}`}</th>
-                        <th style={itemsHeaderCellStyle(19, 'right')}>{`Total Price ${displayCurrency}`}</th>
+                        <th style={itemsHeaderCellStyle(20, 'center')}>{`Unit Price / ${displayCurrency}`}</th>
+                        <th style={itemsHeaderCellStyle(20, 'center')}>{`Total Price ${displayCurrency}`}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -396,21 +392,19 @@ export default function WIProcessFebricQuotationContent({
                                 ))}
                               </div>
                             ) : null}
-                            {row.remarks ? (
-                              <div style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{row.remarks}</div>
-                            ) : null}
                           </td>
-                          <td style={itemsBodyCellStyle('left')}>
+                          <td style={{ ...itemsBodyCellStyle('center'), whiteSpace: 'nowrap' }}>{row.hsnCode || ''}</td>
+                          <td style={itemsBodyCellStyle('center')}>
                             {row.qty
                               ? `${row.qty}${row.uom ? ` ${row.uom}` : ''}`
                               : ''}
                           </td>
-                          <td style={itemsBodyCellStyle('right')}>
+                          <td style={itemsBodyCellStyle('center')}>
                             {row.unitPrice > 0
                               ? `${formatCurrency(row.unitPrice, displayCurrency)}${row.uom ? ` ${row.uom}` : ''}`
                               : ''}
                           </td>
-                          <td style={itemsBodyCellStyle('right')}>
+                          <td style={itemsBodyCellStyle('center')}>
                             {row.totalPrice > 0 ? formatCurrency(row.totalPrice, displayCurrency) : ''}
                           </td>
                         </tr>
@@ -418,7 +412,7 @@ export default function WIProcessFebricQuotationContent({
                       {summaryRows.map((srow) => (
                         <tr key={srow.label} className="wi-process-febric-summary-row">
                           <td
-                            colSpan={3}
+                            colSpan={5}
                             style={{
                               border: '1px solid #000',
                               padding: srow.big ? '12px 8px' : '6px 8px',
@@ -431,7 +425,6 @@ export default function WIProcessFebricQuotationContent({
                             {srow.label}
                           </td>
                           <td
-                            colSpan={2}
                             style={{
                               border: '1px solid #000',
                               padding: srow.big ? '12px 8px' : '6px 8px',
@@ -507,19 +500,10 @@ export default function WIProcessFebricQuotationContent({
                 {/* Taxes and Duties */}
                 <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
-                  {showTaxesRow ? (
-                    taxNoticeLines.length > 0 ? (
-                      taxNoticeLines.map((line, i) => (
-                        <div key={line} style={{ marginTop: i === 0 ? 0 : '2px' }}>{line}</div>
-                      ))
-                    ) : (
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{taxesScalar}</div>
-                    )
-                  ) : (
-                    <div>
-                      Will be Extra as applicable over and above the Ex-factory prices quoted.
-                    </div>
-                  )}
+                  <div>
+                    Will be Extra as applicable over and above the Ex-factory prices quoted.
+                    {gstLine ? ` ${gstLine.type} is ${gstLine.rate}%` : ''}
+                  </div>
                   <div style={{ marginTop: '6px' }}>
                     However, if there is any change in Sales Tax, Excise Duty and any New Statutory Levies is introduced by Government at the time of delivery, the same will be billed as per actual.
                   </div>
@@ -556,7 +540,8 @@ export default function WIProcessFebricQuotationContent({
                   ) : null}
                 </div>
 
-                {/* Delivery / Payment / Validity / General Remarks — labelled grid, one row per non-empty field */}
+                {/* Delivery / Payment / Validity / General Remarks — labelled grid.
+                    Rows always render (label + colon), value is blank when Zoho has no data. */}
                 <div
                   style={{
                     display: 'grid',
@@ -568,48 +553,22 @@ export default function WIProcessFebricQuotationContent({
                     marginBottom: '10px',
                   }}
                 >
-                  {deliveryTime ? (
-                    <>
-                      <div style={{ fontWeight: 'bold' }}>Delivery time</div>
-                      <div style={{ fontWeight: 'bold' }}>:</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{deliveryTime}</div>
-                    </>
-                  ) : null}
-                  {paymentTerms ? (
-                    <>
-                      <div style={{ fontWeight: 'bold' }}>Payment Terms</div>
-                      <div style={{ fontWeight: 'bold' }}>:</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{paymentTerms}</div>
-                    </>
-                  ) : null}
-                  {quotationValidity ? (
-                    <>
-                      <div style={{ fontWeight: 'bold' }}>Quotation Validity</div>
-                      <div style={{ fontWeight: 'bold' }}>:</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{quotationValidity}</div>
-                    </>
-                  ) : null}
-                  {generalRemarks ? (
-                    <>
-                      <div style={{ fontWeight: 'bold' }}>General Remarks</div>
-                      <div style={{ fontWeight: 'bold' }}>:</div>
-                      <div style={{ whiteSpace: 'pre-wrap' }}>{generalRemarks}</div>
-                    </>
-                  ) : null}
+                  <div style={{ fontWeight: 'bold' }}>Delivery time</div>
+                  <div style={{ fontWeight: 'bold' }}>:</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{deliveryTime}</div>
+
+                  <div style={{ fontWeight: 'bold' }}>Payment Terms</div>
+                  <div style={{ fontWeight: 'bold' }}>:</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{paymentTerms}</div>
+
+                  <div style={{ fontWeight: 'bold' }}>Quotation Validity</div>
+                  <div style={{ fontWeight: 'bold' }}>:</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{quotationValidity}</div>
+
+                  <div style={{ fontWeight: 'bold' }}>General Remarks</div>
+                  <div style={{ fontWeight: 'bold' }}>:</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{generalRemarks}</div>
                 </div>
-
-                {additionalRemarks ? (
-                  <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>
-                    <strong>Additional Remarks:</strong> {additionalRemarks}
-                  </div>
-                ) : null}
-
-                {warrantyDisclaimer ? (
-                  <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>{warrantyDisclaimer}</div>
-                ) : null}
-                {generalTerms ? (
-                  <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>{generalTerms}</div>
-                ) : null}
 
                 <div style={{ marginBottom: '25px' }}>{closingStatement}</div>
 
@@ -620,8 +579,19 @@ export default function WIProcessFebricQuotationContent({
                     Contact Person: <strong>{contactPerson}</strong>{contactNumber ? ` (${contactNumber})` : ''}
                   </div>
                 </div>
-
-                {/* Footer */}
+              </td>
+            </tr>
+          </tbody>
+          {/*
+            Footer as its own <tfoot> (not crammed into the <tbody> cell above)
+            so the browser's table pagination treats it as a distinct section
+            instead of one giant unbreakable-ish <td> — this is what was
+            causing the trailing blank page. Mirrors BVKQuotationContent's
+            <tfoot className="bvk-print-footer-row"> pattern.
+          */}
+          <tfoot className="wi-process-febric-print-footer-row">
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
                 <div
                   className="wi-process-febric-company-footer"
                   style={{
@@ -662,7 +632,7 @@ export default function WIProcessFebricQuotationContent({
                 </div>
               </td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
 
