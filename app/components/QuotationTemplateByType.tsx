@@ -9,6 +9,7 @@ import SLSQuotationContent from './SLSQuotationContent'
 import GKDQuotationContent from './GKDQuotationContent'
 import BVKQuotationContent from './BVKQuotationContent'
 import WIProcessFebricQuotationContent from './WIProcessFebricQuotationContent'
+import WIDecomeshQuotationContent from './WIDecomeshQuotationContent'
 
 const headerSupplierCell = (
   <td style={{ width: '55%', verticalAlign: 'top', border: '1px solid #000', padding: '12px' }}>
@@ -167,6 +168,14 @@ export default function QuotationTemplateByType({
         // Isolated template — the second developer owns this branch and
         // everything it points at. Do not fold this into another branch.
         <WIProcessFebricQuotationContent
+          data={quotationData}
+          shippingData={shippingData}
+          billingData={billingData}
+          rawQuotationData={rawQuotationData}
+        />
+      ) : templateType === 'WI_DECOMESH' ? (
+        // Isolated template — see the isolation note in WIDecomeshQuotationContent.tsx.
+        <WIDecomeshQuotationContent
           data={quotationData}
           shippingData={shippingData}
           billingData={billingData}
