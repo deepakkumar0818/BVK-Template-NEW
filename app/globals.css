@@ -3160,16 +3160,34 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
  *   .wi-process-febric-quotation-container
  *   .wi-process-febric-print-table
  *   .wi-process-febric-print-header-row
+ *   .wi-process-febric-print-footer-row
  *   .wi-process-febric-print-page-top-spacer
  *   .wi-process-febric-items-table
  *   .wi-process-febric-summary-row
  *   .wi-process-febric-terms-grid
  *   .wi-process-febric-company-footer
- * ═══════════════════════════════════════════════════════════════════════════ */
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * PAGINATION NOTE (fixed 2026-08-14): the footer used to be the last block
+ * inside the <tbody>'s single <td>, alongside everything else (recipient,
+ * items table, terms). A <tfoot> is a distinct table section the browser's
+ * print/pagination algorithm understands on its own terms; burying the
+ * footer inside the same unbroken <td> as the rest of the body, combined
+ * with `break-inside: avoid` on that footer block, was causing the print
+ * engine to push the whole footer to a new page even when it didn't need
+ * the whole page — producing a blank trailing page. Moved the footer into
+ * its own <tfoot className="wi-process-febric-print-footer-row"> (mirrors
+ * BVKQuotationContent's <tfoot className="bvk-print-footer-row">), fixed
+ * by the display: table-footer-group rules below.
+ */
 
-/* Screen: on-screen the header row shows once (no repeat behaviour). */
+/* Screen: header shows once, footer shows once at the true end (no repeat behaviour). */
 .wi-process-febric-print-table thead.wi-process-febric-print-header-row {
   display: table-header-group;
+}
+
+.wi-process-febric-print-table tfoot.wi-process-febric-print-footer-row {
+  display: table-footer-group;
 }
 
 .wi-process-febric-print-page-top-spacer {
@@ -3198,7 +3216,15 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
     display: table-header-group !important;
   }
 
-  .wi-process-febric-print-header-row td {
+  /* Footer as its own table section — sits once at the true end of the
+   * document instead of being crammed into the body's last <td>, which is
+   * what was pushing a blank page after it. See PAGINATION NOTE above. */
+  .wi-process-febric-print-table tfoot.wi-process-febric-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .wi-process-febric-print-header-row td,
+  .wi-process-febric-print-footer-row td {
     display: table-cell !important;
   }
 
