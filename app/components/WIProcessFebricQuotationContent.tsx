@@ -32,6 +32,7 @@ import {
 } from '@/lib/quotation-utils'
 import {
   WI_PROCESS_FEBRIC_ZOHO_FIELDS as F,
+  buildWiProcessFebricDeliverySchedule,
   buildWiProcessFebricTableRows,
   resolveWiProcessFebricChargeTotals,
   resolveWiProcessFebricGstLine,
@@ -193,6 +194,11 @@ export default function WIProcessFebricQuotationContent({
   // expected to be non-zero at a time; shows "<Type> is <rate>%" for that
   // one only, under the always-shown hard-coded sentence.
   const gstLine = resolveWiProcessFebricGstLine(rawRec)
+
+  // Delivery Schedule — reads the desired-date subform for the active
+  // family and returns one group per Line_Item_ref. `null` when nothing is
+  // renderable, in which case the whole section is hidden.
+  const deliverySchedule = buildWiProcessFebricDeliverySchedule(rawRec)
 
   // Closing + Contact + Footer strings — same "Zoho with fallback default"
   // pattern SLS uses, but each read goes through the ISOLATED field
@@ -539,6 +545,33 @@ export default function WIProcessFebricQuotationContent({
                     </>
                   ) : null}
                 </div>
+
+                {/* Delivery Schedule — mirrors the SLS Delivery Schedule
+                    section (see wi-process-febric-line-display.ts). Groups
+                    entries by Line_Item_ref under a per-product heading;
+                    each entry lists Date/Week/Month + count + UOM. Hidden
+                    entirely when the record has no renderable entries. */}
+                {deliverySchedule ? (
+                  <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Schedule:</div>
+                    {deliverySchedule.map((group) => (
+                      <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          {group.ref}. {group.heading || ' '}
+                        </div>
+                        <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                          {group.entries.map((entry, i) => (
+                            <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                              <strong>{entry.label}</strong> : {entry.value}
+                              {entry.count ? `, ${entry.count} items` : ''}
+                              {entry.uom ? `, ${entry.uom}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
 
                 {/* Delivery / Payment / Validity / General Remarks — labelled grid.
                     Rows always render (label + colon), value is blank when Zoho has no data. */}

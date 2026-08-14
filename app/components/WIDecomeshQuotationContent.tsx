@@ -28,6 +28,7 @@ import { resolveConsigneeDisplay } from '@/lib/consignee-display'
 import { formatCurrency } from '@/lib/quotation-utils'
 import {
   WI_DECOMESH_ZOHO_FIELDS as F,
+  buildWiDecomeshDeliverySchedule,
   buildWiDecomeshTableRows,
 } from '@/lib/wi-decomesh-line-display'
 import PrintButton from './PrintButton'
@@ -113,6 +114,11 @@ export default function WIDecomeshQuotationContent({
   })()
   const paymentConditions = String(rawRec?.[F.paymentCondition] ?? '').trim() || 'Payment in advance'
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
+
+  // Delivery Schedule — reads the desired-date subform for the active
+  // family (mirrors the SLS Delivery Schedule spec). Returns `null` when
+  // nothing is renderable so the caller can hide the whole section.
+  const deliverySchedule = buildWiDecomeshDeliverySchedule(rawRec)
   const closingStatement = String(rawRec?.[F.closingStatement] ?? '').trim() ||
     'We hope that the above quotation is of interest and will gladly be of further help for any request you may have.'
   const contactPerson = String(rawRec?.[F.contactPerson] ?? '').trim()
@@ -302,6 +308,33 @@ export default function WIDecomeshQuotationContent({
                 {packingLine ? (
                   <div style={{ marginBottom: '20px' }}>
                     <span style={{ fontWeight: 'bold' }}>Packing included:</span> {packingLine}
+                  </div>
+                ) : null}
+
+                {/* Delivery Schedule — mirrors the SLS Delivery Schedule
+                    section (see wi-decomesh-line-display.ts). Groups
+                    entries by Line_Item_ref under a per-product heading;
+                    each entry lists Date/Week/Month + count + UOM. Hidden
+                    entirely when the record has no renderable entries. */}
+                {deliverySchedule ? (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Schedule:</div>
+                    {deliverySchedule.map((group) => (
+                      <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                          {group.ref}. {group.heading || ' '}
+                        </div>
+                        <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                          {group.entries.map((entry, i) => (
+                            <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                              <strong>{entry.label}</strong> : {entry.value}
+                              {entry.count ? `, ${entry.count} items` : ''}
+                              {entry.uom ? `, ${entry.uom}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
 
