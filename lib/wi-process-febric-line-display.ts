@@ -109,6 +109,28 @@ export const WI_PROCESS_FEBRIC_ZOHO_FIELDS = {
   subformFitmentsMain: 'Product_Fitments',
   subformFitments20: 'Product_Fitments2_0',
 
+  // Delivery Schedule section reads a `_Desired_Date` subform per family.
+  // The five families supported mirror what SLS's Delivery Schedule does.
+  // WMW families are declared here for completeness so all five map through
+  // this registry — the Product column of this template only uses the WI
+  // triplets, but the Delivery Schedule can appear on WMW-templated records
+  // too and must not silently render empty.
+  cat1WiDesiredDate: 'Category_1_MM_Database_WI_Desired_Date',
+  cat2WiDesiredDate: 'Category_2_MM_Database_WI_Desired_Date',
+  cat1WmwProduct: 'Category_1_MM_Database_WMW',
+  cat1WmwLine20: 'Category_1_MM_Database_WMW_2_0',
+  cat1WmwDesiredDate: 'Category_1_MM_Database_WMW_Desired_Date',
+  cat2WmwProduct: 'Category_2_MM_Database_WMW',
+  cat2WmwLine20: 'Category_2_MM_Database_WMW_2_0',
+  cat2WmwDesiredDate: 'Category_2_MM_Database_WMW_Desired_Date',
+  fitmentsDesiredDate: 'Product_Fitments_Desired_Date',
+
+  // Fields on a `_Desired_Date` row
+  desiredDateField: 'Date_field',
+  desiredWeekField: 'Week',
+  desiredMonthField: 'Month_field',
+  desiredNoOfItems: 'No_Of_Items',
+
   // Per-row (subform) fields
   lineItemRef: 'Line_Item_ref',
   /**
@@ -465,4 +487,138 @@ export function resolveWiProcessFebricGstLine(
   const sgst = row30 ? numFromString(row30[F.sgstRate]) : 0
   if (sgst > 0) return { type: 'SGST', rate: sgst }
   return null
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Delivery Schedule — ISOLATED resolver (mirrors the SLS Delivery Schedule
+// spec but lives entirely inside this template's file so a change here can
+// never affect SLS/BVK/GKD/WI-Decomesh).
+// ──────────────────────────────────────────────────────────────────────────
+
+/** One entry in a Delivery Schedule group's bullet list. */
+export type WiProcessFebricDeliveryScheduleEntry = {
+  label: 'Date' | 'Week' | 'Month'
+  value: string
+  count: string
+  uom: string
+}
+
+/** One group in the Delivery Schedule, keyed by `Line_Item_ref`. */
+export type WiProcessFebricDeliveryScheduleGroup = {
+  ref: string
+  heading: string
+  entries: WiProcessFebricDeliveryScheduleEntry[]
+}
+
+/**
+ * Resolves the Delivery Schedule for the WI Process Febric template.
+ *
+ *   • Picks the `_Desired_Date` subform for whichever product family the
+ *     record uses (driven by the root `Template` field).
+ *   • Groups entries by `Line_Item_ref`.
+ *   • Per-group heading:
+ *       – Category_1_MM_Database_WI family → `Brand_Category` on the main row.
+ *       – Every other family → `Brand_Selling_Name` on the main row.
+ *       – No fallback either way; blank when the field is empty.
+ *   • Per entry, picks the first non-empty field in order Date → Week → Month
+ *     and labels the row accordingly. Entries where all three are empty are
+ *     dropped.
+ *   • UOM per entry is the matching `_2_0` row's `UOM_Billing`.
+ *   • Returns `null` when no group has a renderable entry — the caller can
+ *     then hide the whole section.
+ */
+export function buildWiProcessFebricDeliverySchedule(
+  raw: Record<string, unknown> | null | undefined
+): WiProcessFebricDeliveryScheduleGroup[] | null {
+  if (!raw) return null
+  const F = WI_PROCESS_FEBRIC_ZOHO_FIELDS
+  const template = strVal(raw[F.template]).toLowerCase()
+
+  type FamilyKeys = {
+    desiredDateKey: string
+    mainKey: string
+    twoZeroKey: string
+    isCat1Wi: boolean
+  }
+  const family: FamilyKeys = (() => {
+    if (template.includes('product fitment')) {
+      return {
+        desiredDateKey: F.fitmentsDesiredDate,
+        mainKey: F.subformFitmentsMain,
+        twoZeroKey: F.subformFitments20,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
+      return {
+        desiredDateKey: F.cat2WmwDesiredDate,
+        mainKey: F.cat2WmwProduct,
+        twoZeroKey: F.cat2WmwLine20,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
+      return {
+        desiredDateKey: F.cat1WmwDesiredDate,
+        mainKey: F.cat1WmwProduct,
+        twoZeroKey: F.cat1WmwLine20,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+      return {
+        desiredDateKey: F.cat2WiDesiredDate,
+        mainKey: F.cat2Product,
+        twoZeroKey: F.cat2Line20,
+        isCat1Wi: false,
+      }
+    }
+    return {
+      desiredDateKey: F.cat1WiDesiredDate,
+      mainKey: F.cat1Product,
+      twoZeroKey: F.cat1Line20,
+      isCat1Wi: true,
+    }
+  })()
+
+  const desiredRows = subformRows(raw, family.desiredDateKey)
+  if (desiredRows.length === 0) return null
+  const mainRows = subformRows(raw, family.mainKey)
+  const twoZeroRows = subformRows(raw, family.twoZeroKey)
+
+  const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
+    rows.find((r) => strVal(r[F.lineItemRef]) === ref)
+
+  const groups = new Map<string, WiProcessFebricDeliveryScheduleGroup>()
+  for (const row of desiredRows) {
+    const ref = strVal(row[F.lineItemRef])
+    if (!ref) continue
+    const dateVal = strVal(row[F.desiredDateField])
+    const weekVal = strVal(row[F.desiredWeekField])
+    const monthVal = strVal(row[F.desiredMonthField])
+    let entry: WiProcessFebricDeliveryScheduleEntry | null = null
+    const count = strVal(row[F.desiredNoOfItems])
+    const twoZeroRow = findByRef(twoZeroRows, ref)
+    const uom = strVal(twoZeroRow?.[F.itemUomBilling])
+    if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+    else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+    else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+    if (!entry) continue
+    let group = groups.get(ref)
+    if (!group) {
+      const mainRow = findByRef(mainRows, ref)
+      const heading = family.isCat1Wi
+        ? strVal(mainRow?.[F.itemBrandCategoryAsSellingName])
+        : strVal(mainRow?.[F.itemBrandSellingName])
+      group = { ref, heading, entries: [] }
+      groups.set(ref, group)
+    }
+    group.entries.push(entry)
+  }
+  if (groups.size === 0) return null
+  return Array.from(groups.values()).sort((a, b) => {
+    const na = parseInt(a.ref, 10)
+    const nb = parseInt(b.ref, 10)
+    return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+  })
 }
