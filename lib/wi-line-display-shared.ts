@@ -130,8 +130,12 @@ export interface BvkQuotationTableRow {
   /** Weave: `Weave` or `Seam_Type` on the matching Category_*_MM_Database_WI_3_0 row only */
   weaveDisplay: string
   /** Product name for the BVK template's "Product" column — sourced from the
-   * main product subform row's `Brand_Selling_Name` field (Category_*_MM_Database_WI[i].Brand_Selling_Name).
-   * Falls back to the `QuotationLineItem.product` value when no subform row is available. */
+   * main product subform row (`Category_*_MM_Database_WI[i]`):
+   *   • Category_1_MM_Database_WI → `Brand_Category`.
+   *   • Category_2_MM_Database_WI → `Brand_Selling_Name`.
+   * No fallback either way; blank when the field is empty. The Product Fitments
+   * code path (fitments-only records) still reads `Brand_Selling_Name` since it
+   * has no `Brand_Category` column. */
   productName: string
   /** Raw `Remarks` value from the `_2_0` linked row — printed verbatim below "Product :" line. */
   remarks: string
@@ -208,9 +212,14 @@ export function buildBvkQuotationTableRows(
         // HSN_Code: same precedence as UOM — prefer `_2_0` linked row, then main product row.
         const hsnCode =
           strVal(merged.HSN_Code).trim() || strVal(pd.HSN_Code).trim()
-        // BVK "Product" column shows `Brand_Selling_Name` from the main product
-        // row (Category_*_MM_Database_WI[i]).
-        const productName = strVal(pd.Brand_Selling_Name).trim()
+        // BVK "Product" column (same rule as SLS + Delivery Schedule):
+        //   • Category_1_MM_Database_WI → `Brand_Category` on the main row.
+        //   • Category_2_MM_Database_WI → `Brand_Selling_Name` on the main row.
+        // No fallback either way — blank when the field is empty.
+        const productName =
+          bundle.product === 'Category_1_MM_Database_WI'
+            ? strVal(pd.Brand_Category).trim()
+            : strVal(pd.Brand_Selling_Name).trim()
         // Remarks come raw from the `_2_0` row so the render can preserve line
         // breaks / spacing exactly as typed.
         const remarks = strVal(row20.Remarks)
@@ -397,11 +406,16 @@ function slsProductFitmentUnitAndTotal(
   return { unitPrice, totalPrice }
 }
 
-/** SLS: same row shape as `buildSlsLineItemsFromWi20Subforms` in SLSQuotationContent. */
+/** SLS: same row shape as `buildSlsLineItemsFromWi20Subforms` in SLSQuotationContent.
+ *
+ * `productName` is the SLS Product-column header line (Zoho
+ * `Brand_Selling_Name` on the main product row — same field BVK reads).
+ * `product` remains the Remarks body rendered under the header.
+ */
 export function buildSlsLineItemsFromWi20SubformsShared(
   raw: Record<string, unknown> | null | undefined,
   templateField?: string
-): Array<{ item: number; product: string; qty: string; uom: string; hsnCode: string; unitPrice: number; totalPrice: number }> {
+): Array<{ item: number; productName: string; product: string; qty: string; uom: string; hsnCode: string; unitPrice: number; totalPrice: number }> {
   if (!raw) return []
   const t = String(templateField ?? '').trim().toLowerCase()
   if (t.includes('product fitment')) {
@@ -422,9 +436,13 @@ export function buildSlsLineItemsFromWi20SubformsShared(
       const mainRow = useFit20 ? fitMain[index] : undefined
       const uom = (strVal(row.UOM_Billing) || (mainRow ? strVal(mainRow.UOM_Billing) : '')).trim()
       const hsnCode = (strVal(row.HSN_Code) || (mainRow ? strVal(mainRow.HSN_Code) : '')).trim()
+      // Product-name header: `Brand_Selling_Name` — prefer the main PF row,
+      // fall back to the `_2_0` PF row (mirrors BVK's rule).
+      const productName = (mainRow ? strVal(mainRow.Brand_Selling_Name) : strVal(row.Brand_Selling_Name)).trim()
       const { unitPrice, totalPrice } = slsProductFitmentUnitAndTotal(useFit20, fitMain, row, index)
       return {
         item: index + 1,
+        productName,
         product,
         qty: qtyRaw,
         uom,
@@ -453,10 +471,19 @@ export function buildSlsLineItemsFromWi20SubformsShared(
     const pd = productRows[index] ?? {}
     const uom = (strVal(row.UOM_Billing) || strVal(pd.UOM_Billing)).trim()
     const hsnCode = (strVal(row.HSN_Code) || strVal(pd.HSN_Code)).trim()
+    // Product-name header (per SLS spec, same rule as the Delivery Schedule):
+    //   • Category_1_MM_Database_WI → `Brand_Category` on the main row.
+    //   • Category_2_MM_Database_WI → `Brand_Selling_Name` on the main row.
+    // No fallback either way — blank when the field is empty.
+    const productName =
+      productKey === 'Category_1_MM_Database_WI'
+        ? strVal(pd.Brand_Category).trim()
+        : strVal(pd.Brand_Selling_Name).trim()
     const unitPrice = parseFloat(sp) || 0
     const totalPrice = slsLineTotalFromRow(row)
     return {
       item: index + 1,
+      productName,
       product: remarks,
       qty: qtyRaw,
       uom,

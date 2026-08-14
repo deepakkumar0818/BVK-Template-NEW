@@ -90,6 +90,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       ? slsRowsFromWi20
       : data.lineItems?.map((item, index) => ({
         item: index + 1,
+        // Fallback path has no direct subform row, so no Brand_Selling_Name
+        // is available — leave the header blank.
+        productName: '',
         product: `${item.product || ''}${item.quality ? `; ${item.quality}` : ''}`.trim(),
         qty: item.qty || '',
         uom: (item.uom || '').trim(),
@@ -237,7 +240,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const slsShowTaxesRow = slsTaxNoticeLines.length > 0 || slsTaxesScalar !== ''
   // "Payment:" row body — read from Zoho `Payment_Condition` (same field
   // used by BVK's "Payment conditions:" section). No fallback.
-  const payment = String(rawQuotationData?.Payment_Condition ?? '').trim()
+  const payment = String(rawQuotationData?.Term_of_Payment ?? '').trim()
   // "Quotation Valid Till Time:" row body — read from Zoho `Quotation_Validity`
   // (same field used by BVK's "Quotation Valid Till" section). No fallback.
   const quotationValidity = String(rawQuotationData?.Quotation_Validity ?? '').trim()
@@ -257,6 +260,114 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const cin = rawQuotationData?.CIN || 'U51909WB2011PLC163277'
   const gstin = rawQuotationData?.GSTIN || billingData?.Billing_GST_No || shippingData?.Shipping_GST_No || '08AAECG2743F1ZS'
   const groupCompany = rawQuotationData?.Group_Company || 'A BVK Group Company'
+
+  // Delivery Schedule — new section rendered between Taxes and Payment.
+  // Sources the `_Desired_Date` subform that matches whichever product family
+  // the record is using (driven by the root `Template` field). Groups entries
+  // by `Line_Item_ref` under a per-product heading. For each entry, picks the
+  // first non-empty of Date_field → Week → Month_field and emits a line of
+  // "<Label> : <value>, <No_Of_Items> items, <UOM>". Section hides when the
+  // resolved subform is empty or every entry has all three date fields blank.
+  //
+  // Product heading rule (per the user's spec):
+  //   • Category_1_MM_Database_WI family → `Brand_Category` on the main
+  //     product row. No fallback — empty when not set.
+  //   • Every other family → `Brand_Selling_Name` on the main product row
+  //     (same row-shape BVK uses).
+  const slsDeliverySchedule = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    if (!raw) return null
+    const template = String(raw.Template ?? '').trim().toLowerCase()
+    const family = (() => {
+      if (template.includes('product fitment')) {
+        return {
+          desiredDateKey: 'Product_Fitments_Desired_Date',
+          mainKey: 'Product_Fitments',
+          twoZeroKey: 'Product_Fitments2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WMW',
+          twoZeroKey: 'Category_2_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
+        return {
+          desiredDateKey: 'Category_1_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_1_MM_Database_WMW',
+          twoZeroKey: 'Category_1_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WI_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WI',
+          twoZeroKey: 'Category_2_MM_Database_WI_2_0',
+          isCat1Wi: false,
+        }
+      }
+      return {
+        desiredDateKey: 'Category_1_MM_Database_WI_Desired_Date',
+        mainKey: 'Category_1_MM_Database_WI',
+        twoZeroKey: 'Category_1_MM_Database_WI_2_0',
+        isCat1Wi: true,
+      }
+    })()
+
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw[key]
+      if (v == null) return []
+      if (Array.isArray(v)) return v.filter((r): r is Record<string, unknown> => r != null && typeof r === 'object')
+      if (typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const desiredRows = arrOf(family.desiredDateKey)
+    if (desiredRows.length === 0) return null
+    const mainRows = arrOf(family.mainKey)
+    const twoZeroRows = arrOf(family.twoZeroKey)
+    const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
+      rows.find((r) => String(r.Line_Item_ref ?? '').trim() === ref)
+
+    type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string }
+    type Group = { ref: string; heading: string; entries: Entry[] }
+    const groups = new Map<string, Group>()
+    for (const row of desiredRows) {
+      const ref = String(row.Line_Item_ref ?? '').trim()
+      if (!ref) continue
+      const dateVal = String(row.Date_field ?? '').trim()
+      const weekVal = String(row.Week ?? '').trim()
+      const monthVal = String(row.Month_field ?? '').trim()
+      let entry: Entry | null = null
+      const count = String(row.No_Of_Items ?? '').trim()
+      const twoZeroRow = findByRef(twoZeroRows, ref)
+      const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      if (!entry) continue
+      let group = groups.get(ref)
+      if (!group) {
+        const mainRow = findByRef(mainRows, ref)
+        const heading = family.isCat1Wi
+          ? String(mainRow?.Brand_Category ?? '').trim()
+          : String(mainRow?.Brand_Selling_Name ?? '').trim()
+        group = { ref, heading, entries: [] }
+        groups.set(ref, group)
+      }
+      group.entries.push(entry)
+    }
+    if (groups.size === 0) return null
+    return Array.from(groups.values()).sort((a, b) => {
+      const na = parseInt(a.ref, 10)
+      const nb = parseInt(b.ref, 10)
+      return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+    })
+  })()
 
   return (
     <>
@@ -363,7 +474,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               {lineItems.map((item, index) => (
                 <tr key={index}>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.item}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px' }}>{item.product}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px' }}>
+                    {/* Product-column header: `Brand_Selling_Name` from the
+                     * main product subform row (same field BVK reads). Falls
+                     * back to nothing when the record has no value. */}
+                    {item.productName ? (
+                      <div style={{ marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 'bold' }}>Product</span> : {item.productName}
+                      </div>
+                    ) : null}
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{item.product}</div>
+                  </td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.hsnCode || ''}</td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                     {item.qty
@@ -466,6 +587,27 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               ) : (
                 <span> {slsTaxesScalar}</span>
               )}
+            </div>
+          ) : null}
+          {slsDeliverySchedule ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Schedule:</div>
+              {slsDeliverySchedule.map((group) => (
+                <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                    {group.ref}. {group.heading || ' '}
+                  </div>
+                  <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                    {group.entries.map((entry, i) => (
+                      <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                        <strong>{entry.label}</strong> : {entry.value}
+                        {entry.count ? `, ${entry.count} items` : ''}
+                        {entry.uom ? `, ${entry.uom}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           ) : null}
           {payment ? (
