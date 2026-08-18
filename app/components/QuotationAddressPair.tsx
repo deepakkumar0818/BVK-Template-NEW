@@ -1,154 +1,54 @@
-function trimGst(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  const s = String(value).trim()
-  return s
-}
-
-function hasText(value: unknown): boolean {
-  return trimGst(value).length > 0
-}
-
-/** When Shipping Master is missing, map Creator quotation fields to the same shape as the master row. */
-function hasQuotationShippingAddress(raw: any): boolean {
-  if (!raw) return false
-  return (
-    hasText(raw.Shipping_Address_Name) ||
-    hasText(raw.Shipping_Contact_Name) ||
-    hasText(raw.Contact_Name) ||
-    hasText(raw.Shipping_Street) ||
-    hasText(raw.Shipping_City) ||
-    hasText(raw.Shipping_State) ||
-    hasText(raw.Shipping_Postal_Code) ||
-    hasText(raw.Shipping_Country)
-  )
-}
-
-function quotationShippingAsMasterRow(raw: any): any {
-  return {
-    Shipping_Address_Name: raw.Shipping_Address_Name || raw.Shipping_Contact_Name || raw.Contact_Name,
-    Shipping_Street: raw.Shipping_Street,
-    Shipping_City: raw.Shipping_City,
-    Shipping_State: raw.Shipping_State,
-    Shipping_Postal_Code: raw.Shipping_Postal_Code,
-    Shipping_Country: raw.Shipping_Country,
-    Shipping_State_Code: raw.Shipping_State_Code,
-    Shipping_GST_No: raw.Shipping_GST_No,
-    Parent_Account: raw.Parent_Account ?? raw.Shipping_Parent_Account,
-  }
-}
-
-function hasQuotationBillingAddress(raw: any): boolean {
-  if (!raw) return false
-  return (
-    hasText(raw.Billing_Address_Name) ||
-    hasText(raw.Billing_Contact_Name) ||
-    hasText(raw.Invoice_Account) ||
-    hasText(raw.Billing_Street) ||
-    hasText(raw.Billing_City) ||
-    hasText(raw.Billing_State) ||
-    hasText(raw.Billing_Postal_Code) ||
-    hasText(raw.Billing_Country)
-  )
-}
-
-function quotationBillingAsMasterRow(raw: any): any {
-  return {
-    Billing_Address_Name: raw.Billing_Address_Name || raw.Billing_Contact_Name || raw.Invoice_Account,
-    Billing_Street: raw.Billing_Street,
-    Billing_City: raw.Billing_City,
-    Billing_State: raw.Billing_State,
-    Billing_Postal_Code: raw.Billing_Postal_Code,
-    Billing_Country: raw.Billing_Country,
-    Billing_State_Code: raw.Billing_State_Code,
-    Billing_GST_No: raw.Billing_GST_No,
-    Billing_GST_Number: raw.Billing_GST_Number,
-    Parent_Account: raw.Parent_Account ?? raw.Billing_Parent_Account,
-  }
-}
-
 /**
- * WI template: GST on the quotation (Creator) overrides shipping/billing master rows when present.
+ * QuotationAddressPair — WMW / WMW2 / WI address block ("Detail Of
+ * Consignee/Shipped To" + "Detail Of Recipient/Billed To").
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ *  DATA SOURCE RULE — updated per the user's directive
+ * ─────────────────────────────────────────────────────────────────────────
+ * Every field printed by this block reads STRICTLY from the quotation
+ * record (`rawQuotationData.Shipping_*` / `rawQuotationData.Billing_*`).
+ *
+ *   • No merge with Shipping Master / Billing Master rows.
+ *   • No fallback chains ("Shipping_Contact_Name → Contact_Name" etc.).
+ *   • No cross-field derivation (State Code is read from Zoho, not
+ *     derived from the first two digits of GST).
+ *
+ * The `shippingData` / `billingData` props remain on the signature so
+ * existing call sites (QuotationHeaderThead → PerformaInvoiceContent /
+ * QuotationContent / GoodsDescriptionPaginatedBlock) don't need to change,
+ * but they are intentionally UNREAD. If a template needs those Master
+ * rows for something else (e.g. a GST fallback on BVK/SLS), it must do
+ * that work inside its own component — do NOT re-introduce a Master
+ * read here.
+ *
+ * If both the shipping *and* billing sides of the quotation record are
+ * completely blank, an "No data available" empty state renders instead
+ * of an empty cell.
  */
-function resolveShippingGstNo(shippingData: any, rawQuotationData?: any): string {
-  return (
-    trimGst(rawQuotationData?.Shipping_GST_No) ||
-    trimGst(rawQuotationData?.Shipping_GST_Number) ||
-    trimGst(shippingData?.Shipping_GST_No) ||
-    trimGst(shippingData?.Shipping_GST_Number) ||
-    ''
-  )
+
+function strVal(value: unknown): string {
+  if (value == null) return ''
+  return String(value).trim()
 }
 
-function resolveBillingGstNo(billingData: any, rawQuotationData?: any): string {
-  return (
-    trimGst(rawQuotationData?.Billing_GST_Number) ||
-    trimGst(rawQuotationData?.Billing_GST_No) ||
-    trimGst(billingData?.Billing_GST_No) ||
-    trimGst(billingData?.Billing_GST_Number) ||
-    ''
-  )
+function hasAny(...vals: unknown[]): boolean {
+  return vals.some((v) => strVal(v).length > 0)
 }
 
-/** Indian GSTIN: first two characters are the state code (digits). */
-function stateCodeFromGstFirstTwoDigits(gstNo: string): string {
-  const s = trimGst(gstNo)
-  if (s.length < 2) return ''
-  return s.slice(0, 2)
-}
-
-/** Master row first; quotation record fills gaps (Creator field names). */
-/**
- * When a Shipping Master row is present but sparse, fill blanks from quotation `Shipping_*`
- * (same line layout as billing via `getAddrText`; mirrors billing’s quotation fill for state).
- */
-function withShippingAddressFromQuotation(shippingData: any, rawQuotationData?: any) {
-  const r = rawQuotationData
-  const pick = (masterVal: unknown, quotationVal: unknown) =>
-    trimGst(masterVal) || trimGst(quotationVal) || ''
-
-  const qName =
-    trimGst(r?.Shipping_Address_Name) ||
-    trimGst(r?.Shipping_Contact_Name) ||
-    trimGst(r?.Contact_Name) ||
-    ''
-
-  return {
-    ...shippingData,
-    Shipping_Address_Name: pick(shippingData?.Shipping_Address_Name, qName),
-    Shipping_Street: pick(shippingData?.Shipping_Street, r?.Shipping_Street),
-    Shipping_City: pick(shippingData?.Shipping_City, r?.Shipping_City),
-    Shipping_State: pick(shippingData?.Shipping_State, r?.Shipping_State),
-    Shipping_Postal_Code: pick(shippingData?.Shipping_Postal_Code, r?.Shipping_Postal_Code),
-    Shipping_Country: pick(shippingData?.Shipping_Country, r?.Shipping_Country),
-    Shipping_State_Code: pick(shippingData?.Shipping_State_Code, r?.Shipping_State_Code),
-    Shipping_GST_No: pick(shippingData?.Shipping_GST_No, r?.Shipping_GST_No || r?.Shipping_GST_Number),
-  }
-}
-
-function withBillingStateFromQuotation(billingData: any, rawQuotationData?: any) {
-  return {
-    ...billingData,
-    Billing_State:
-      trimGst(billingData?.Billing_State) || trimGst(rawQuotationData?.Billing_State) || '',
-    Billing_State_Code:
-      trimGst(billingData?.Billing_State_Code) ||
-      trimGst(rawQuotationData?.Billing_State_Code) ||
-      '',
-  }
-}
-
-function getAddrText(data: any, kind: 'shipping' | 'billing') {
-  if (!data) return null
-  const name = kind === 'shipping' ? data.Shipping_Address_Name : data.Billing_Address_Name
-  const street = kind === 'shipping' ? data.Shipping_Street : data.Billing_Street
-  const city = kind === 'shipping' ? data.Shipping_City : data.Billing_City
-  const state = kind === 'shipping' ? data.Shipping_State : data.Billing_State
-  const postal = kind === 'shipping' ? data.Shipping_Postal_Code : data.Billing_Postal_Code
-  const country = kind === 'shipping' ? data.Shipping_Country : data.Billing_Country
-
+function renderAddress(
+  name: string,
+  street: string,
+  city: string,
+  state: string,
+  postal: string,
+  country: string
+) {
+  if (!hasAny(name, street, city, state, postal, country)) return null
   return (
     <div className="quotation-address-plain">
-      {name && <div className="quotation-address-plain__line quotation-address-plain__line--bold">{name}</div>}
+      {name && (
+        <div className="quotation-address-plain__line quotation-address-plain__line--bold">{name}</div>
+      )}
       {street && <div className="quotation-address-plain__line">{street}</div>}
       {(city || state || postal) && (
         <div className="quotation-address-plain__line">
@@ -161,44 +61,44 @@ function getAddrText(data: any, kind: 'shipping' | 'billing') {
   )
 }
 
-/**
- * Unified table layout for Consignee & Recipient
- * Ensures strict row alignment across left and right sides.
- */
 export default function QuotationAddressPair({
-  shippingData,
-  billingData,
+  /** Unused — see file header. */
+  shippingData: _shippingData,
+  /** Unused — see file header. */
+  billingData: _billingData,
   rawQuotationData,
 }: {
+  /** Unused. Kept on the signature so existing callers don't need to change. */
   shippingData?: any
+  /** Unused. Kept on the signature so existing callers don't need to change. */
   billingData?: any
-  /** Zoho Creator quotation record — GST + Shipping_State / Billing_State fallbacks on WI template */
+  /** Zoho Creator quotation record — the single source of truth for this block. */
   rawQuotationData?: any
 }) {
-  const shippingBase =
-    shippingData ??
-    (hasQuotationShippingAddress(rawQuotationData) ? quotationShippingAsMasterRow(rawQuotationData) : null)
-  const billingBase =
-    billingData ??
-    (hasQuotationBillingAddress(rawQuotationData) ? quotationBillingAsMasterRow(rawQuotationData) : null)
+  const r = rawQuotationData ?? {}
 
-  const shippingMerged = shippingBase
-    ? withShippingAddressFromQuotation(shippingBase, rawQuotationData)
-    : null
-  const billingMerged = billingBase
-    ? withBillingStateFromQuotation(billingBase, rawQuotationData)
-    : null
+  // Shipping (all from the quotation record, no fallback chains)
+  const sName = strVal(r.Shipping_Address_Name)
+  const sStreet = strVal(r.Shipping_Street)
+  const sCity = strVal(r.Shipping_City)
+  const sState = strVal(r.Shipping_State)
+  const sPostal = strVal(r.Shipping_Postal_Code)
+  const sCountry = strVal(r.Shipping_Country)
+  const sStateCode = strVal(r.Shipping_State_Code)
+  const sGst = strVal(r.Shipping_GST_No)
 
-  const sGst = resolveShippingGstNo(shippingBase, rawQuotationData)
-  const bGst = resolveBillingGstNo(billingBase, rawQuotationData)
+  // Billing (all from the quotation record, no fallback chains)
+  const bName = strVal(r.Billing_Address_Name)
+  const bStreet = strVal(r.Billing_Street)
+  const bCity = strVal(r.Billing_City)
+  const bState = strVal(r.Billing_State)
+  const bPostal = strVal(r.Billing_Postal_Code)
+  const bCountry = strVal(r.Billing_Country)
+  const bStateCode = strVal(r.Billing_State_Code)
+  const bGst = strVal(r.Billing_GST_No)
 
-  const sStateCode =
-    stateCodeFromGstFirstTwoDigits(sGst) || shippingMerged?.Shipping_State_Code || ''
-  const sState = shippingMerged?.Shipping_State ?? ''
-
-  const bStateCode =
-    stateCodeFromGstFirstTwoDigits(bGst) || billingMerged?.Billing_State_Code || ''
-  const bState = billingMerged?.Billing_State ?? ''
+  const shippingAddress = renderAddress(sName, sStreet, sCity, sState, sPostal, sCountry)
+  const billingAddress = renderAddress(bName, bStreet, bCity, bState, bPostal, bCountry)
 
   return (
     <div className="quotation-stack-segment quotation-address-pair">
@@ -222,10 +122,14 @@ export default function QuotationAddressPair({
           </tr>
           <tr>
             <td colSpan={4} className="qap-address-cell qap-address-cell--left">
-              {shippingMerged ? getAddrText(shippingMerged, 'shipping') : <div className="quotation-address-pair__empty">No shipping data available</div>}
+              {shippingAddress ?? (
+                <div className="quotation-address-pair__empty">No shipping data available</div>
+              )}
             </td>
             <td colSpan={4} className="qap-address-cell qap-address-cell--right">
-              {billingMerged ? getAddrText(billingMerged, 'billing') : <div className="quotation-address-pair__empty">No billing data available</div>}
+              {billingAddress ?? (
+                <div className="quotation-address-pair__empty">No billing data available</div>
+              )}
             </td>
           </tr>
           <tr>
@@ -242,7 +146,7 @@ export default function QuotationAddressPair({
           <tr>
             <th className="qap-label qap-cell--left">GST Number</th>
             <td colSpan={3} className="qap-value qap-cell--left">{sGst}</td>
-            
+
             <th className="qap-label qap-cell--right">GST Number</th>
             <td colSpan={3} className="qap-value qap-cell--right">{bGst}</td>
           </tr>
