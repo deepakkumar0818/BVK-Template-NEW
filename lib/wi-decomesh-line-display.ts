@@ -83,6 +83,20 @@ export const WI_DECOMESH_ZOHO_FIELDS = {
   subformFitmentsMain: 'Product_Fitments',
   subformFitmentsTwoZero: 'Product_Fitments2_0',
 
+  // Delivery Schedule — one `_Desired_Date` subform per family (mirrors SLS)
+  cat1WiDesiredDate: 'Category_1_MM_Database_WI_Desired_Date',
+  cat2WiDesiredDate: 'Category_2_MM_Database_WI_Desired_Date',
+  cat1WmwDesiredDate: 'Category_1_MM_Database_WMW_Desired_Date',
+  cat2WmwDesiredDate: 'Category_2_MM_Database_WMW_Desired_Date',
+  fitmentsDesiredDate: 'Product_Fitments_Desired_Date',
+
+  // Per-row fields on a `_Desired_Date` subform
+  lineItemRef: 'Line_Item_ref',
+  desiredDateField: 'Date_field',
+  desiredWeekField: 'Week',
+  desiredMonthField: 'Month_field',
+  desiredNoOfItems: 'No_Of_Items',
+
   // Per-row (subform) fields used in each Item block
   itemBrandCategory: 'Brand_Category',   // Cat_1_WI mesh-type source
   itemBrandSellingName: 'Brand_Selling_Name', // other families' mesh-type source
@@ -338,4 +352,139 @@ function fallbackFromLineItems(items: QuotationLineItem[]): WiDecomeshTableRow[]
     totalPrice: numFromString(item.amount),
     remarks: '',
   }))
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Delivery Schedule — ISOLATED resolver (mirrors the SLS Delivery Schedule
+// spec but lives entirely inside this template's file so a change here can
+// never affect SLS/BVK/GKD/WI-Process-Febric).
+// ──────────────────────────────────────────────────────────────────────────
+
+/** One entry in a Delivery Schedule group's bullet list. */
+export type WiDecomeshDeliveryScheduleEntry = {
+  label: 'Date' | 'Week' | 'Month'
+  value: string
+  count: string
+  uom: string
+}
+
+/** One group in the Delivery Schedule, keyed by `Line_Item_ref`. */
+export type WiDecomeshDeliveryScheduleGroup = {
+  ref: string
+  heading: string
+  entries: WiDecomeshDeliveryScheduleEntry[]
+}
+
+/**
+ * Resolves the Delivery Schedule for the WI Decomesh template.
+ *
+ *   • Picks the `_Desired_Date` subform for whichever product family the
+ *     record uses (driven by the root `Template` field, same family
+ *     resolver as `resolveFamily` above).
+ *   • Groups entries by `Line_Item_ref`.
+ *   • Per-group heading:
+ *       – Category_1_MM_Database_WI family → `Brand_Category` on main row.
+ *       – Every other family → `Brand_Selling_Name` on main row.
+ *       – No fallback either way; blank when the field is empty.
+ *   • Per entry, picks the first non-empty of Date_field → Week → Month_field
+ *     and labels the row accordingly. Entries where all three are empty are
+ *     dropped.
+ *   • UOM per entry is the matching `_2_0` row's `UOM_Billing`.
+ *   • Returns `null` when no group has a renderable entry — the caller can
+ *     then hide the whole section.
+ */
+export function buildWiDecomeshDeliverySchedule(
+  raw: Record<string, unknown> | null | undefined
+): WiDecomeshDeliveryScheduleGroup[] | null {
+  if (!raw) return null
+  const F = WI_DECOMESH_ZOHO_FIELDS
+  const template = strVal(raw[F.template]).toLowerCase()
+
+  type FamilyKeys = {
+    desiredDateKey: string
+    mainKey: string
+    twoZeroKey: string
+    isCat1Wi: boolean
+  }
+  const family: FamilyKeys = (() => {
+    if (template.includes('product fitment')) {
+      return {
+        desiredDateKey: F.fitmentsDesiredDate,
+        mainKey: F.subformFitmentsMain,
+        twoZeroKey: F.subformFitmentsTwoZero,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
+      return {
+        desiredDateKey: F.cat2WmwDesiredDate,
+        mainKey: F.subformCat2WmwMain,
+        twoZeroKey: F.subformCat2WmwTwoZero,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
+      return {
+        desiredDateKey: F.cat1WmwDesiredDate,
+        mainKey: F.subformCat1WmwMain,
+        twoZeroKey: F.subformCat1WmwTwoZero,
+        isCat1Wi: false,
+      }
+    }
+    if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+      return {
+        desiredDateKey: F.cat2WiDesiredDate,
+        mainKey: F.subformCat2WiMain,
+        twoZeroKey: F.subformCat2WiTwoZero,
+        isCat1Wi: false,
+      }
+    }
+    return {
+      desiredDateKey: F.cat1WiDesiredDate,
+      mainKey: F.subformCat1WiMain,
+      twoZeroKey: F.subformCat1WiTwoZero,
+      isCat1Wi: true,
+    }
+  })()
+
+  const desiredRows = subformRows(raw, family.desiredDateKey)
+  if (desiredRows.length === 0) return null
+  const mainRows = subformRows(raw, family.mainKey)
+  const twoZeroRows = subformRows(raw, family.twoZeroKey)
+
+  const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
+    rows.find((r) => strVal(r[F.lineItemRef]) === ref)
+
+  const groups = new Map<string, WiDecomeshDeliveryScheduleGroup>()
+  for (const row of desiredRows) {
+    const ref = strVal(row[F.lineItemRef])
+    if (!ref) continue
+    const dateVal = strVal(row[F.desiredDateField])
+    const weekVal = strVal(row[F.desiredWeekField])
+    const monthVal = strVal(row[F.desiredMonthField])
+    let entry: WiDecomeshDeliveryScheduleEntry | null = null
+    const count = strVal(row[F.desiredNoOfItems])
+    const twoZeroRow = findByRef(twoZeroRows, ref)
+    const uom = strVal(twoZeroRow?.[F.itemUomBilling])
+    if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+    else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+    else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+    if (!entry) continue
+    let group = groups.get(ref)
+    if (!group) {
+      const mainRow = findByRef(mainRows, ref)
+      const heading = family.isCat1Wi
+        ? strVal(mainRow?.[F.itemBrandCategory])
+        : strVal(mainRow?.[F.itemBrandSellingName])
+      group = { ref, heading, entries: [] }
+      groups.set(ref, group)
+    }
+    group.entries.push(entry)
+  }
+  if (groups.size === 0) return null
+  return Array.from(groups.values()).sort((a, b) => {
+    const na = parseInt(a.ref, 10)
+    const nb = parseInt(b.ref, 10)
+    return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+  })
 }
