@@ -1,16 +1,14 @@
 'use client'
 
 /**
- * sls-ods-no-44 — ISOLATED sales-order content component.
+ * sls-ods-no-44-p — ISOLATED "price-redacted" sibling of sls-ods-no-44.
  *
- * This is a from-scratch component for this one variant. It does NOT import
- * from or modify `OrderDetailSheetContent.tsx` / `types.ts`, so the other 6
- * Order Detail Sheet variants (bvk, sls-ods-44-hydrotech, sls-ods-no-44-p,
- * sls-ods-44-p-hydrotech, sls-ods-50-a, sls-ods-50-p) are unaffected by any
- * change here. It reuses the shared `.ods-*` CSS classes from
- * app/globals.css for visual consistency (read-only — nothing here edits
- * that CSS), and consumes the view model built by
- * `lib/sls-ods-no-44-mapping.ts`.
+ * Deliberately reuses `mapSlsOdsNo44` from `lib/sls-ods-no-44-mapping.ts`
+ * as-is (same Zoho field structure/mappings, per spec) — only the
+ * presentation differs: the Price / UOM and Total Value in INR columns are
+ * removed from the product table. Does NOT import from or modify
+ * `OrderDetailSheetContent.tsx` / `types.ts`, so the other Order Detail
+ * Sheet variants are unaffected.
  */
 
 import type { SlsOdsNo44Data } from '@/lib/sls-ods-no-44-mapping'
@@ -23,9 +21,9 @@ const LOGO = {
   taglineSub: 'A BVK Group Company\nWeaving Technical Mesh Solutions',
 }
 
-export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
+export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
   return (
-    <div className="sales-order-print-sheet sales-order-doc--sls-ods-no-44">
+    <div className="sales-order-print-sheet sales-order-doc--sls-ods-no-44-p">
       {/* ── Header block ───────────────────────────────────────────── */}
       <div className="ods-section-outline">
         <table className="ods-table ods-header-table" role="presentation">
@@ -86,9 +84,7 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <td>{data.issueDate}</td>
             </tr>
             <tr>
-              {/* Customer Name + Product Group on one line (replaces the old
-                  standalone CLIENT NAME row). Product Group sits in the same
-                  label/value column pair as Issue No./Issue Date above it. */}
+              {/* Customer Name + Product Group on one line, same as sls-ods-no-44. */}
               <td className="ods-label">CUSTOMER NAME</td>
               <td>{data.customerName}</td>
               <td className="ods-label">Product Group</td>
@@ -98,7 +94,7 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
         </table>
       </div>
 
-      {/* ── Addresses (Billing / Shipping, was Invoice / Delivery) ──── */}
+      {/* ── Addresses (Billing / Shipping) ──────────────────────────── */}
       <div className="ods-section-outline">
         <table className="ods-table ods-address-table" role="presentation">
           <tbody>
@@ -122,12 +118,12 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
         </table>
       </div>
 
-      {/* ── Product details ────────────────────────────────────────── */}
+      {/* ── Product details — Price / UOM and Total Value in INR columns removed ── */}
       <div className="ods-section-outline">
         <table className="ods-table ods-product-table" role="presentation">
           <thead>
             <tr>
-              <th colSpan={15} className="ods-section-label ods-section-label--center">
+              <th colSpan={13} className="ods-section-label ods-section-label--center">
                 PRODUCT DETAILS
               </th>
             </tr>
@@ -142,8 +138,6 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <th>Width (Meter)</th>
               <th>Total SQM</th>
               <th>Qty / UOM</th>
-              <th>Price / UOM</th>
-              <th>Total Value in INR</th>
               <th>Client PO No.</th>
               <th>PO Date</th>
               <th>QCT No.</th>
@@ -162,15 +156,13 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
                 <td className="ods-num">{line.width || ' '}</td>
                 <td className="ods-num">{line.totalSqm || ' '}</td>
                 <td className="ods-num">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
-                <td className="ods-amount">{line.price || ' '}</td>
-                <td className="ods-amount">{line.totalValue || ' '}</td>
                 <td className="ods-num">{line.clientPoNo || ' '}</td>
                 <td className="ods-num">{line.poDate || ' '}</td>
                 <td className="ods-num">{line.qctNo || ' '}</td>
               </tr>
             ))}
             <tr>
-              <td colSpan={13} className="ods-product-foot-label">
+              <td colSpan={11} className="ods-product-foot-label">
                 {data.gstLabel}
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -178,7 +170,7 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               </td>
             </tr>
             <tr>
-              <td colSpan={13} className="ods-product-foot-label">
+              <td colSpan={11} className="ods-product-foot-label">
                 Total Value
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -225,9 +217,6 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <td className="ods-terms-label">FREIGHT : TO PAY / PAID</td>
               <td className="ods-terms-value">{data.freight || ' '}</td>
             </tr>
-            {/* HSN Code, Quality Harmonisation Number, and Date rows removed
-                from this lower section per spec — HSN Code now lives in the
-                product table above instead. */}
           </tbody>
         </table>
 
