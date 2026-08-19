@@ -26,6 +26,7 @@ export default function ArgoMultiAoContent({
   lines,
   shippingAddressLines,
   subject,
+  date,
 }: {
   fixture: MultiOrderAcceptanceOfOrderData
   lines: SlsOdsNo44Line[]
@@ -33,6 +34,8 @@ export default function ArgoMultiAoContent({
   shippingAddressLines: string[]
   /** Subject line — live `Acceptance_of_Order_Mention`, not the fixture's static subject. */
   subject: string
+  /** Header "Date:" — live `Created_Date_and_time` (same field/value as sls-ods-no-44's ODS DATE), not the fixture's static date. */
+  date: string
 }) {
   return (
     <div className={`sales-order-print-sheet sales-order-doc--${fixture.variant} mao-sheet`}>
@@ -65,8 +68,8 @@ export default function ArgoMultiAoContent({
           <span>{fixture.title}</span>
         </div>
 
-        {/* ── Date row (right-aligned) ─────────────────────────── */}
-        <div className="mao-date-row">Date: {fixture.date}</div>
+        {/* ── Date row (right-aligned) — live `Created_Date_and_time` ── */}
+        <div className="mao-date-row">Date: {date}</div>
 
         {/* ── Recipient — live Shipping Address only (Shipping_Address_Name +
             Shipping_Street/City/State/Postal/Country), same source as
