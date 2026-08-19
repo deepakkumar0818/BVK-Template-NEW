@@ -209,6 +209,46 @@ export default function PerformaInvoiceContent({
     totalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, data.totalAmount)
 
+  // Dynamic GST rate labels — mirror the intent of BVK/SLS. Reads the
+  // top-level rate field first, then falls back to the first non-zero
+  // rate found in the WI / Fitments / Accessories subforms. Falls back to
+  // the historic 9/9/18 default when nothing is set. Amounts are NOT
+  // recomputed here — only the % text on the summary-row labels.
+  const performaRateFrom = (
+    raw: Record<string, unknown> | null | undefined,
+    topKey: string,
+    subforms: readonly string[]
+  ): number => {
+    if (!raw) return 0
+    const direct = parseFloat(String(raw[topKey] ?? '').replace(/,/g, ''))
+    if (Number.isFinite(direct) && direct > 0) return direct
+    for (const key of subforms) {
+      const rows = raw[key] as unknown
+      if (Array.isArray(rows)) {
+        for (const row of rows) {
+          const v = parseFloat(String((row as Record<string, unknown>)?.[topKey] ?? '').replace(/,/g, ''))
+          if (Number.isFinite(v) && v > 0) return v
+        }
+      }
+    }
+    return 0
+  }
+  const performaRateSubforms = [
+    'Category_1_MM_Database_WI_2_0',
+    'Category_1_MM_Database_WI_3_0',
+    'Category_2_MM_Database_WI_2_0',
+    'Category_2_MM_Database_WI_3_0',
+    'Product_Fitments2_0',
+    'Accessories2_0',
+  ] as const
+  const performaRawRec = rawQuotationData as Record<string, unknown> | undefined
+  const performaCgstResolved = cgstRate > 0 ? cgstRate : performaRateFrom(performaRawRec, 'CGST', performaRateSubforms)
+  const performaSgstResolved = sgstRate > 0 ? sgstRate : performaRateFrom(performaRawRec, 'SGST', performaRateSubforms)
+  const performaIgstResolved = igstRate > 0 ? igstRate : performaRateFrom(performaRawRec, 'IGST', performaRateSubforms)
+  const performaCgstLabelRate = performaCgstResolved > 0 ? performaCgstResolved : 9
+  const performaSgstLabelRate = performaSgstResolved > 0 ? performaSgstResolved : 9
+  const performaIgstLabelRate = performaIgstResolved > 0 ? performaIgstResolved : 18
+
   const totalAmount = formatCurrency(
     parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined)
   )
@@ -576,22 +616,22 @@ export default function PerformaInvoiceContent({
                                   {formatCurrency(totalBeforeTax, data.currency || 'INR')}
                                 </td>
                               </tr>
-                              {/* Standard GST split: CGST 9% + SGST 9% = IGST 18%; labels are fixed when an amount exists, row is hidden otherwise. */}
+                              {/* GST rate labels are dynamic — read from Zoho (top-level rate first, then any non-zero rate on the WI/Fitments/Accessories subforms). Falls back to 9/9/18 when nothing is set. Amount is unchanged; row is hidden when the amount is zero. */}
                               {Number.isFinite(cgstAmount) && cgstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add CGST @ 9%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add CGST @ ${performaCgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(cgstAmount)}</td>
                                 </tr>
                               ) : null}
                               {Number.isFinite(sgstAmount) && sgstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add SGST @ 9%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add SGST @ ${performaSgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(sgstAmount)}</td>
                                 </tr>
                               ) : null}
                               {Number.isFinite(igstAmount) && igstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>Add IGST @ 18%</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add IGST @ ${performaIgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(igstAmount)}</td>
                                 </tr>
                               ) : null}

@@ -141,18 +141,25 @@ export default function QuotationSummarySection({
     })
   }
 
-  // Standard GST split: CGST 9% + SGST 9% = IGST 18%; rate labels are fixed when an amount exists, rows are hidden otherwise.
+  // GST rate labels are dynamic. Use the rate props supplied by the caller
+  // (they come from Zoho via `parseQuotationTaxForSummary`). When the caller
+  // couldn't resolve a rate (0), fall back to the historic 9/9/18 defaults
+  // so existing records don't visually change. Amounts are unchanged; the
+  // row is hidden when the amount is zero.
+  const summaryCgstLabelRate = cgstRate > 0 ? cgstRate : 9
+  const summarySgstLabelRate = sgstRate > 0 ? sgstRate : 9
+  const summaryIgstLabelRate = igstRate > 0 ? igstRate : 18
   const summaryTaxRows: { label: string; value: string; bold?: boolean }[] = [
     { label: 'Total Amount Before Tax', value: formatCurrencyRounded(totalBeforeTax, cur), bold: true },
   ]
   if (summaryTaxAmountHasValue(cgstAmount)) {
-    summaryTaxRows.push({ label: 'Add CGST @ 9%', value: formatCurrencyRounded(cgstAmount) })
+    summaryTaxRows.push({ label: `Add CGST @ ${summaryCgstLabelRate}%`, value: formatCurrencyRounded(cgstAmount) })
   }
   if (summaryTaxAmountHasValue(sgstAmount)) {
-    summaryTaxRows.push({ label: 'Add SGST @ 9%', value: formatCurrencyRounded(sgstAmount) })
+    summaryTaxRows.push({ label: `Add SGST @ ${summarySgstLabelRate}%`, value: formatCurrencyRounded(sgstAmount) })
   }
   if (summaryTaxAmountHasValue(igstAmount)) {
-    summaryTaxRows.push({ label: 'Add IGST @ 18%', value: formatCurrencyRounded(igstAmount) })
+    summaryTaxRows.push({ label: `Add IGST @ ${summaryIgstLabelRate}%`, value: formatCurrencyRounded(igstAmount) })
   }
   if (summaryTaxAmountHasValue(taxAmount)) {
     summaryTaxRows.push({ label: 'Tax Amount GST', value: formatCurrencyRounded(taxAmount) })

@@ -132,8 +132,41 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     return bvkLineItemsTotalFallback
   })()
   const bvkSafe = (n: number) => (Number.isFinite(n) ? n : 0)
-  /** Standard GST split: IGST = CGST + SGST = 18%; rate is fixed per tax type when an amount is present. */
+  /** A tax row renders only when its amount is non-zero. */
   const bvkTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  // Dynamic GST rates — read from the active WI category's `_2_0` (IGST/CGST)
+  // and `_3_0` (SGST) rows. Falls back to the standard 9/9/18 split when the
+  // subform doesn't carry a rate, so previously-correct records don't change.
+  // Amounts are not recomputed — only the % text on the label.
+  const bvkGstRates = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    const template = String(raw?.Template ?? '').trim().toLowerCase()
+    const isCat2 = template.includes('category 2 mm database wi') || template.includes('category 2 wi')
+    const line20Key = isCat2 ? 'Category_2_MM_Database_WI_2_0' : 'Category_1_MM_Database_WI_2_0'
+    const line30Key = isCat2 ? 'Category_2_MM_Database_WI_3_0' : 'Category_1_MM_Database_WI_3_0'
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw?.[key]
+      if (Array.isArray(v)) return v as Array<Record<string, unknown>>
+      if (v && typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const row20 = arrOf(line20Key)[0]
+    const row30 = arrOf(line30Key)[0]
+    const parseRate = (v: unknown): number => {
+      if (v == null) return 0
+      const n = parseFloat(String(v).replace(/,/g, '').trim())
+      return Number.isFinite(n) ? n : 0
+    }
+    return {
+      igst: parseRate(row20?.IGST),
+      cgst: parseRate(row20?.CGST),
+      sgst: parseRate(row30?.SGST),
+    }
+  })()
+  const bvkIgstLabelRate = bvkGstRates.igst > 0 ? bvkGstRates.igst : 18
+  const bvkCgstLabelRate = bvkGstRates.cgst > 0 ? bvkGstRates.cgst : 9
+  const bvkSgstLabelRate = bvkGstRates.sgst > 0 ? bvkGstRates.sgst : 9
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const bvkSummaryRows: BvkSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
@@ -158,19 +191,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   })
   if (bvkTaxHasValue(bvkCgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add CGST @ 9%',
+      label: `Add CGST @ ${bvkCgstLabelRate}%`,
       value: formatCurrency(bvkCgstAmount, displayCurrency),
     })
   }
   if (bvkTaxHasValue(bvkSgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add SGST @ 9%',
+      label: `Add SGST @ ${bvkSgstLabelRate}%`,
       value: formatCurrency(bvkSgstAmount, displayCurrency),
     })
   }
   if (bvkTaxHasValue(bvkIgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add IGST @ 18%',
+      label: `Add IGST @ ${bvkIgstLabelRate}%`,
       value: formatCurrency(bvkIgstAmount, displayCurrency),
     })
   }
@@ -673,7 +706,21 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Taxes and Duties**:</div>
                     <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
                       <li style={{ marginBottom: '4px' }}>Will be Extra as applicable over and above the Ex-factory prices quoted.</li>
-                      <li style={{ marginBottom: '4px' }}>18% IGST will be applicable extra.</li>
+                      {(() => {
+                        // Dynamic tax-narrative bullets: emit one per non-zero
+                        // GST rate from Zoho, in priority order IGST → CGST →
+                        // SGST. When no rate is set anywhere, fall back to the
+                        // legacy hard-coded "18% IGST" line so existing
+                        // records keep their previous wording.
+                        const lines: string[] = []
+                        if (bvkGstRates.igst > 0) lines.push(`${bvkGstRates.igst}% IGST will be applicable extra.`)
+                        if (bvkGstRates.cgst > 0) lines.push(`${bvkGstRates.cgst}% CGST will be applicable extra.`)
+                        if (bvkGstRates.sgst > 0) lines.push(`${bvkGstRates.sgst}% SGST will be applicable extra.`)
+                        if (lines.length === 0) lines.push('18% IGST will be applicable extra.')
+                        return lines.map((line) => (
+                          <li key={line} style={{ marginBottom: '4px' }}>{line}</li>
+                        ))
+                      })()}
                       <li style={{ marginBottom: '4px' }}>However, if there is any change in Tax and any New Statutory Levies is introduced by Government at the time of delivery of the same will be billed as per actual.</li>
                       <li style={{ marginBottom: '4px' }}>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.</li>
                     </ul>
