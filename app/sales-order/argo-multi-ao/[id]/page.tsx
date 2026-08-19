@@ -87,6 +87,7 @@ export default function ArgoMultiAoPage() {
           lines={data.lines}
           shippingAddressLines={data.shippingAddressLines}
           subject={subject}
+          date={data.odsDate}
         />
       )}
     </>
