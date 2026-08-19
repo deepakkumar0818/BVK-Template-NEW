@@ -104,8 +104,41 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
     return gkdLineItemsTotalFallback
   })()
   const gkdSafe = (n: number) => (Number.isFinite(n) ? n : 0)
-  /** Standard GST split: IGST = CGST + SGST = 18%; rate labels are fixed per tax type when an amount is present. */
+  /** A tax row renders only when its amount is non-zero. */
   const gkdTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  // Dynamic GST rates — read from the active WI category's `_2_0` (IGST/CGST)
+  // and `_3_0` (SGST) rows. Falls back to the standard 9/9/18 split when the
+  // subform doesn't carry a rate, so previously-correct records don't change.
+  // Amounts are not recomputed — only the % text on the label.
+  const gkdGstRates = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    const template = String(raw?.Template ?? '').trim().toLowerCase()
+    const isCat2 = template.includes('category 2 mm database wi') || template.includes('category 2 wi')
+    const line20Key = isCat2 ? 'Category_2_MM_Database_WI_2_0' : 'Category_1_MM_Database_WI_2_0'
+    const line30Key = isCat2 ? 'Category_2_MM_Database_WI_3_0' : 'Category_1_MM_Database_WI_3_0'
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw?.[key]
+      if (Array.isArray(v)) return v as Array<Record<string, unknown>>
+      if (v && typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const row20 = arrOf(line20Key)[0]
+    const row30 = arrOf(line30Key)[0]
+    const parseRate = (v: unknown): number => {
+      if (v == null) return 0
+      const n = parseFloat(String(v).replace(/,/g, '').trim())
+      return Number.isFinite(n) ? n : 0
+    }
+    return {
+      igst: parseRate(row20?.IGST),
+      cgst: parseRate(row20?.CGST),
+      sgst: parseRate(row30?.SGST),
+    }
+  })()
+  const gkdIgstLabelRate = gkdGstRates.igst > 0 ? gkdGstRates.igst : 18
+  const gkdCgstLabelRate = gkdGstRates.cgst > 0 ? gkdGstRates.cgst : 9
+  const gkdSgstLabelRate = gkdGstRates.sgst > 0 ? gkdGstRates.sgst : 9
 
   // `Total <currency>` row: sum of the goods table's "Total Price" column minus the (red) discount value
   // shown in that table. Other summary rows still source their values from Zoho directly.
@@ -137,19 +170,19 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
   })
   if (gkdTaxHasValue(gkdCgstAmount)) {
     gkdSummaryRows.push({
-      label: 'Add CGST @ 9%',
+      label: `Add CGST @ ${gkdCgstLabelRate}%`,
       value: formatCurrency(gkdCgstAmount, quoteCurrency),
     })
   }
   if (gkdTaxHasValue(gkdSgstAmount)) {
     gkdSummaryRows.push({
-      label: 'Add SGST @ 9%',
+      label: `Add SGST @ ${gkdSgstLabelRate}%`,
       value: formatCurrency(gkdSgstAmount, quoteCurrency),
     })
   }
   if (gkdTaxHasValue(gkdIgstAmount)) {
     gkdSummaryRows.push({
-      label: 'Add IGST @ 18%',
+      label: `Add IGST @ ${gkdIgstLabelRate}%`,
       value: formatCurrency(gkdIgstAmount, quoteCurrency),
     })
   }

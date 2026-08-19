@@ -123,6 +123,49 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
   const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
   const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
 
+  // Dynamic GST rate resolver — reads whichever rate the record actually
+  // stores (top-level first, then any non-zero rate on the WMW/WI/Fitments
+  // subforms). Falls back to 9/9/18 when nothing is set so historical
+  // records don't visually change. Amounts are unchanged.
+  const wmwRateFrom = (
+    raw: Record<string, unknown> | null | undefined,
+    topKey: string,
+    subforms: readonly string[]
+  ): number => {
+    if (!raw) return 0
+    const direct = parseFloat(String(raw[topKey] ?? '').replace(/,/g, ''))
+    if (Number.isFinite(direct) && direct > 0) return direct
+    for (const key of subforms) {
+      const rows = raw[key] as unknown
+      if (Array.isArray(rows)) {
+        for (const row of rows) {
+          const v = parseFloat(String((row as Record<string, unknown>)?.[topKey] ?? '').replace(/,/g, ''))
+          if (Number.isFinite(v) && v > 0) return v
+        }
+      }
+    }
+    return 0
+  }
+  const wmwRateSubforms = [
+    'Category_1_MM_Database_WMW_2_0',
+    'Category_1_MM_Database_WMW_3_0',
+    'Category_2_MM_Database_WMW_2_0',
+    'Category_2_MM_Database_WMW_3_0',
+    'Category_1_MM_Database_WI_2_0',
+    'Category_1_MM_Database_WI_3_0',
+    'Category_2_MM_Database_WI_2_0',
+    'Category_2_MM_Database_WI_3_0',
+    'Product_Fitments2_0',
+    'Accessories2_0',
+  ] as const
+  const wmwRawRec = rawQuotationData as Record<string, unknown> | undefined
+  const wmwCgstResolved = wmwRateFrom(wmwRawRec, 'CGST', wmwRateSubforms)
+  const wmwSgstResolved = wmwRateFrom(wmwRawRec, 'SGST', wmwRateSubforms)
+  const wmwIgstResolved = wmwRateFrom(wmwRawRec, 'IGST', wmwRateSubforms)
+  const wmwCgstLabelRate = wmwCgstResolved > 0 ? wmwCgstResolved : 9
+  const wmwSgstLabelRate = wmwSgstResolved > 0 ? wmwSgstResolved : 9
+  const wmwIgstLabelRate = wmwIgstResolved > 0 ? wmwIgstResolved : 18
+
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
   const currency = data.currency || rawQuotationData?.Currency || 'USD'
@@ -520,7 +563,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           </tr>
                           <tr>
                             <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right' }}>
-                              Add CGST @ 0.00
+                              {`Add CGST @ ${wmwCgstLabelRate}%`}
                             </td>
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
@@ -530,7 +573,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           </tr>
                           <tr>
                             <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right' }}>
-                              Add SGST @ 0.00
+                              {`Add SGST @ ${wmwSgstLabelRate}%`}
                             </td>
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
@@ -540,7 +583,7 @@ export default function WmwGoodsTable({ data, rawQuotationData, shippingData, he
                           </tr>
                           <tr>
                             <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', textAlign: 'right' }}>
-                              Add IGST @ 0.00
+                              {`Add IGST @ ${wmwIgstLabelRate}%`}
                             </td>
                             <td style={{ ...bdSides, padding: '6px' }} />
                             <td style={{ ...bdSides, padding: '6px' }} />
