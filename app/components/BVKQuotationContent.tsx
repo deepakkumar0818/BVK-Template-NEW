@@ -181,6 +181,115 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     big: true,
   })
 
+  // Delivery Schedule — same mapping rules as SLS (see SLSQuotationContent).
+  // Resolver is inline so BVK owns its own copy — no new shared helper.
+  //
+  //   • Family picked from the record's `Template` field (WI Cat 1/2, WMW
+  //     Cat 1/2, or Product Fitment). Uses the matching `_Desired_Date`
+  //     subform + the family's main product / `_2_0` subforms.
+  //   • Groups entries by `Line_Item_ref`.
+  //   • Product heading: Cat_1_WI → `Brand_Category` from main row.
+  //     All other families → `Brand_Selling_Name` from main row. No fallback.
+  //   • Per entry: first non-empty of Date_field → Week → Month_field.
+  //   • Format: `<Label> : <value>, <count> items, <UOM>` (UOM = `_2_0`
+  //     row's `UOM_Billing`).
+  //   • Entries with all three date fields blank are skipped.
+  //   • Whole section hidden when nothing renderable.
+  const bvkDeliverySchedule = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    if (!raw) return null
+    const template = String(raw.Template ?? '').trim().toLowerCase()
+    const family = (() => {
+      if (template.includes('product fitment')) {
+        return {
+          desiredDateKey: 'Product_Fitments_Desired_Date',
+          mainKey: 'Product_Fitments',
+          twoZeroKey: 'Product_Fitments2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WMW',
+          twoZeroKey: 'Category_2_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
+        return {
+          desiredDateKey: 'Category_1_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_1_MM_Database_WMW',
+          twoZeroKey: 'Category_1_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WI_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WI',
+          twoZeroKey: 'Category_2_MM_Database_WI_2_0',
+          isCat1Wi: false,
+        }
+      }
+      return {
+        desiredDateKey: 'Category_1_MM_Database_WI_Desired_Date',
+        mainKey: 'Category_1_MM_Database_WI',
+        twoZeroKey: 'Category_1_MM_Database_WI_2_0',
+        isCat1Wi: true,
+      }
+    })()
+
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw[key]
+      if (v == null) return []
+      if (Array.isArray(v)) return v.filter((r): r is Record<string, unknown> => r != null && typeof r === 'object')
+      if (typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const desiredRows = arrOf(family.desiredDateKey)
+    if (desiredRows.length === 0) return null
+    const mainRows = arrOf(family.mainKey)
+    const twoZeroRows = arrOf(family.twoZeroKey)
+    const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
+      rows.find((r) => String(r.Line_Item_ref ?? '').trim() === ref)
+
+    type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string }
+    type Group = { ref: string; heading: string; entries: Entry[] }
+    const groups = new Map<string, Group>()
+    for (const row of desiredRows) {
+      const ref = String(row.Line_Item_ref ?? '').trim()
+      if (!ref) continue
+      const dateVal = String(row.Date_field ?? '').trim()
+      const weekVal = String(row.Week ?? '').trim()
+      const monthVal = String(row.Month_field ?? '').trim()
+      let entry: Entry | null = null
+      const count = String(row.No_Of_Items ?? '').trim()
+      const twoZeroRow = findByRef(twoZeroRows, ref)
+      const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      if (!entry) continue
+      let group = groups.get(ref)
+      if (!group) {
+        const mainRow = findByRef(mainRows, ref)
+        const heading = family.isCat1Wi
+          ? String(mainRow?.Brand_Category ?? '').trim()
+          : String(mainRow?.Brand_Selling_Name ?? '').trim()
+        group = { ref, heading, entries: [] }
+        groups.set(ref, group)
+      }
+      group.entries.push(entry)
+    }
+    if (groups.size === 0) return null
+    return Array.from(groups.values()).sort((a, b) => {
+      const na = parseInt(a.ref, 10)
+      const nb = parseInt(b.ref, 10)
+      return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+    })
+  })()
+
   return (
     <>
       <div className="bvk-quotation-container" style={{ maxWidth: '210mm', margin: '0 auto', padding: '20mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}>
@@ -569,6 +678,31 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                       <li style={{ marginBottom: '4px' }}>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.</li>
                     </ul>
                   </div>
+
+                  {/* Delivery Schedule — same mapping rules as SLS / WI Process
+                   * Febric / WI Decomesh. Resolver is inline (see `bvkDeliverySchedule`
+                   * above). Section hides when nothing is renderable. */}
+                  {bvkDeliverySchedule ? (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Delivery Schedule:</div>
+                      {bvkDeliverySchedule.map((group) => (
+                        <div key={group.ref} style={{ marginBottom: '10px', marginLeft: '20px' }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                            {group.ref}. {group.heading || ' '}
+                          </div>
+                          <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                            {group.entries.map((entry, i) => (
+                              <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                                <strong>{entry.label}</strong> : {entry.value}
+                                {entry.count ? `, ${entry.count} items` : ''}
+                                {entry.uom ? `, ${entry.uom}` : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {/* General Remarks — from Zoho `General_Remarks`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
