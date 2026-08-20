@@ -132,8 +132,41 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     return bvkLineItemsTotalFallback
   })()
   const bvkSafe = (n: number) => (Number.isFinite(n) ? n : 0)
-  /** Standard GST split: IGST = CGST + SGST = 18%; rate is fixed per tax type when an amount is present. */
+  /** A tax row renders only when its amount is non-zero. */
   const bvkTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  // Dynamic GST rates — read from the active WI category's `_2_0` (IGST/CGST)
+  // and `_3_0` (SGST) rows. Falls back to the standard 9/9/18 split when the
+  // subform doesn't carry a rate, so previously-correct records don't change.
+  // Amounts are not recomputed — only the % text on the label.
+  const bvkGstRates = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    const template = String(raw?.Template ?? '').trim().toLowerCase()
+    const isCat2 = template.includes('category 2 mm database wi') || template.includes('category 2 wi')
+    const line20Key = isCat2 ? 'Category_2_MM_Database_WI_2_0' : 'Category_1_MM_Database_WI_2_0'
+    const line30Key = isCat2 ? 'Category_2_MM_Database_WI_3_0' : 'Category_1_MM_Database_WI_3_0'
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw?.[key]
+      if (Array.isArray(v)) return v as Array<Record<string, unknown>>
+      if (v && typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const row20 = arrOf(line20Key)[0]
+    const row30 = arrOf(line30Key)[0]
+    const parseRate = (v: unknown): number => {
+      if (v == null) return 0
+      const n = parseFloat(String(v).replace(/,/g, '').trim())
+      return Number.isFinite(n) ? n : 0
+    }
+    return {
+      igst: parseRate(row20?.IGST),
+      cgst: parseRate(row20?.CGST),
+      sgst: parseRate(row30?.SGST),
+    }
+  })()
+  const bvkIgstLabelRate = bvkGstRates.igst > 0 ? bvkGstRates.igst : 18
+  const bvkCgstLabelRate = bvkGstRates.cgst > 0 ? bvkGstRates.cgst : 9
+  const bvkSgstLabelRate = bvkGstRates.sgst > 0 ? bvkGstRates.sgst : 9
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const bvkSummaryRows: BvkSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
@@ -158,19 +191,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   })
   if (bvkTaxHasValue(bvkCgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add CGST @ 9%',
+      label: `Add CGST @ ${bvkCgstLabelRate}%`,
       value: formatCurrency(bvkCgstAmount, displayCurrency),
     })
   }
   if (bvkTaxHasValue(bvkSgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add SGST @ 9%',
+      label: `Add SGST @ ${bvkSgstLabelRate}%`,
       value: formatCurrency(bvkSgstAmount, displayCurrency),
     })
   }
   if (bvkTaxHasValue(bvkIgstAmount)) {
     bvkSummaryRows.push({
-      label: 'Add IGST @ 18%',
+      label: `Add IGST @ ${bvkIgstLabelRate}%`,
       value: formatCurrency(bvkIgstAmount, displayCurrency),
     })
   }
@@ -180,6 +213,115 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     bold: true,
     big: true,
   })
+
+  // Delivery Schedule — same mapping rules as SLS (see SLSQuotationContent).
+  // Resolver is inline so BVK owns its own copy — no new shared helper.
+  //
+  //   • Family picked from the record's `Template` field (WI Cat 1/2, WMW
+  //     Cat 1/2, or Product Fitment). Uses the matching `_Desired_Date`
+  //     subform + the family's main product / `_2_0` subforms.
+  //   • Groups entries by `Line_Item_ref`.
+  //   • Product heading: Cat_1_WI → `Brand_Category` from main row.
+  //     All other families → `Brand_Selling_Name` from main row. No fallback.
+  //   • Per entry: first non-empty of Date_field → Week → Month_field.
+  //   • Format: `<Label> : <value>, <count> items, <UOM>` (UOM = `_2_0`
+  //     row's `UOM_Billing`).
+  //   • Entries with all three date fields blank are skipped.
+  //   • Whole section hidden when nothing renderable.
+  const bvkDeliverySchedule = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    if (!raw) return null
+    const template = String(raw.Template ?? '').trim().toLowerCase()
+    const family = (() => {
+      if (template.includes('product fitment')) {
+        return {
+          desiredDateKey: 'Product_Fitments_Desired_Date',
+          mainKey: 'Product_Fitments',
+          twoZeroKey: 'Product_Fitments2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WMW',
+          twoZeroKey: 'Category_2_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
+        return {
+          desiredDateKey: 'Category_1_MM_Database_WMW_Desired_Date',
+          mainKey: 'Category_1_MM_Database_WMW',
+          twoZeroKey: 'Category_1_MM_Database_WMW_2_0',
+          isCat1Wi: false,
+        }
+      }
+      if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
+        return {
+          desiredDateKey: 'Category_2_MM_Database_WI_Desired_Date',
+          mainKey: 'Category_2_MM_Database_WI',
+          twoZeroKey: 'Category_2_MM_Database_WI_2_0',
+          isCat1Wi: false,
+        }
+      }
+      return {
+        desiredDateKey: 'Category_1_MM_Database_WI_Desired_Date',
+        mainKey: 'Category_1_MM_Database_WI',
+        twoZeroKey: 'Category_1_MM_Database_WI_2_0',
+        isCat1Wi: true,
+      }
+    })()
+
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw[key]
+      if (v == null) return []
+      if (Array.isArray(v)) return v.filter((r): r is Record<string, unknown> => r != null && typeof r === 'object')
+      if (typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const desiredRows = arrOf(family.desiredDateKey)
+    if (desiredRows.length === 0) return null
+    const mainRows = arrOf(family.mainKey)
+    const twoZeroRows = arrOf(family.twoZeroKey)
+    const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
+      rows.find((r) => String(r.Line_Item_ref ?? '').trim() === ref)
+
+    type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string }
+    type Group = { ref: string; heading: string; entries: Entry[] }
+    const groups = new Map<string, Group>()
+    for (const row of desiredRows) {
+      const ref = String(row.Line_Item_ref ?? '').trim()
+      if (!ref) continue
+      const dateVal = String(row.Date_field ?? '').trim()
+      const weekVal = String(row.Week ?? '').trim()
+      const monthVal = String(row.Month_field ?? '').trim()
+      let entry: Entry | null = null
+      const count = String(row.No_Of_Items ?? '').trim()
+      const twoZeroRow = findByRef(twoZeroRows, ref)
+      const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      if (!entry) continue
+      let group = groups.get(ref)
+      if (!group) {
+        const mainRow = findByRef(mainRows, ref)
+        const heading = family.isCat1Wi
+          ? String(mainRow?.Brand_Category ?? '').trim()
+          : String(mainRow?.Brand_Selling_Name ?? '').trim()
+        group = { ref, heading, entries: [] }
+        groups.set(ref, group)
+      }
+      group.entries.push(entry)
+    }
+    if (groups.size === 0) return null
+    return Array.from(groups.values()).sort((a, b) => {
+      const na = parseInt(a.ref, 10)
+      const nb = parseInt(b.ref, 10)
+      return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+    })
+  })()
 
   return (
     <>
@@ -564,11 +706,50 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Taxes and Duties**:</div>
                     <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
                       <li style={{ marginBottom: '4px' }}>Will be Extra as applicable over and above the Ex-factory prices quoted.</li>
-                      <li style={{ marginBottom: '4px' }}>18% IGST will be applicable extra.</li>
+                      {(() => {
+                        // Dynamic tax-narrative bullets: emit one per non-zero
+                        // GST rate from Zoho, in priority order IGST → CGST →
+                        // SGST. When no rate is set anywhere, fall back to the
+                        // legacy hard-coded "18% IGST" line so existing
+                        // records keep their previous wording.
+                        const lines: string[] = []
+                        if (bvkGstRates.igst > 0) lines.push(`${bvkGstRates.igst}% IGST will be applicable extra.`)
+                        if (bvkGstRates.cgst > 0) lines.push(`${bvkGstRates.cgst}% CGST will be applicable extra.`)
+                        if (bvkGstRates.sgst > 0) lines.push(`${bvkGstRates.sgst}% SGST will be applicable extra.`)
+                        if (lines.length === 0) lines.push('18% IGST will be applicable extra.')
+                        return lines.map((line) => (
+                          <li key={line} style={{ marginBottom: '4px' }}>{line}</li>
+                        ))
+                      })()}
                       <li style={{ marginBottom: '4px' }}>However, if there is any change in Tax and any New Statutory Levies is introduced by Government at the time of delivery of the same will be billed as per actual.</li>
                       <li style={{ marginBottom: '4px' }}>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.</li>
                     </ul>
                   </div>
+
+                  {/* Delivery Schedule — same mapping rules as SLS / WI Process
+                   * Febric / WI Decomesh. Resolver is inline (see `bvkDeliverySchedule`
+                   * above). Section hides when nothing is renderable. */}
+                  {bvkDeliverySchedule ? (
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Delivery Schedule:</div>
+                      {bvkDeliverySchedule.map((group) => (
+                        <div key={group.ref} style={{ marginBottom: '10px', marginLeft: '20px' }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                            {group.ref}. {group.heading || ' '}
+                          </div>
+                          <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                            {group.entries.map((entry, i) => (
+                              <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                                <strong>{entry.label}</strong> : {entry.value}
+                                {entry.count ? `, ${entry.count} items` : ''}
+                                {entry.uom ? `, ${entry.uom}` : ''}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
 
                   {/* General Remarks — from Zoho `General_Remarks`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
