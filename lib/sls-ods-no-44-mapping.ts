@@ -31,8 +31,12 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   name: 'Name',
   template: 'Template',
   currency: 'Currency',
-  /** ODS DATE — root `Created_Date_and_time` (e.g. "18-Aug-2026 12:48:00"). */
-  odsDate: 'Created_Date_and_time',
+  /**
+   * ODS DATE — root `ODS_DATE` (confirmed field name; NOT `Created_Date_and_time`).
+   * Shared by every form that shows this value: sls-ods-no-44's "ODS DATE" row,
+   * sls-ods-no-44-p (same mapSlsOdsNo44 pipeline), and argo-multi-ao's "Date:" row.
+   */
+  odsDate: 'ODS_DATE',
   /** REMARKS section — root `Remarks` (distinct from `Workflow[0].Remarks`, which feeds Billing Description). */
   rootRemarks: 'Remarks',
 
