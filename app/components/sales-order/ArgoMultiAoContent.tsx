@@ -99,25 +99,30 @@ export default function ArgoMultiAoContent({
             Product Code / Application ─────────────────────────── */}
         <table className="mao-table">
           <colgroup>
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '7%' }} />
             <col style={{ width: '11%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '6%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '7%' }} />
             <col style={{ width: '6%' }} />
             <col style={{ width: '8%' }} />
             <col style={{ width: '7%' }} />
+            <col style={{ width: '9%' }} />
           </colgroup>
           <thead>
             <tr>
               <th>Billing Description</th>
               <th>HSN Code</th>
               <th>SAP No.</th>
+              <th>Client PO No.</th>
+              <th>PO Date</th>
+              <th>QCT No. / QH</th>
+              <th>QCT Date</th>
               <th>PPC Date</th>
               <th>Length (Meter)</th>
               <th>Width (Meter)</th>
@@ -125,17 +130,18 @@ export default function ArgoMultiAoContent({
               <th>Qty / UOM</th>
               <th>Price / UOM</th>
               <th>Total Value in INR</th>
-              <th>Client PO No.</th>
-              <th>PO Date</th>
-              <th>QCT No.</th>
             </tr>
           </thead>
           <tbody>
             {lines.map((line, i) => (
               <tr key={i}>
                 <td className="mao-cell-left">{line.billingDescription || ' '}</td>
-                <td className="mao-cell-center">{line.hsnCode || ' '}</td>
+                <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>{line.hsnCode || ' '}</td>
                 <td className="mao-cell-center">{line.sapNo || ' '}</td>
+                <td className="mao-cell-center">{line.clientPoNo || ' '}</td>
+                <td className="mao-cell-center">{line.poDate || ' '}</td>
+                <td className="mao-cell-center">{line.qctNo || ' '}</td>
+                <td className="mao-cell-center">{line.qctDate || ' '}</td>
                 <td className="mao-cell-center">{line.ppcDate || ' '}</td>
                 <td className="mao-cell-center">{line.length || ' '}</td>
                 <td className="mao-cell-center">{line.width || ' '}</td>
@@ -143,9 +149,6 @@ export default function ArgoMultiAoContent({
                 <td className="mao-cell-center">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
                 <td className="mao-cell-center">{line.price || ' '}</td>
                 <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>{line.totalValue || ' '}</td>
-                <td className="mao-cell-center">{line.clientPoNo || ' '}</td>
-                <td className="mao-cell-center">{line.poDate || ' '}</td>
-                <td className="mao-cell-center">{line.qctNo || ' '}</td>
               </tr>
             ))}
           </tbody>

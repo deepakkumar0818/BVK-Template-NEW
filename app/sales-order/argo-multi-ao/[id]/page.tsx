@@ -25,6 +25,10 @@ export default function ArgoMultiAoPage() {
   // Subject line — argo-multi-ao-specific field, not shared with sls-ods-no-44,
   // so read directly here rather than adding it to lib/sls-ods-no-44-mapping.ts.
   const [subject, setSubject] = useState('')
+  // Date row — argo-multi-ao uses `Created_Date_and_time`, NOT `ODS_DATE`
+  // (sls-ods-no-44/-p's "ODS DATE" uses ODS_DATE via mapSlsOdsNo44). Read
+  // directly here so the two forms can diverge.
+  const [date, setDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,6 +55,7 @@ export default function ArgoMultiAoPage() {
         console.log(`Sales Order Report — record ${id}:`, record)
         setData(mapSlsOdsNo44(record))
         setSubject(String(record?.Acceptance_of_Order_Mention ?? '').trim())
+        setDate(String(record?.Created_Date_and_time ?? '').trim().split(' ')[0] ?? '')
       } catch (err) {
         console.error('Error fetching sales order:', err)
         setError(err instanceof Error ? err.message : 'Failed to load sales order')
@@ -87,7 +92,7 @@ export default function ArgoMultiAoPage() {
           lines={data.lines}
           shippingAddressLines={data.shippingAddressLines}
           subject={subject}
-          date={data.odsDate}
+          date={date}
         />
       )}
     </>

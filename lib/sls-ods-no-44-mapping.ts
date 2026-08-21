@@ -31,8 +31,12 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   name: 'Name',
   template: 'Template',
   currency: 'Currency',
-  /** ODS DATE — root `Created_Date_and_time` (e.g. "18-Aug-2026 12:48:00"). */
-  odsDate: 'Created_Date_and_time',
+  /**
+   * ODS DATE — root `ODS_DATE` (confirmed field name; NOT `Created_Date_and_time`).
+   * Shared by every form that shows this value: sls-ods-no-44's "ODS DATE" row,
+   * sls-ods-no-44-p (same mapSlsOdsNo44 pipeline), and argo-multi-ao's "Date:" row.
+   */
+  odsDate: 'ODS_DATE',
   /** REMARKS section — root `Remarks` (distinct from `Workflow[0].Remarks`, which feeds Billing Description). */
   rootRemarks: 'Remarks',
 
@@ -79,6 +83,8 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   poDate: 'PO_Date',
   /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
   qctNo: 'QCT_No',
+  /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
+  qctDate: 'QCT_Date',
 
   // Subform families (Category 1 / Category 2 WI triplet — same shape as quotations)
   cat1Product: 'Category_1_MM_Database_WI',
@@ -161,6 +167,7 @@ export interface SlsOdsNo44Line {
   clientPoNo: string
   poDate: string
   qctNo: string
+  qctDate: string
 }
 
 export interface SlsOdsNo44Data {
@@ -386,6 +393,7 @@ export function mapSlsOdsNo44(
       clientPoNo: strVal(merged[F.clientPoNo]),
       poDate: strVal(merged[F.poDate]),
       qctNo: strVal(merged[F.qctNo]),
+      qctDate: strVal(merged[F.qctDate]),
     }
   })
 

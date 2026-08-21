@@ -68,16 +68,16 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
             <tr>
               <td className="ods-label">ODS NO.</td>
               <td>{data.odsNo}</td>
-              <td className="ods-label">Page No.</td>
-              <td>{data.pageNo}</td>
+              <td className="ods-label">Issue No.</td>
+              <td>{data.issueNo}</td>
             </tr>
             <tr>
               <td className="ods-label" rowSpan={2}>
                 ODS DATE
               </td>
               <td rowSpan={2}>{data.odsDate}</td>
-              <td className="ods-label">Issue No.</td>
-              <td>{data.issueNo}</td>
+              <td className="ods-label">Page No.</td>
+              <td>{data.pageNo}</td>
             </tr>
             <tr>
               <td className="ods-label">Issue Date</td>
@@ -123,7 +123,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
         <table className="ods-table ods-product-table" role="presentation">
           <thead>
             <tr>
-              <th colSpan={13} className="ods-section-label ods-section-label--center">
+              <th colSpan={14} className="ods-section-label ods-section-label--center">
                 PRODUCT DETAILS
               </th>
             </tr>
@@ -133,14 +133,15 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
               <th>Billing Description</th>
               <th>HSN Code</th>
               <th>SAP No.</th>
+              <th>Client PO No.</th>
+              <th>PO Date</th>
+              <th>QCT No. / QH</th>
+              <th>QCT Date</th>
               <th>PPC Date</th>
               <th>Length (Meter)</th>
               <th>Width (Meter)</th>
               <th>Total SQM</th>
               <th>Qty / UOM</th>
-              <th>Client PO No.</th>
-              <th>PO Date</th>
-              <th>QCT No.</th>
             </tr>
           </thead>
           <tbody>
@@ -151,18 +152,19 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
                 <td className="ods-desc">{line.billingDescription || ' '}</td>
                 <td className="ods-num">{line.hsnCode || ' '}</td>
                 <td className="ods-num">{line.sapNo || ' '}</td>
+                <td className="ods-num">{line.clientPoNo || ' '}</td>
+                <td className="ods-num">{line.poDate || ' '}</td>
+                <td className="ods-num">{line.qctNo || ' '}</td>
+                <td className="ods-num">{line.qctDate || ' '}</td>
                 <td className="ods-num">{line.ppcDate || ' '}</td>
                 <td className="ods-num">{line.length || ' '}</td>
                 <td className="ods-num">{line.width || ' '}</td>
                 <td className="ods-num">{line.totalSqm || ' '}</td>
                 <td className="ods-num">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
-                <td className="ods-num">{line.clientPoNo || ' '}</td>
-                <td className="ods-num">{line.poDate || ' '}</td>
-                <td className="ods-num">{line.qctNo || ' '}</td>
               </tr>
             ))}
             <tr>
-              <td colSpan={11} className="ods-product-foot-label">
+              <td colSpan={12} className="ods-product-foot-label">
                 {data.gstLabel}
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -170,7 +172,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
               </td>
             </tr>
             <tr>
-              <td colSpan={11} className="ods-product-foot-label">
+              <td colSpan={12} className="ods-product-foot-label">
                 Total Value
               </td>
               <td colSpan={2} className="ods-product-foot-value">
