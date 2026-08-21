@@ -127,7 +127,6 @@ export default function WIDecomeshQuotationContent({
   // Footer strings
   const companyName = String(rawRec?.[F.companyName] ?? '').trim() || 'WMW INDUSTRIES LIMITED'
   const contactPersonBlockCompany = String(rawRec?.[F.companyName] ?? '').trim() || 'WMW Industries Ltd.'
-  const companyFormerName = String(rawRec?.[F.companyFormerName] ?? '').trim() || 'Formerly known as GKD India Limited'
   const registeredAddress = String(rawRec?.[F.registeredAddress] ?? '').trim() ||
     '52, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India'
   const phone = String(rawRec?.[F.phone] ?? '').trim() || '+91 141 7105100'
@@ -408,7 +407,6 @@ export default function WIDecomeshQuotationContent({
                       <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}>
                         {companyName}
                       </div>
-                      <div style={{ marginBottom: '8px', fontSize: '8px' }}>{companyFormerName}</div>
                       <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
                       <div style={{ marginBottom: '4px' }}>{phone} | {email} | {website}</div>
                       <div style={{ marginTop: '8px' }}>

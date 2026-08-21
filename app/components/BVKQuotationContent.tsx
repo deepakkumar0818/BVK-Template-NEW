@@ -695,11 +695,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     )
                   })()}
 
-                  {/* Quantity Validity */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quotation Validity</div>
-                    <div style={{ marginLeft: '20px' }}>Price valid for the quantity mentioned above in the quotation only.</div>
-                  </div>
+                  {/* Quantity Validity — body from Zoho `Quantity_Validity`;
+                   * skip when empty. `whiteSpace: pre-wrap` preserves line
+                   * breaks + spacing exactly as typed. */}
+                  {(() => {
+                    const v = String(rawQuotationData?.Quantity_Validity ?? '').trim()
+                    if (!v) return null
+                    return (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Quantity Validity</div>
+                        <div style={{ marginLeft: '20px', whiteSpace: 'pre-wrap' }}>{v}</div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Taxes and Duties */}
                   <div style={{ marginBottom: '12px' }}>

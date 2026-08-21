@@ -214,7 +214,6 @@ export default function WIProcessFebricQuotationContent({
   const contactPerson = contactPersonRaw || 'Mr. Alok Maheshwari'
   const contactNumber = contactPersonRaw ? contactNumberRaw : contactNumberRaw || '9358364921'
   const companyName = String(rawRec?.[F.companyName] ?? '').trim() || 'WMW INDUSTRIES LIMITED'
-  const companyFormerName = String(rawRec?.[F.companyFormerName] ?? '').trim() || 'Formerly known as GKD India Limited'
   const registeredAddress = String(rawRec?.[F.registeredAddress] ?? '').trim() ||
     '52, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India'
   const phone = String(rawRec?.[F.phone] ?? '').trim() || '+91 141 7105100'
@@ -635,7 +634,6 @@ export default function WIProcessFebricQuotationContent({
                       >
                         {companyName}
                       </div>
-                      <div style={{ marginBottom: '8px', fontSize: '8px' }}>{companyFormerName}</div>
                       <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
                       <div style={{ marginBottom: '4px' }}>
                         {phone} | {email} | {website}
