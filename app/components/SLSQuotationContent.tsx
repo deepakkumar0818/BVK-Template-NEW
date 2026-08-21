@@ -283,7 +283,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const contactPerson = String(rawQuotationData?.Contact_Person ?? '').trim()
   const contactNumber = rawQuotationData?.Contact_Number || ''
   const companyName = rawQuotationData?.Company_Name || 'WMW Industries Limited.'
-  const companyFormerName = rawQuotationData?.Company_Former_Name || 'Formerly known as GKD India Limited'
   const registeredAddress = rawQuotationData?.Registered_Address || '52, Industrial Area, Jhotwara, Jaipur-302012, Rajasthan, India'
   const phone = rawQuotationData?.Phone || '+91 141 7105100'
   const email = rawQuotationData?.Email || 'info@wmwindia.com'
@@ -418,32 +417,27 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
                 {/* Header with Logo and Date */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', marginTop: 0 }}>
-          {/* Left side - Empty for recipient info */}
-          <div></div>
-
-          {/* Right side - Logo, Company Name, and Date */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', marginTop: 0 }}>
-            {/* WMW Logo - 150px */}
-            <div style={{ width: '150px', height: '150px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 0, paddingTop: 0 }}>
-              <img
-                src="/wmw-logo.png"
-                alt="WMW Logo"
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', marginTop: 0 }}
-                onError={(e) => {
-                  console.error('Logo failed to load:', e);
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-            {/* Company Name */}
-            <div style={{ fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase', textAlign: 'right' }}>
-              WMW INDUSTRIES LTD
-            </div>
-            {/* Date */}
-            <div style={{ fontSize: '11px', textAlign: 'right' }}>
+          {/* Left side — new wide WMW Industries logo (mark + wordmark +
+           * tagline all in one image at /wi.png). Image is rendered at its
+           * natural width (height locked to 80px) so the Date row directly
+           * underneath sits flush with the logo's actual left edge. */}
+          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginTop: 0 }}>
+            <img
+              src="/wi.png"
+              alt="WMW Industries Ltd"
+              style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block', marginTop: 0 }}
+              onError={(e) => {
+                console.error('Logo failed to load:', e);
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <div style={{ fontSize: '11px', textAlign: 'left' }}>
               <strong>Date:</strong> {date}
             </div>
           </div>
+
+          {/* Right side — empty spacer so the header row keeps its space-between layout. */}
+          <div></div>
         </div>
               </td>
             </tr>
@@ -726,7 +720,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
             <div style={{ width: '60%' }}>
               <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}>WMW INDUSTRIES LIMITED</div>
-              <div style={{ marginBottom: '8px', fontSize: '8px' }}>{companyFormerName}</div>
               <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
               <div style={{ marginBottom: '4px' }}>{phone} | {email} | {website}</div>
               <div style={{ marginTop: '8px' }}>

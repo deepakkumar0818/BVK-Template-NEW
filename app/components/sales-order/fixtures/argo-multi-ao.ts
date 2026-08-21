@@ -74,7 +74,7 @@ export const argoMultiAoFixture: MultiOrderAcceptanceOfOrderData = {
   ],
   footerLeft: {
     companyName: 'WMW INDUSTRIES LIMITED',
-    formerName: 'Formerly GKD India Ltd',
+    formerName: '""',
     address: '52, Industrial Area: Jhotwara, Jaipur - 302012, India',
     contactLine: '+91 141 7105100 | query@wmwindia.com | www.wmwindia.com',
     cin: 'U51909WB2011PLC163277',
