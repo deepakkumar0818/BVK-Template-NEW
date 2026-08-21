@@ -83,6 +83,8 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   poDate: 'PO_Date',
   /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
   qctNo: 'QCT_No',
+  /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
+  qctDate: 'QCT_Date',
 
   // Subform families (Category 1 / Category 2 WI triplet — same shape as quotations)
   cat1Product: 'Category_1_MM_Database_WI',
@@ -165,6 +167,7 @@ export interface SlsOdsNo44Line {
   clientPoNo: string
   poDate: string
   qctNo: string
+  qctDate: string
 }
 
 export interface SlsOdsNo44Data {
@@ -390,6 +393,7 @@ export function mapSlsOdsNo44(
       clientPoNo: strVal(merged[F.clientPoNo]),
       poDate: strVal(merged[F.poDate]),
       qctNo: strVal(merged[F.qctNo]),
+      qctDate: strVal(merged[F.qctDate]),
     }
   })
 
