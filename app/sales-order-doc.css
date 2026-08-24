@@ -560,7 +560,10 @@
 }
 
 .sales-order-doc--sls-ods-0254.sos-sheet {
-  padding: 6mm 6mm;
+  /* Screen padding bumped up so the SOS sheet has a visible inset from
+   * the page edge — matches the breathing room the other sales-order
+   * templates use on screen. */
+  padding: 12mm 12mm;
   box-sizing: border-box;
 }
 
@@ -1495,7 +1498,11 @@
 
 @page sales-order-sos {
   size: A4 portrait;
-  margin: 8mm;
+  /* Named @page — kept at margin: 0 because the container itself now
+   * provides the 12mm inset via `padding: 12mm !important` in print,
+   * which is more reliably honoured across browsers than named-page
+   * margins competing with the global anonymous `@page { margin: 0 }`. */
+  margin: 0;
 }
 
 @media print {
@@ -1531,8 +1538,17 @@
   }
 
   .sales-order-doc--sls-ods-0254.sos-sheet {
+    /* Container padding gives the visible print inset directly, so the
+     * layout doesn't depend on whether the browser honours the named
+     * `@page sales-order-sos` margin (some Chrome versions fall back to
+     * the anonymous `@page { margin: 0 }` in globals.css). */
     page: sales-order-sos;
-    padding: 0 !important;
+    padding: 12mm !important;
+    /* Force borders/backgrounds to render in print. Without this Chrome
+     * may strip printed backgrounds when the user's print dialog has
+     * "Background graphics" unchecked. */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .sales-order-doc--sls-ods-0254 .sos-wire-details tr {
