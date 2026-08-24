@@ -74,6 +74,16 @@ export default function WIProcessFebricQuotationContent({
 
   const rawRec = rawQuotationData as Record<string, unknown> | undefined
 
+  // Strip trailing zeros from a numeric qty (matches SLS's formatQty):
+  //   "10.00" -> "10", "10.50" -> "10.5", "10.05" -> "10.05".
+  // Non-numeric qty strings pass through untouched.
+  const formatQty = (q: unknown): string => {
+    const s = String(q ?? '').trim()
+    if (!s) return ''
+    const n = Number(s.replace(/,/g, ''))
+    return Number.isFinite(n) ? n.toString() : s
+  }
+
   const date = formatWpfDate(data.date || (rawRec?.[F.quotationCreatedDate] as string | undefined))
   const quotationRefNo = data.quotationNumber || String(rawRec?.[F.quotationName] ?? '')
   const rootRemarks = String(rawRec?.[F.rootRemarks] ?? '').trim()
@@ -84,6 +94,13 @@ export default function WIProcessFebricQuotationContent({
   const recipientName = String(
     shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
   ).trim()
+  // Contact-person display with "Mr. " prefix (skip if the Zoho value
+  // already starts with a title such as Mr / Mrs / Ms / Dr).
+  const recipientNameDisplay = recipientName
+    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientName)
+      ? recipientName
+      : `Mr. ${recipientName}`
+    : ''
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -259,46 +276,20 @@ export default function WIProcessFebricQuotationContent({
             </tr>
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Header: WMW logo (top-right) + Date under it */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '30px',
-                  }}
-                >
-                  <div></div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      gap: '8px',
+                {/* Header — logo on the LEFT (wide /wi.png), Date on the
+                 * RIGHT (top-aligned with the logo). Same swap as SLS: Date
+                 * used to sit stacked under the logo; moving it to the right
+                 * lets the body content below shift up and end up aligned
+                 * near the Date row on the right. */}
+                <div style={{ marginBottom: '30px' }}>
+                  <img
+                    src="/wi.png"
+                    alt="WMW Industries Ltd"
+                    style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
                     }}
-                  >
-                    <div
-                      style={{
-                        width: '150px',
-                        height: '120px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <img
-                        src="/wmw-logo.png"
-                        alt="WMW Logo"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ fontSize: '11px', textAlign: 'right' }}>
-                      Date: {date}
-                    </div>
-                  </div>
+                  />
                 </div>
               </td>
             </tr>
@@ -306,10 +297,18 @@ export default function WIProcessFebricQuotationContent({
           <tbody>
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Recipient block */}
+                {/* Recipient block — prefixed with a "To," line to match
+                 * SLS / WI Decomesh / BVK. Date sits on the same line as
+                 * "To," (right-aligned), same baseline. */}
                 <div style={{ marginBottom: '15px' }}>
-                  {recipientName ? (
-                    <div style={{ marginBottom: '4px' }}>{recipientName}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold' }}>To,</div>
+                    <div style={{ fontSize: '11px', textAlign: 'right' }}>
+                      Date: {date}
+                    </div>
+                  </div>
+                  {recipientNameDisplay ? (
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{recipientNameDisplay}</div>
                   ) : null}
                   {recipientCompany ? (
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{recipientCompany}</div>
@@ -362,12 +361,12 @@ export default function WIProcessFebricQuotationContent({
                   >
                     <thead>
                       <tr>
-                        <th style={itemsHeaderCellStyle(8, 'center')}>Item</th>
-                        <th style={itemsHeaderCellStyle(27, 'left')}>Product</th>
-                        <th style={itemsHeaderCellStyle(13, 'center')}>HSN Code</th>
-                        <th style={itemsHeaderCellStyle(12, 'center')}>Qty</th>
-                        <th style={itemsHeaderCellStyle(20, 'center')}>{`Unit Price / ${displayCurrency}`}</th>
-                        <th style={itemsHeaderCellStyle(20, 'center')}>{`Total Price ${displayCurrency}`}</th>
+                        <th style={itemsHeaderCellStyle(8, 'center', { tight: true })}>Item</th>
+                        <th style={itemsHeaderCellStyle(45, 'left')}>Product</th>
+                        <th style={itemsHeaderCellStyle(9, 'center', { tight: true })}>HSN Code</th>
+                        <th style={itemsHeaderCellStyle(8, 'center', { tight: true })}>Qty</th>
+                        <th style={itemsHeaderCellStyle(15, 'center', { tight: true })}>{`Unit Price / ${displayCurrency}`}</th>
+                        <th style={itemsHeaderCellStyle(15, 'center', { tight: true })}>{`Total Price ${displayCurrency}`}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -401,7 +400,7 @@ export default function WIProcessFebricQuotationContent({
                           <td style={{ ...itemsBodyCellStyle('center'), whiteSpace: 'nowrap' }}>{row.hsnCode || ''}</td>
                           <td style={itemsBodyCellStyle('center')}>
                             {row.qty
-                              ? `${row.qty}${row.uom ? ` ${row.uom}` : ''}`
+                              ? `${formatQty(row.qty)}${row.uom ? ` ${row.uom}` : ''}`
                               : ''}
                           </td>
                           <td style={itemsBodyCellStyle('center')}>
@@ -602,6 +601,12 @@ export default function WIProcessFebricQuotationContent({
                 </div>
               </td>
             </tr>
+            {/* Spacer row — height:100% in print. Stretches to fill leftover
+             * space on the LAST page so the <tfoot> pins to the page bottom
+             * (see .wi-process-febric-print-page-bottom-spacer in globals.css). */}
+            <tr className="wi-process-febric-print-page-bottom-spacer" aria-hidden="true">
+              <td />
+            </tr>
           </tbody>
           {/*
             Footer as its own <tfoot> (not crammed into the <tbody> cell above)
@@ -613,42 +618,40 @@ export default function WIProcessFebricQuotationContent({
           <tfoot className="wi-process-febric-print-footer-row">
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+                {/* Footer — replaced the old text block (company name,
+                 * address, phone/email/website, Registered Office, tagline,
+                 * CIN, GST, "A BVK Group Company") with two images that
+                 * already contain all of that baked in. Same swap that was
+                 * applied to SLS. Left image raised by 45px margin-bottom
+                 * so its top aligns with the right image's first line. */}
                 <div
                   className="wi-process-febric-company-footer"
                   style={{
-                    borderTop: '2px solid #000',
-                    paddingTop: '15px',
                     marginTop: '40px',
-                    fontSize: '9px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    gap: '16px',
+                    pageBreakInside: 'avoid',
+                    breakInside: 'avoid',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div style={{ width: '60%' }}>
-                      <div
-                        style={{
-                          fontWeight: 'bold',
-                          fontSize: '10px',
-                          marginBottom: '4px',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        {companyName}
-                      </div>
-                      <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
-                      <div style={{ marginBottom: '4px' }}>
-                        {phone} | {email} | {website}
-                      </div>
-                      <div style={{ marginTop: '8px' }}>
-                        <strong>Registered Office:</strong> {registeredOffice}
-                      </div>
-                    </div>
-                    <div style={{ width: '35%', textAlign: 'right' }}>
-                      <div style={{ marginBottom: '4px' }}>{tagline}</div>
-                      <div style={{ marginBottom: '4px' }}>CIN: {cin}</div>
-                      <div style={{ marginBottom: '4px' }}>GST: {gstin}</div>
-                      <div style={{ fontWeight: 'bold', marginTop: '8px' }}>{groupCompany}</div>
-                    </div>
-                  </div>
+                  <img
+                    src="/wi bottom left side.png"
+                    alt="WMW Industries Ltd — company details"
+                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                  <img
+                    src="/wi_bottom_rightside.png"
+                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
+                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
                 </div>
               </td>
             </tr>
@@ -671,14 +674,21 @@ export default function WIProcessFebricQuotationContent({
 
 // Local style helpers — kept in-file to avoid a shared style module.
 
-function itemsHeaderCellStyle(widthPct: number, align: 'left' | 'center' | 'right'): React.CSSProperties {
+function itemsHeaderCellStyle(
+  widthPct: number,
+  align: 'left' | 'center' | 'right',
+  opts?: { tight?: boolean }
+): React.CSSProperties {
+  // `tight`: narrow columns (HSN Code, Qty, Unit Price, Total Price) use
+  // reduced padding and force single-line so their labels don't wrap.
   return {
     border: '1px solid #000',
-    padding: '8px',
+    padding: opts?.tight ? '4px 2px' : '8px',
     textAlign: align,
     fontWeight: 'bold',
     backgroundColor: '#f0f0f0',
     width: `${widthPct}%`,
+    ...(opts?.tight ? { whiteSpace: 'nowrap' as const } : {}),
   }
 }
 
