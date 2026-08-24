@@ -74,6 +74,17 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const recipientName =
     consignee.name ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
+  // Person's contact name (separate from the company/recipient name).
+  // Rendered on its own line with an "Mr. " prefix — skips the prefix if
+  // the Zoho value already starts with a common title (Mr/Mrs/Ms/Dr).
+  const contactPersonRaw = String(
+    shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
+  ).trim()
+  const contactPersonDisplay = contactPersonRaw
+    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(contactPersonRaw)
+      ? contactPersonRaw
+      : `Mr. ${contactPersonRaw}`
+    : ''
   const recipientAddressShipping = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
   const recipientAddressBilling = billingData?.Billing_Street
     ? `${billingData.Billing_Street || rawQuotationData?.Billing_Street || ''}, ${billingData.Billing_City || rawQuotationData?.Billing_City || ''}, ${billingData.Billing_State || rawQuotationData?.Billing_State || ''} ${billingData.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || ''}`
@@ -168,10 +179,22 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const bvkCgstLabelRate = bvkGstRates.cgst > 0 ? bvkGstRates.cgst : 9
   const bvkSgstLabelRate = bvkGstRates.sgst > 0 ? bvkGstRates.sgst : 9
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
+  // Packing Charges row is shown only when Zoho's `Packing_Charge` toggle
+  // is checked. Same true/"true" test the "Packing: included/excluded"
+  // narrative below uses.
+  const bvkPackingChargeChecked = (() => {
+    const v = rawQuotationData?.Packing_Charge
+    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  })()
   const bvkSummaryRows: BvkSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
-    { label: 'Packing Charges', value: formatCurrency(bvkSafe(bvkPackingTotal), displayCurrency) },
   ]
+  if (bvkPackingChargeChecked) {
+    bvkSummaryRows.push({
+      label: 'Packing Charges',
+      value: formatCurrency(bvkSafe(bvkPackingTotal), displayCurrency),
+    })
+  }
   if (bvkTaxHasValue(bvkFreightTotal)) {
     bvkSummaryRows.push({
       label: 'Freight Charges',
@@ -338,34 +361,39 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   {/* Top green line */}
                   <div style={{ borderTop: '2px solid #00a651', marginBottom: '10px' }}></div>
                   
-                  {/* Header content */}
+                  {/* Header content — replaced the old green-lines
+                   * decoration (left) and Hydrotech logo (right) with the
+                   * new BVK top images. Left image is `/bvk top left.png`,
+                   * right image is `/bvk top right.png`. Date stays under
+                   * the right image. */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    {/* Left: Green lines decoration */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
-                      <div style={{ width: '20px', height: '2px', backgroundColor: '#00a651' }}></div>
-                      <div style={{ width: '30px', height: '2px', backgroundColor: '#00a651' }}></div>
-                      <div style={{ width: '30px', height: '2px', backgroundColor: '#00a651' }}></div>
-                      <div style={{ width: '30px', height: '2px', backgroundColor: '#00a651' }}></div>
+                    {/* Left: bvk top left image */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                      <img
+                        src="/bvk top left.png"
+                        alt="BVK header (left)"
+                        style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                        onError={(e) => {
+                          console.error('BVK top-left image failed to load:', e);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     </div>
-                    
-                    {/* Right: Logo and Date */}
+
+                    {/* Right: bvk top right image only. Date has been moved
+                     * out of the repeating thead down into the body so it
+                     * prints once (aligned with the "To," line) — matches
+                     * the SLS / WI Process Febric / WI Decomesh treatment. */}
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ marginBottom: '8px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <div style={{ width: '150px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
-                          <img 
-                            src="/hydrotech-logo.png" 
-                            alt="BVK Hydrotech Logo" 
-                            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                            onError={(e) => {
-                              console.error('Hydrotech Logo failed to load:', e);
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                        <div style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                          Date : - {quotationDate}
-                        </div>
-                      </div>
+                      <img
+                        src="/bvk top right.png"
+                        alt="BVK header (right)"
+                        style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                        onError={(e) => {
+                          console.error('BVK top-right image failed to load:', e);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -377,11 +405,23 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
           <tbody>
             <tr>
               <td colSpan={2} style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Recipient Section — Zoho-driven, no hardcoded lines. */}
+                {/* Recipient Section — Zoho-driven, no hardcoded lines.
+                 * Contact person's name (Mr. …) prints on its own line above
+                 * the company/recipient name, matching the SLS / WI layout.
+                 * "To," on the left, Date on the right (same baseline) —
+                 * mirrors the SLS / WI Process Febric / WI Decomesh layout. */}
                 <div style={{ marginBottom: '15px' }}>
-                  <div style={{ marginBottom: '8px' }}>To,</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 'bold' }}>To,</div>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', textAlign: 'right' }}>
+                      Date : - {quotationDate}
+                    </div>
+                  </div>
+                  {contactPersonDisplay ? (
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{contactPersonDisplay}</div>
+                  ) : null}
                   {recipientName ? (
-                    <div style={{ marginBottom: '15px' }}>{recipientName}</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '15px' }}>{recipientName}</div>
                   ) : null}
                   {recipientAddress && (
                     <div
@@ -416,18 +456,22 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
                     <thead>
                       <tr>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '5%', whiteSpace: 'nowrap' }}>Item</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '38%' }}>Product</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', width: '14%' }}>HSN Code</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '11%' }}>Qty/UOM</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '16%' }}>{`Unit Price / ${displayCurrency}`}</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '16%' }}>{`Total Price / ${displayCurrency}`}</th>
+                        {/* Column widths + tight header padding mirror WI
+                         * Process Febric (8/45/9/8/15/15). Narrow columns use
+                         * 4px 2px padding + `whiteSpace: nowrap` so labels
+                         * don't wrap into overlapping lines. */}
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '45%' }}>Product</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '9%', whiteSpace: 'nowrap' }}>HSN Code</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '8%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {bvkTableRows.map((row, index) => (
                         <tr key={index}>
-                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>{index + 1}.</td>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center' }}>{index + 1}.</td>
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
                             {/* Line 1: "Product : <Product_Name>" — printed only when the
                               * Zoho `Product_Name` field on the main product row has a value.
@@ -448,15 +492,15 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                           <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {row.hsnCode || ''}
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center' }}>
                             {row.qty
                               ? `${formatPiecesInteger(row.qty)}${row.uomBilling ? ` ${row.uomBilling}` : ''}`
                               : '---'}
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center' }}>
                             {row.unitPrice > 0 ? formatCurrency(row.unitPrice, displayCurrency) : ''}
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top' }}>
+                          <td style={{ border: '1px solid #000', padding: '8px', verticalAlign: 'top', textAlign: 'center' }}>
                             {row.totalPrice > 0 ? formatCurrency(row.totalPrice, displayCurrency) : ''}
                           </td>
                         </tr>

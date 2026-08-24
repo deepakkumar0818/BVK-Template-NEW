@@ -166,21 +166,42 @@ body {
    * Padding-top is zeroed so the .print-page-top-spacer inside the thead
    * owns the top inset — same trick BVK uses. */
   .sls-quotation-container {
+    /* Full-width in print so the outer <table>'s <thead> can repeat across
+     * pages. Left / right padding is intentionally NOT overridden here — the
+     * 20mm side inset from the inline style is preserved so the print
+     * margins stay where they were before the repeating-header work.
+     *
+     * Flex column with `min-height: 100vh` is the trick that keeps the
+     * <tfoot> pinned to the bottom of the LAST page as well: the container
+     * is forced to be at least one page tall, the table inside gets
+     * `flex:1` so it fills that height, and its <tbody> stretches
+     * (vertical-align:top keeps content at the top). Without this the
+     * last-page tfoot would just follow the content when it's short. */
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
-    padding-left: 8mm !important;
-    padding-right: 8mm !important;
     padding-bottom: 2mm !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   /* SLS: dedicated print rules so the outer <table>'s <thead> (logo +
    * company name + date) repeats on every printed page — same mechanism
    * WI Decomesh uses, but with `.sls-print-*` selectors so SLS owns its
-   * own repeat behaviour rather than piggy-backing on BVK's classes. */
+   * own repeat behaviour rather than piggy-backing on BVK's classes.
+   * `flex: 1` lets the table stretch to fill the flex-column container so
+   * the <tfoot> sinks to the bottom of the last page. Body cell keeps
+   * `vertical-align:top` so the content still starts at the top. */
   .sls-print-table {
     border: none !important;
     border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .sls-print-table tbody tr td {
+    vertical-align: top;
   }
 
   .sls-print-table thead.sls-print-header-row {
@@ -189,6 +210,31 @@ body {
 
   .sls-print-header-row td {
     display: table-cell !important;
+  }
+
+  /* SLS: footer (two-image company block) repeats at the bottom of every
+   * printed page, mirroring the thead trick above. */
+  .sls-print-table tfoot.sls-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .sls-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  /* SLS: invisible spacer row that stretches to fill leftover vertical
+   * space on the LAST page so the tfoot ends up pinned to the page
+   * bottom. Only visible in print. */
+  .sls-print-page-bottom-spacer {
+    display: table-row !important;
+    height: 100% !important;
+  }
+
+  .sls-print-page-bottom-spacer td {
+    display: table-cell !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   /* SLS: reduce end-of-document whitespace so conditions follow immediately. */
@@ -3194,21 +3240,47 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   display: none;
 }
 
+/* Bottom spacer — invisible on screen; only participates in the print
+ * layout where it stretches to fill leftover height. */
+.wi-process-febric-print-page-bottom-spacer {
+  display: none;
+}
+
+/* SLS bottom spacer — same idea. Hidden on screen, active in print. */
+.sls-print-page-bottom-spacer {
+  display: none;
+}
+
 @media print {
   /* Container in print: full width so the outer <table> can page-break
    * across pages (that is what unlocks <thead> repetition). */
   .wi-process-febric-quotation-container {
+    /* Flex-column at 100vh min-height so the last-page <tfoot> pins to
+     * the bottom instead of following the content when it's short.
+     * Matches SLS. */
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
     padding-left: 8mm !important;
     padding-right: 8mm !important;
     padding-bottom: 5mm !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .wi-process-febric-print-table {
+    /* `flex: 1` stretches the table to fill the flex-column container,
+     * so the <tfoot> sinks to the bottom of the last page. Body cells
+     * stay top-aligned so content doesn't drift downward. */
     border: none !important;
     border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .wi-process-febric-print-table tbody tr td {
+    vertical-align: top;
   }
 
   /* Repeat the header on every printed page. */
@@ -3226,6 +3298,21 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   .wi-process-febric-print-header-row td,
   .wi-process-febric-print-footer-row td {
     display: table-cell !important;
+  }
+
+  /* Stretchy bottom spacer — height:100% in print so it consumes the
+   * empty vertical space left on the LAST page, forcing the tfoot down
+   * to the page bottom. */
+  .wi-process-febric-print-page-bottom-spacer {
+    display: table-row !important;
+    height: 100% !important;
+  }
+
+  .wi-process-febric-print-page-bottom-spacer td {
+    display: table-cell !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   /* Top spacer row — matches the page inset used by the other templates. */
@@ -3281,7 +3368,18 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   display: table-header-group;
 }
 
+/* Screen: on-screen the footer row shows once at the true end of the doc. */
+.wi-decomesh-print-table tfoot.wi-decomesh-print-footer-row {
+  display: table-footer-group;
+}
+
 .wi-decomesh-print-page-top-spacer {
+  display: none;
+}
+
+/* Bottom spacer — invisible on screen; stretches to fill leftover
+ * height in print so the tfoot lands at the bottom of the last page. */
+.wi-decomesh-print-page-bottom-spacer {
   display: none;
 }
 
@@ -3289,17 +3387,32 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   /* Container in print: full width so the outer <table> can page-break
    * across pages (that is what unlocks <thead> repetition). */
   .wi-decomesh-quotation-container {
+    /* Flex-column at 100vh min-height so the last-page <tfoot> pins to
+     * the bottom instead of following the content when it's short.
+     * Matches SLS / WI Process Febric. */
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
     padding-left: 8mm !important;
     padding-right: 8mm !important;
     padding-bottom: 5mm !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
   .wi-decomesh-print-table {
+    /* `flex: 1` stretches the table to fill the flex-column container,
+     * so the <tfoot> sinks to the bottom of the last page. Body cells
+     * stay top-aligned so content doesn't drift downward. */
     border: none !important;
     border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .wi-decomesh-print-table tbody tr td {
+    vertical-align: top;
   }
 
   /* Repeat the header on every printed page. */
@@ -3307,8 +3420,31 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
     display: table-header-group !important;
   }
 
-  .wi-decomesh-print-header-row td {
+  /* Repeat the footer at the bottom of every printed page — same
+   * `display: table-footer-group` mechanism used for SLS / WI Process
+   * Febric. Hoists the two-image footer out of the tbody flow. */
+  .wi-decomesh-print-table tfoot.wi-decomesh-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .wi-decomesh-print-header-row td,
+  .wi-decomesh-print-footer-row td {
     display: table-cell !important;
+  }
+
+  /* Stretchy bottom spacer — height:100% in print so it consumes the
+   * empty vertical space left on the LAST page, forcing the tfoot down
+   * to the page bottom. */
+  .wi-decomesh-print-page-bottom-spacer {
+    display: table-row !important;
+    height: 100% !important;
+  }
+
+  .wi-decomesh-print-page-bottom-spacer td {
+    display: table-cell !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   /* Top spacer row — matches the page inset used by the other templates. */

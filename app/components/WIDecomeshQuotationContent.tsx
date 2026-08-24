@@ -62,13 +62,42 @@ export default function WIDecomeshQuotationContent({
   }
 
   const rawRec = rawQuotationData as Record<string, unknown> | undefined
+
+  // Strip trailing zeros from the numeric prefix of a qty string, then
+  // reattach any suffix (unit label, m², etc.). Decomesh values look
+  // like "10.00 Panel" and "50.00 m²", so a plain Number() cast on the
+  // whole string wouldn't match — pull the leading digits off first.
+  //   "10.00"        -> "10"
+  //   "10.00 Panel"  -> "10 Panel"
+  //   "10.50 kg"     -> "10.5 kg"
+  //   "10.05 m²"     -> "10.05 m²"
+  //   "as required"  -> "as required" (unchanged)
+  const formatQty = (q: unknown): string => {
+    const s = String(q ?? '').trim()
+    if (!s) return ''
+    const m = s.match(/^([\d,]+(?:\.\d+)?)(\s.*)?$/)
+    if (m) {
+      const [, numPart, rest] = m
+      const n = Number(numPart.replace(/,/g, ''))
+      if (Number.isFinite(n)) return `${n.toString()}${rest ?? ''}`
+    }
+    return s
+  }
+
   const date = formatWdmDate(data.date || (rawRec?.[F.quotationCreatedDate] as string | undefined))
   const quotationRefNo = data.quotationNumber || String(rawRec?.[F.quotationName] ?? '')
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const recipientName = String(
+  const recipientNameRaw = String(
     shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
   ).trim()
+  // Contact-person display with "Mr. " prefix (skip if the Zoho value
+  // already starts with a title such as Mr / Mrs / Ms / Dr).
+  const recipientName = recipientNameRaw
+    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientNameRaw)
+      ? recipientNameRaw
+      : `Mr. ${recipientNameRaw}`
+    : ''
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -179,18 +208,20 @@ export default function WIDecomeshQuotationContent({
             </tr>
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Header: WMW logo (top-right). Date is rendered under it in the To/Date row below. */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
-                  <div style={{ width: '150px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img
-                      src="/wmw-logo.png"
-                      alt="WMW Logo"
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  </div>
+                {/* Header — logo on the LEFT (wide /wi.png), Date on the
+                 * RIGHT (top-aligned with the logo). Same swap as SLS /
+                 * Process Febric: Date used to sit stacked under the logo;
+                 * moving it right lets the body ("To,", recipient, etc.)
+                 * shift up and end up aligned near the Date row on the right. */}
+                <div style={{ marginBottom: '20px' }}>
+                  <img
+                    src="/wi.png"
+                    alt="WMW Industries Ltd"
+                    style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
                 </div>
               </td>
             </tr>
@@ -198,10 +229,16 @@ export default function WIDecomeshQuotationContent({
           <tbody>
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* To,  ...  Date: on right */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                  <div style={{ fontWeight: 'bold' }}>To,</div>
-                  <div style={{ fontWeight: 'bold' }}>Date: {date}</div>
+                {/* "To," on the left, Date on the right — same baseline.
+                 * Date moved out of the thead so it aligns with the "To,"
+                 * word (client asked for this alignment). */}
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <div style={{ fontWeight: 'bold' }}>To,</div>
+                    <div style={{ fontSize: '11px', textAlign: 'right' }}>
+                      Date: {date}
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '15px' }}>
@@ -209,7 +246,7 @@ export default function WIDecomeshQuotationContent({
                     <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{recipientName}</div>
                   ) : null}
                   {recipientCompany ? (
-                    <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>M/s. : {recipientCompany}</div>
+                    <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{recipientCompany}</div>
                   ) : null}
                   {recipientAddressBody ? (
                     <div style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{recipientAddressBody}</div>
@@ -254,14 +291,14 @@ export default function WIDecomeshQuotationContent({
                         <>
                           <div style={attrLabelStyle}>Quantity</div>
                           <div style={attrColonStyle}>:</div>
-                          <div style={attrValueStyle}>{row.quantity}</div>
+                          <div style={attrValueStyle}>{formatQty(row.quantity)}</div>
                         </>
                       ) : null}
                       {row.totalQuantity ? (
                         <>
                           <div style={attrLabelStyle}>Total quantity</div>
                           <div style={attrColonStyle}>:</div>
-                          <div style={attrValueStyle}>{row.totalQuantity}</div>
+                          <div style={attrValueStyle}>{formatQty(row.totalQuantity)}</div>
                         </>
                       ) : null}
                       {row.totalPrice > 0 ? (
@@ -392,38 +429,55 @@ export default function WIDecomeshQuotationContent({
                   </div>
                 </div>
 
-                {/* Footer */}
+              </td>
+            </tr>
+            {/* Spacer row — height:100% in print. Stretches to fill leftover
+             * space on the LAST page so the <tfoot> pins to the page bottom
+             * (see .wi-decomesh-print-page-bottom-spacer in globals.css). */}
+            <tr className="wi-decomesh-print-page-bottom-spacer" aria-hidden="true">
+              <td />
+            </tr>
+          </tbody>
+          {/* Footer — hoisted out of the <tbody> into its own <tfoot> so
+           * the browser repeats it at the bottom of EVERY printed page
+           * (same `display: table-footer-group` trick the <thead> uses).
+           * Text block replaced with the two footer images (same swap
+           * that was applied to SLS and WI Process Febric). */}
+          <tfoot className="wi-decomesh-print-footer-row">
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
                 <div
                   className="wi-decomesh-company-footer"
                   style={{
-                    borderTop: '2px solid #000',
-                    paddingTop: '15px',
                     marginTop: '40px',
-                    fontSize: '9px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    gap: '16px',
+                    pageBreakInside: 'avoid',
+                    breakInside: 'avoid',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div style={{ width: '60%' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}>
-                        {companyName}
-                      </div>
-                      <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
-                      <div style={{ marginBottom: '4px' }}>{phone} | {email} | {website}</div>
-                      <div style={{ marginTop: '8px' }}>
-                        <strong>Registered Office:</strong> {registeredOffice}
-                      </div>
-                    </div>
-                    <div style={{ width: '35%', textAlign: 'right' }}>
-                      <div style={{ marginBottom: '4px' }}>{tagline}</div>
-                      <div style={{ marginBottom: '4px' }}>CIN: {cin}</div>
-                      <div style={{ marginBottom: '4px' }}>GST: {gstin}</div>
-                      <div style={{ fontWeight: 'bold', marginTop: '8px' }}>{groupCompany}</div>
-                    </div>
-                  </div>
+                  <img
+                    src="/wi bottom left side.png"
+                    alt="WMW Industries Ltd — company details"
+                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                  <img
+                    src="/wi_bottom_rightside.png"
+                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
+                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
                 </div>
               </td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
 

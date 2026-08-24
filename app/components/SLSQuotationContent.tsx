@@ -41,6 +41,20 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     }
   }
 
+  // Strip trailing zeros from a numeric qty string:
+  //   "10.00"  -> "10"
+  //   "10.50"  -> "10.5"
+  //   "10.05"  -> "10.05"
+  //   "500"    -> "500"
+  // Non-numeric values pass through unchanged so a text qty like
+  // "as required" isn't mangled.
+  const formatQty = (q: unknown): string => {
+    const s = String(q ?? '').trim()
+    if (!s) return ''
+    const n = Number(s.replace(/,/g, ''))
+    return Number.isFinite(n) ? n.toString() : s
+  }
+
   const date = formatSLSDate(data.date || rawQuotationData?.Created_Date_and_time)
   const quotationRefNo = data.quotationNumber || rawQuotationData?.Name || ''
   // Root-level `Remarks` (NOT subform `Remarks` such as Product_Fitments[].Remarks).
@@ -50,6 +64,13 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   ).trim()
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const recipientName = String(shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? '').trim()
+  // Contact-person display with "Mr. " prefix (skip if the Zoho value
+  // already starts with a title such as Mr / Mrs / Ms / Dr).
+  const recipientNameDisplay = recipientName
+    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientName)
+      ? recipientName
+      : `Mr. ${recipientName}`
+    : ''
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -415,29 +436,23 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             </tr>
             <tr>
               <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Header with Logo and Date */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px', marginTop: 0 }}>
-          {/* Left side — new wide WMW Industries logo (mark + wordmark +
-           * tagline all in one image at /wi.png). Image is rendered at its
-           * natural width (height locked to 80px) so the Date row directly
-           * underneath sits flush with the logo's actual left edge. */}
-          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', marginTop: 0 }}>
-            <img
-              src="/wi.png"
-              alt="WMW Industries Ltd"
-              style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block', marginTop: 0 }}
-              onError={(e) => {
-                console.error('Logo failed to load:', e);
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <div style={{ fontSize: '11px', textAlign: 'left' }}>
-              <strong>Date:</strong> {date}
-            </div>
-          </div>
-
-          {/* Right side — empty spacer so the header row keeps its space-between layout. */}
-          <div></div>
+                {/* Header — logo on the LEFT (wide /wi.png), Date on the
+                 * RIGHT (top-aligned with the logo). Date used to sit stacked
+                 * under the logo, which pushed the body ("To,", recipient,
+                 * etc.) further down. With the Date moved to the right column
+                 * the left column is only as tall as the logo, so the body
+                 * content below the header naturally shifts up and ends up
+                 * aligned near the Date row on the right. */}
+                <div style={{ marginBottom: '30px', marginTop: 0 }}>
+          <img
+            src="/wi.png"
+            alt="WMW Industries Ltd"
+            style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block', marginTop: 0 }}
+            onError={(e) => {
+              console.error('Logo failed to load:', e);
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         </div>
               </td>
             </tr>
@@ -448,14 +463,26 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
 
         {/* Recipient Information — Zoho-driven, no hardcoded lines:
          *   To,
-         *   <company name>       (Shipping_Address_Name / Billing_Address_Name)
-         *   <address body>       (Consignee address block; billing fallback;
-         *                         pre-wrap so line breaks print as typed)
-         *   - - - - - - - -      (dashed separator)                       */}
+         *   Mr. <contact person>   (Contact_Name, prefixed "Mr. ")
+         *   <company name>         (Shipping_Address_Name / Billing_Address_Name)
+         *   <address body>         (Consignee address block; billing fallback;
+         *                           pre-wrap so line breaks print as typed)
+         *   - - - - - - - -        (dashed separator)                       */}
         <div style={{ marginBottom: '15px' }}>
-          <div style={{ marginBottom: '8px' }}>To,</div>
+          {/* "To," on the left, Date on the right — same baseline. Date
+           * lives in the body (not the thead) because the client wants it
+           * aligned with the "To," word. */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+            <div style={{ fontWeight: 'bold' }}>To,</div>
+            <div style={{ fontSize: '11px', textAlign: 'right' }}>
+              <strong>Date:</strong> {date}
+            </div>
+          </div>
+          {recipientNameDisplay ? (
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{recipientNameDisplay}</div>
+          ) : null}
           {recipientCompany ? (
-            <div style={{ marginBottom: '15px' }}>{recipientCompany}</div>
+            <div style={{ fontWeight: 'bold', marginBottom: '15px' }}>{recipientCompany}</div>
           ) : null}
           {recipientAddressBody ? (
             <div style={{ marginBottom: '15px', whiteSpace: 'pre-wrap' }}>{recipientAddressBody}</div>
@@ -489,12 +516,16 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '11px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
             <thead>
               <tr>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Item</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Product</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>HSN Code</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Qty/UOM</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Unit Price/ ${displayCurrency}`}</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'right', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Total Price/ ${displayCurrency}`}</th>
+                {/* Widths + `tight` styling mirror Process Febric (8/45/9/8/15/15).
+                 * Unit Price / Total Price render as `Unit Price / INR` etc.
+                 * with `white-space: normal` so the browser breaks the line at
+                 * the space before the currency — same look as Process Febric. */}
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
+                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '45%' }}>Product</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '9%', whiteSpace: 'nowrap' }}>HSN Code</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '8%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
               </tr>
             </thead>
             <tbody>
@@ -512,14 +543,14 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                     ) : null}
                     <div style={{ whiteSpace: 'pre-wrap' }}>{item.product}</div>
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.hsnCode || ''}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>{item.hsnCode || ''}</td>
                   <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>
                     {item.qty
-                      ? `${item.qty}${item.uom ? ` ${item.uom}` : ''}`
+                      ? `${formatQty(item.qty)}${item.uom ? ` ${item.uom}` : ''}`
                       : ''}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>{formatCurrency(item.unitPrice, displayCurrency)}</td>
-                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'right' }}>{formatCurrency(item.totalPrice, displayCurrency)}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{formatCurrency(item.unitPrice, displayCurrency)}</td>
+                  <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{formatCurrency(item.totalPrice, displayCurrency)}</td>
                 </tr>
               ))}
               {slsShowDiscountRow ? (
@@ -696,6 +727,19 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <strong>Quotation Valid Till Time:</strong> {quotationValidity}
             </div>
           ) : null}
+          {/* Quantity Validity — body from Zoho `Quantity_Validity`; skip when
+           * empty. Sits directly below "Quotation Valid Till Time:" and
+           * matches its section framing. `whiteSpace: pre-wrap` preserves
+           * line breaks + spacing exactly as typed. */}
+          {(() => {
+            const v = String(rawQuotationData?.Quantity_Validity ?? '').trim()
+            if (!v) return null
+            return (
+              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+                <strong>Quantity Validity:</strong> {v}
+              </div>
+            )
+          })()}
           <div style={{ marginBottom: '15px', marginTop: '15px' }}>
             {warrantyDisclaimer}
           </div>
@@ -715,28 +759,57 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           </div>
         </div>
 
-        {/* Footer - Company Details */}
-        <div className="sls-company-footer" style={{ borderTop: '2px solid #000', paddingTop: '15px', marginTop: '40px', fontSize: '9px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <div style={{ width: '60%' }}>
-              <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase' }}>WMW INDUSTRIES LIMITED</div>
-              <div style={{ marginBottom: '4px' }}>{registeredAddress}</div>
-              <div style={{ marginBottom: '4px' }}>{phone} | {email} | {website}</div>
-              <div style={{ marginTop: '8px' }}>
-                <strong>Registered Office:</strong> {registeredOffice}
-              </div>
-            </div>
-            <div style={{ width: '35%', textAlign: 'right' }}>
-              <div style={{ marginBottom: '4px' }}>{tagline}</div>
-              <div style={{ marginBottom: '4px' }}>CIN: {cin}</div>
-              <div style={{ marginBottom: '4px' }}>GST: {gstin}</div>
-              <div style={{ fontWeight: 'bold', marginTop: '8px' }}>{groupCompany}</div>
-            </div>
-          </div>
-        </div>
               </td>
             </tr>
+            {/* Spacer row — height:100% in print. Sits between the last
+             * content row and the <tfoot>, stretching to consume whatever
+             * empty space is left on the LAST page. That's what pushes the
+             * footer images down to the bottom of the last page (table
+             * rows don't auto-stretch, even in a flex-stretched table). */}
+            <tr className="sls-print-page-bottom-spacer" aria-hidden="true">
+              <td />
+            </tr>
           </tbody>
+          {/* Footer — the two footer images live in <tfoot> so the browser
+           * repeats them at the bottom of EVERY printed page (same
+           * `display: table-footer-group` trick the <thead> uses at the top).
+           * The `.sls-print-footer-row` CSS in globals.css enables this in
+           * `@media print`. */}
+          <tfoot className="sls-print-footer-row">
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
+                <div
+                  className="sls-company-footer"
+                  style={{
+                    marginTop: '40px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    gap: '16px',
+                    pageBreakInside: 'avoid',
+                    breakInside: 'avoid',
+                  }}
+                >
+                  <img
+                    src="/wi bottom left side.png"
+                    alt="WMW Industries Ltd — company details"
+                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                  <img
+                    src="/wi_bottom_rightside.png"
+                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
+                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 
