@@ -122,9 +122,6 @@ function quotationMultilineField(raw: Record<string, unknown> | undefined, key: 
 }
 
 export default function EveriteGoodsTable({ data, rawQuotationData, shippingData, headerNode, footerNode }: EveriteGoodsTableProps) {
-  const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
-  const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
-
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
   const currency = data.currency || rawQuotationData?.Currency || 'USD'
@@ -132,7 +129,22 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
 
   const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
   const isCategory2Selected = template.includes('category 2') && template.includes('wi')
-  const grossWeight = rawQuotationData?.Gross_Weight || rawQuotationData?.Total_Gross_Weight
+
+  // WMW category switch — records tagged "Category 2 WMW" store their
+  // line items in the Category_2_MM_Database_WMW_* subforms; everything
+  // else falls through to Category 1. All per-line reads below (main
+  // product row, 2.0 line, 3.0 linked row incl. `Remarks`) are keyed
+  // off this flag so remarks-under-mesh works for both categories.
+  const isCat2Wmw = template.includes('category 2') && template.includes('wmw')
+  const rawLineItems = isCat2Wmw
+    ? ((rawQuotationData?.Category_2_MM_Database_WMW_2_0 as any[]) || [])
+    : ((rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || [])
+  const rawProductDetails = isCat2Wmw
+    ? ((rawQuotationData?.Category_2_MM_Database_WMW as any[]) || [])
+    : ((rawQuotationData?.Category_1_MM_Database_WMW as any[]) || [])
+  // Gross-weight line replaced with the raw `Export_Remarks` string from
+  // Zoho (matches Bashundhara / Adhunik). Row hides when field is empty.
+  const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
 
   const performanceWarrantyText = quotationMultilineField(rawQuotationData as Record<string, unknown> | undefined, 'Performance_Warrenty')
   const paymentScheduleText = quotationMultilineField(rawQuotationData as Record<string, unknown> | undefined, 'Payment_Schedule')
@@ -229,8 +241,10 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
   const discountDeduct = Math.max(0, discountChargeAmt)
   const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
+  // Discount row is no longer sourced from the WMW subforms (see Adhunik
+  // for the full note). Rendered separately below using Zoho's
+  // `Export_Discount` toggle + description + %.
   const adhunikChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
-    [discountRowLabel, discountChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
@@ -261,7 +275,11 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
-    const rows3Linked = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0)
+    const rows3Linked = toRowArray(
+      isCat2Wmw
+        ? (rawQuotationData as any)?.Category_2_MM_Database_WMW_3_0
+        : (rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0
+    )
     const ext3 =
       (itemRef
         ? rows3Linked.find(
@@ -283,6 +301,12 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
     const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
+    /** UOM_Billing — WMW 2_0 → WMW 3_0 → Cat1 main → Cat2 main. */
+    const uom = firstField([item, ext3, productDetail, cat2ProductDetail], 'UOM_Billing')
+    /** Per-line remarks — read from Category_1_MM_Database_WMW_3_0's
+     * `Remarks` field (joined to this row via last_item_ref / index).
+     * Printed under the mesh value in the MESH column. */
+    const remarks = String(ext3?.Remarks ?? '').trim()
 
     let size = ''
     // Size (Mtrs) — prefer Category_1_MM_Database_WMW.Length_field + Width (per requirement).
@@ -311,16 +335,8 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
-    const totalPriceRaw = productDetail.Total_Price
-    const totalPriceParsed =
-      totalPriceRaw !== undefined && totalPriceRaw !== null && String(totalPriceRaw).trim() !== ''
-        ? parseFloat(String(totalPriceRaw).replace(/,/g, ''))
-        : NaN
-    const amountFromLine = parseFloat(item.Net_Selling_Amount?.replace(/,/g, '') || item.Gross_Amount?.replace(/,/g, '') || '0')
-    const computedAmount = quantity * rate
-    const amount = Number.isFinite(computedAmount)
-      ? computedAmount
-      : (Number.isFinite(totalPriceParsed) ? totalPriceParsed : amountFromLine)
+    // Amount = rate × quantity, no fallback (matches Adhunik / Bashundhara).
+    const amount = quantity * rate
 
     const fitmentRows = toRowArray((rawQuotationData as any)?.Product_Fitments2_0)
     const fitmentRow =
@@ -363,7 +379,9 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
       rate,
       amount,
       perPc,
-      totalWeight
+      totalWeight,
+      uom,
+      remarks,
     }
   })
 
@@ -374,7 +392,7 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
 
     const perPc = pickFitmentNetWeightPerPc(index)
     const totalWeight = perPc * quantity
-    
+
     return {
       item: index + 1,
       product: '',
@@ -390,10 +408,17 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
       amount,
       perPc,
       totalWeight,
+      uom: (item.uom || '').trim(),
+      remarks: '',
     }
   })
 
-  const rawWmw2Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0)
+  // Line-item block presence check — mirrors the category swap above.
+  const rawWmw2Rows = toRowArray(
+    isCat2Wmw
+      ? (rawQuotationData as any)?.Category_2_MM_Database_WMW_2_0
+      : (rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0
+  )
   const wmwMappedBlock = rawWmw2Rows.length > 0 ? lineItemsFromZoho : []
   const fitmentMappedBlock = buildProductFitmentBrandedGoodsBlock(
     (rawQuotationData ?? null) as ZohoQuotation | null
@@ -412,6 +437,8 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     amount: f.amount,
     perPc: f.perPc,
     totalWeight: f.totalWeight,
+    uom: (f as { uom?: string }).uom ?? '',
+    remarks: '',
   }))
 
   let displayLineItems: typeof lineItemsFromZoho =
@@ -424,8 +451,8 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
   // If we only have 0 items and want to match screenshot exactly, inject dummy data
   if (displayLineItems.length === 0) {
     displayLineItems = [
-      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, perPc: 23.0, totalWeight: 138.0 },
-      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, perPc: 22.0, totalWeight: 66.0 }
+      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, perPc: 23.0, totalWeight: 138.0, uom: 'Pcs', remarks: '' },
+      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, perPc: 22.0, totalWeight: 66.0, uom: 'Pcs', remarks: '' }
     ]
   }
 
@@ -443,7 +470,59 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
+
+  // Four Zoho-driven charge rows — see Adhunik for the full note.
+  const isTruthyToggle = (v: unknown): boolean =>
+    v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  const parseFlatAmt = (raw: unknown): number => {
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const exportDiscountEnabled = isTruthyToggle(rawQuotationData?.Export_Discount)
+  const exportDiscountPct = exportDiscountEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Discount_Value)
+    : 0
+  const exportDiscountAmt = exportDiscountEnabled
+    ? lineSum * (exportDiscountPct / 100)
+    : 0
+  const exportDiscountLabel = String(
+    rawQuotationData?.Export_Discount_Description ?? ''
+  ).trim() || 'Discount'
+
+  const transactionChargeEnabled = isTruthyToggle(rawQuotationData?.Transaction_changes)
+  const transactionChargeAmt = transactionChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Transaction_changes_Value)
+    : 0
+  const transactionChargeLabel = String(
+    rawQuotationData?.Transaction_changes_Descriptions ?? ''
+  ).trim() || 'Transaction Charges'
+
+  const miscChargeEnabled = isTruthyToggle(rawQuotationData?.Miscellaneous_Charges)
+  const miscChargeAmt = miscChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Miscellaneous_Charges_Value)
+    : 0
+  const miscChargeLabel = (
+    String(rawQuotationData?.Miscellaneous_Charges_Description1 ?? '').trim() ||
+    String(rawQuotationData?.Miscellaneous_Charges_Description ?? '').trim() ||
+    'Miscellaneous Charges'
+  )
+
+  const exportPackingEnabled = isTruthyToggle(rawQuotationData?.Export_Packing)
+  const exportPackingAmt = exportPackingEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Packing_Value)
+    : 0
+  const exportPackingLabel = String(
+    rawQuotationData?.Export_Packing_Description ?? ''
+  ).trim() || 'Export Packing'
+
+  const finalGrandTotal =
+    displayGrandTotal
+    - exportDiscountAmt
+    + transactionChargeAmt
+    + miscChargeAmt
+    + exportPackingAmt
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
 
   const chunks = [];
   for (let i = 0; i < displayLineItems.length; i += 5) {
@@ -455,6 +534,13 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     <div className="quotation-goods-pages-stack">
       {chunks.map((chunk, pageIdx) => {
         const isLastChunk = pageIdx === chunks.length - 1;
+        // Per-chunk labels (mirror Adhunik / Bashundhara).
+        const chunkGroups = groupChunkRowsByProductFormQuality(chunk)
+        const defaultProductLabel = 'Stainless Steel Wire Cloth'
+        const chunkProductLabel =
+          chunk.find((r) => r.product)?.product ||
+          chunkGroups[0]?.[0]?.product ||
+          defaultProductLabel
 
         return (
           <div
@@ -493,25 +579,33 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                       HSN Code
                     </td>
                     <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                      Quantity / UOM
+                      Quantity<br />UOM
                     </td>
                     <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                      Rate / {currencySymbol === 'USD' ? 'USD' : currencySymbol}
+                      Rate<br />{currencySymbol} / UOM
                     </td>
                     <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       Amount {currencySymbol}
                     </td>
                   </tr>
 
-                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
+                  <tr className="everite-product-row">
+                    <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
+                      <div style={{ ...metaRowLine, marginBottom: 0 }}>
+                        <span>Product</span><span>:</span><span style={metaRowValue}>{chunkProductLabel}</span>
+                      </div>
+                    </td>
+                    <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
+                    <td style={rightMergedEmpty} />
+                    <td style={rightMergedEmpty} />
+                    <td style={rightMergedEmpty} />
+                  </tr>
+                  {chunkGroups.map((groupRows, groupIdx) => {
                     const head = groupRows[0]
                     return (
                       <Fragment key={`everite-grp-${pageIdx}-${groupIdx}`}>
                         <tr className="everite-item-meta-row">
-                          <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
-                            <div style={metaRowLine}>
-                              <span>Product</span><span>:</span><span style={metaRowValue}>{head.product}</span>
-                            </div>
+                          <td colSpan={2} style={{ ...bdProductMeta, padding: '2px 10px 4px 10px', verticalAlign: 'top' }}>
                             {head.form ? (
                               <div style={metaRowLine}>
                                 <span>Form</span><span>:</span><span style={metaRowValue}>{head.form}</span>
@@ -526,27 +620,34 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                         </tr>
-                        <tr className="everite-item-grid-row">
-                          <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
-                              <span>Item</span>
-                              <span>MESH</span>
-                              <span>BRAND</span>
-                              <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
-                              <span>Sqm Area / PC</span>
-                            </div>
-                          </td>
-                          <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                        </tr>
+                        {groupIdx === 0 ? (
+                          <tr className="everite-item-grid-row">
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                                <span>Item</span>
+                                <span>MESH</span>
+                                <span>BRAND</span>
+                                <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
+                                <span>Sqm Area / PC</span>
+                              </div>
+                            </td>
+                            <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
+                            <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                            <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                            <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                          </tr>
+                        ) : null}
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`everite-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="everite-item-grid-row">
                             <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
                               <div style={{ ...descGrid, alignItems: 'start' }}>
                                 <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
-                                <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
+                                <span style={goodsDescGridValueSpan}>
+                                  <div style={{ whiteSpace: 'nowrap' }}>{row.mesh}</div>
+                                  {row.remarks ? (
+                                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px' }}>{row.remarks}</div>
+                                  ) : null}
+                                </span>
                                 <span style={goodsDescGridValueSpan}>{row.brand}</span>
                                 <span style={{ ...goodsDescGridValueSpan, ...goodsDescGridSizeSpanOneLine }}>{row.size}</span>
                                 <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
@@ -558,7 +659,7 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                                 <span>{formatPiecesInteger(row.quantity)}</span>
-                                <span>Pcs</span>
+                                <span>{row.uom || 'Pcs'}</span>
                               </div>
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -584,35 +685,91 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
                       </tr>
 
-                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
-                        const isDiscountRow = chargeLabel === discountRowLabel
-                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
-                        return (
-                          <tr key={`everite-charge-${chargeIdx}`}>
-                            <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>
-                              {chargeLabel}
-                            </td>
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', ...discountColor }}>
-                              {formatCurrency(chargeAmt, '')}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
+                        <tr key={`everite-charge-${chargeIdx}`}>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {chargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(chargeAmt, '')}
+                          </td>
+                        </tr>
+                      ))}
 
-                      <tr>
-                        <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold' }}>
-                          Gross Weight (kg.) :{' '}
-                          {grossWeight ? `${grossWeight} Kg. approx` : ''}
-                        </td>
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                      </tr>
+                      {/* Export discount — Zoho `Export_Discount` toggle
+                       * gate. Label = description, amount = lineSum × %.
+                       * Red styling; grand total reduced via finalGrandTotal. */}
+                      {exportDiscountEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', color: '#c00000' }}>
+                            {exportDiscountLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center', color: '#c00000' }}>
+                            {formatCurrency(exportDiscountAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {transactionChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {transactionChargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(transactionChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {miscChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {miscChargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(miscChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {exportPackingEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {exportPackingLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(exportPackingAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {exportRemarks ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>
+                            {exportRemarks}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                        </tr>
+                      ) : null}
 
                       {(showPerformanceWarranty || showPaymentSchedule) && (
                         <tr>
@@ -662,17 +819,15 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                       </tr>
 
                       <tr>
-                        <td colSpan={4} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top' }}>
-                          <span>
-                            Note : If the total order value is less than {currencySymbol} 2500, transaction fee of {currencySymbol} 100 per invoice
-                            shall be charged extra
-                          </span>
+                        <td colSpan={4} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top', whiteSpace: 'pre-wrap' }}>
+                          {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
+                          {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
                         </td>
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '18%' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
 
@@ -687,7 +842,7 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                           Total:-
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '18%' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
                     </>
