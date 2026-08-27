@@ -8,7 +8,6 @@ import {
   formatGoodsTableAmountChargeableInWords,
   formatPiecesInteger,
   parseOverallGrandTotalInclAccessories,
-  resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
 import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
@@ -77,14 +76,24 @@ function meshInchFromProductCode(productCode: string): string {
 }
 
 export default function SaintGoodsTable({ data, rawQuotationData, headerNode, footerNode }: SaintGoodsTableProps) {
-  const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
-  const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
-
   const currency = data.currency || rawQuotationData?.Currency || 'EUR'
   const currencySymbol = currency
 
   const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
   const isCategory2Selected = template.includes('category 2') && template.includes('wi')
+
+  // WMW category switch — records tagged "Category 2 WMW" store their
+  // line items in Category_2_MM_Database_WMW_* subforms. Every per-line
+  // read below (line-item driver, product-master rows, 3.0 extras,
+  // 4.0 extras with Remarks1/Remarks2) is keyed off this flag so
+  // remarks under Quantity / Rate work in either category.
+  const isCat2Wmw = template.includes('category 2') && template.includes('wmw')
+  const rawLineItems = isCat2Wmw
+    ? ((rawQuotationData?.Category_2_MM_Database_WMW_2_0 as any[]) || [])
+    : ((rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || [])
+  const rawProductDetails = isCat2Wmw
+    ? ((rawQuotationData?.Category_2_MM_Database_WMW as any[]) || [])
+    : ((rawQuotationData?.Category_1_MM_Database_WMW as any[]) || [])
 
   const toRowArray = (v: unknown): any[] => {
     if (v == null) return []
@@ -168,11 +177,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const discountDeduct = Math.max(0, discountChargeAmt)
   const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
-  const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Air'
-  const saintTransportSummaryLine = resolveTransportDisplayLine(
-    rawQuotationData as Record<string, unknown> | undefined,
-    `Total DAP Price upto Saint-Gobain, Willich - by ${modeOfDelivery} & Then Road`
-  )
+  // Transport line — maps 1:1 to Zoho `Transport`, no fallback.
+  const saintTransportSummaryLine = String(rawQuotationData?.Transport ?? '').trim()
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -182,13 +188,38 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
-    const rows3Linked = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0)
+    const rows3Linked = toRowArray(
+      isCat2Wmw
+        ? (rawQuotationData as any)?.Category_2_MM_Database_WMW_3_0
+        : (rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0
+    )
     const ext3 =
       (itemRef
         ? rows3Linked.find(
             (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
           )
         : undefined) || rows3Linked[index]
+
+    // 4.0 extras — per-line `Remarks1` (under Quantity) and `Remarks2`
+    // (under Rate). Joined via `Line_ref` first (that's the natural key
+    // on the WMW_4_0 subform); falls back to `last_item_ref` or the
+    // array index if `Line_ref` isn't present on the row.
+    const rows4Linked = toRowArray(
+      isCat2Wmw
+        ? (rawQuotationData as any)?.Category_2_MM_Database_WMW_4_0
+        : (rawQuotationData as any)?.Category_1_MM_Database_WMW_4_0
+    )
+    const lineRefStr = String(index + 1)
+    const ext4 =
+      rows4Linked.find((x: any) => String(x?.Line_ref ?? '').trim() === lineRefStr) ||
+      (itemRef
+        ? rows4Linked.find(
+            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+          )
+        : undefined) ||
+      rows4Linked[index]
+    const remarks1 = String(ext4?.Remarks1 ?? '').trim()
+    const remarks2 = String(ext4?.Remarks2 ?? '').trim()
 
     const lineItemRef = String(index + 1)
     const rows3Cat2Linked = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW_3_0)
@@ -299,6 +330,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       totalWeight,
       remarks: lineRemarks,
       hsnCode,
+      remarks1,
+      remarks2,
     }
   })
 
@@ -325,6 +358,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       totalWeight,
       remarks: String((item as { remarks?: string }).remarks ?? '').trim(),
       hsnCode: item.hsnCode?.trim() || '',
+      remarks1: '',
+      remarks2: '',
     }
   })
 
@@ -362,17 +397,74 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
+
+  // Four Zoho-driven charge rows (client rule — matches the treatment
+  // now used in Adhunik / Bashundhara / Everite). Each row is
+  // independently toggle-gated. Export Discount subtracts from the
+  // grand total; the other three add to it.
+  const isTruthyToggle = (v: unknown): boolean =>
+    v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  const parseFlatAmt = (raw: unknown): number => {
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const exportDiscountEnabled = isTruthyToggle(rawQuotationData?.Export_Discount)
+  const exportDiscountPct = exportDiscountEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Discount_Value)
+    : 0
+  const exportDiscountAmt = exportDiscountEnabled
+    ? lineSum * (exportDiscountPct / 100)
+    : 0
+  const exportDiscountLabel = String(
+    rawQuotationData?.Export_Discount_Description ?? ''
+  ).trim() || 'Discount'
+
+  const transactionChargeEnabled = isTruthyToggle(rawQuotationData?.Transaction_changes)
+  const transactionChargeAmt = transactionChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Transaction_changes_Value)
+    : 0
+  const transactionChargeLabel = String(
+    rawQuotationData?.Transaction_changes_Descriptions ?? ''
+  ).trim() || 'Transaction Charges'
+
+  const miscChargeEnabled = isTruthyToggle(rawQuotationData?.Miscellaneous_Charges)
+  const miscChargeAmt = miscChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Miscellaneous_Charges_Value)
+    : 0
+  const miscChargeLabel = (
+    String(rawQuotationData?.Miscellaneous_Charges_Description1 ?? '').trim() ||
+    String(rawQuotationData?.Miscellaneous_Charges_Description ?? '').trim() ||
+    'Miscellaneous Charges'
+  )
+
+  const exportPackingEnabled = isTruthyToggle(rawQuotationData?.Export_Packing)
+  const exportPackingAmt = exportPackingEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Packing_Value)
+    : 0
+  const exportPackingLabel = String(
+    rawQuotationData?.Export_Packing_Description ?? ''
+  ).trim() || 'Export Packing'
+
+  const finalGrandTotal =
+    displayGrandTotal
+    - exportDiscountAmt
+    + transactionChargeAmt
+    + miscChargeAmt
+    + exportPackingAmt
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
 
   const renderQtyUomCell = (qty: unknown, uom: unknown) => {
     const uomText = String(uom ?? '').trim()
     const qtyText = /^pcs?$/i.test(uomText)
       ? formatPiecesInteger(qty)
       : String(qty ?? '').trim()
+    // Value + UOM on the same line \u2014 e.g. `12 Roll` \u2014 instead of the
+    // previous stacked layout.
     return (
-      <div className="quotation-qty-uom-cell">
-        <div className="quotation-qty-value">{qtyText || '\u00A0'}</div>
-        {uomText ? <div className="quotation-qty-uom">{uomText}</div> : null}
+      <div className="quotation-qty-uom-cell" style={{ display: 'inline-flex', flexDirection: 'row', gap: '4px', justifyContent: 'center', alignItems: 'baseline' }}>
+        <span className="quotation-qty-value">{qtyText || '\u00A0'}</span>
+        {uomText ? <span className="quotation-qty-uom">{uomText}</span> : null}
       </div>
     )
   }
@@ -394,12 +486,17 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               fontSize: '11px',
             }}
           >
+            {/* Column widths mirror Everite. Everite splits its Description
+             * of Goods across two <col> (22% + 28%); here it's a single
+             * column, so those two are combined to 50%. The remaining four
+             * columns (HSN 12% / Qty 13% / Rate 12% / Amount 13%) match
+             * Everite exactly. */}
             <colgroup>
-              <col style={{ width: '44%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '14%' }} />
+              <col style={{ width: '50%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
             </colgroup>
             <tbody>
               <tr>
@@ -575,9 +672,15 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             </td>
                             <td style={{ ...contentBdSides, padding: '4px 8px', verticalAlign: 'top' }}>
                               {renderQtyUomCell(row.quantity || '', row.uom)}
+                              {row.remarks1 ? (
+                                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px', textAlign: 'center' }}>{row.remarks1}</div>
+                              ) : null}
                             </td>
                             <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
-                              {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
+                              <div>{Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}</div>
+                              {row.remarks2 ? (
+                                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px' }}>{row.remarks2}</div>
+                              ) : null}
                             </td>
                             <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
                               {formatCurrency(row.amount, currency)}
@@ -606,13 +709,50 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                 </td>
               </tr>
 
-              {Number.isFinite(discountChargeAmt) && discountChargeAmt !== 0 ? (
+              {/* Export Discount (red) — % of line-item total, subtracts from grand total. */}
+              {exportDiscountEnabled ? (
                 <tr>
                   <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
-                    {discountRowLabel}
+                    {exportDiscountLabel}
                   </td>
                   <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold', color: '#c00000' }}>
-                    {formatCurrency(discountChargeAmt, currency)}
+                    {formatCurrency(exportDiscountAmt, currency)}
+                  </td>
+                </tr>
+              ) : null}
+
+              {/* Transaction / Miscellaneous / Export Packing — flat-amount
+               * charges, each toggle-gated. Added to the grand total via
+               * `finalGrandTotal` above. */}
+              {transactionChargeEnabled ? (
+                <tr>
+                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {transactionChargeLabel}
+                  </td>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                    {formatCurrency(transactionChargeAmt, currency)}
+                  </td>
+                </tr>
+              ) : null}
+
+              {miscChargeEnabled ? (
+                <tr>
+                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {miscChargeLabel}
+                  </td>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                    {formatCurrency(miscChargeAmt, currency)}
+                  </td>
+                </tr>
+              ) : null}
+
+              {exportPackingEnabled ? (
+                <tr>
+                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {exportPackingLabel}
+                  </td>
+                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                    {formatCurrency(exportPackingAmt, currency)}
                   </td>
                 </tr>
               ) : null}
@@ -651,9 +791,9 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               </tr>
 
               <tr>
-                <td style={{ ...bd, padding: '6px 10px', fontSize: '10px' }}>
-                  Note : If the total order value is less than {currencySymbol} 2500, transaction fee of {currencySymbol} 100 per
-                  invoice shall be charged extra
+                <td style={{ ...bd, padding: '6px 10px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
+                  {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
+                  {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
                 </td>
                 <td style={bd} />
                 <td colSpan={2} style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
@@ -704,7 +844,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                     verticalAlign: 'middle',
                   }}
                 >
-                  <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, currency)}</span>
+                  <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, currency)}</span>
                 </td>
               </tr>
             </tbody>

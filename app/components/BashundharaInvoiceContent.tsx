@@ -35,8 +35,10 @@ export default function BashundharaInvoiceContent({
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Bangladesh')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
   const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
-  const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
-  const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
+  // Direct 1:1 mapping to Zoho — no fallback between the two so each
+  // label prints exactly what its own root field holds (blank when empty).
+  const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+  const finalDestination = String(rawQuotationData?.Final_Destination ?? '').trim()
   const dispatchExWorks = resolveDispatchExWorksDisplay(rawQuotationData, data.deliveryDate, '')
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
@@ -211,13 +213,9 @@ export default function BashundharaInvoiceContent({
                           </td>
                         </tr>
                         <tr>
-                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4' }}>
-                            1. Please mention this quotation number on your PO and all communications<br />
-                            2. In case of extreme currency volatility prices maybe revised at anytime.<br />
-                            3. This quotation is valid only for the products &amp; quantity mentioned.<br />
-                            4. Packing : Export worthy packing<br />
-                            5. ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request<br />
-                            6. All Foreign Bank charges on Purchaser Account.
+                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                            {/* Remarks value comes from Zoho `General_Remarks` verbatim, no fallback. */}
+                            {String(rawQuotationData?.General_Remarks ?? '').trim()}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '16px 8px', textAlign: 'center', verticalAlign: 'middle', height: '60px' }}>
                             This is an electronically generated document, doesnt<br />require a signature.

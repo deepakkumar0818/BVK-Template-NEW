@@ -28,18 +28,12 @@
 }
 
 /*
- * Bashundhara: use the same narrow side gutters as the WMW / Quotation route so the
- * printable content area matches.
+ * Bashundhara: intentionally inherits the default `.print-container`
+ * layout (same as Adhunik / Everite) so its overall template width
+ * matches. Previously had a template-specific override that pinned
+ * on-screen side padding to 8mm — removed so all three WMW-branded
+ * goods templates render at the same outer width.
  */
-.quotation-doc:has(.bashundhara-goods-table) {
-  --quotation-print-side-inset: 8mm;
-}
-
-.quotation-doc:has(.bashundhara-goods-table) .print-container {
-  padding-left: var(--quotation-print-side-inset);
-  padding-right: var(--quotation-print-side-inset);
-  box-sizing: border-box;
-}
 
 /*
  * Print page box — must be top-level (not inside @media print) or Chrome ignores it.
@@ -2071,12 +2065,20 @@ tr.goods-description-data-row--accessories td.goods-description-table-body-cell 
   margin-top: -1px !important;
 }
 
-/* Bashundhara goods: no horizontal rules in line-item area — keep verticals only (screen + print) */
-.quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-goods-title-row > td,
+/* Bashundhara goods: no horizontal rules in the line-item area — keep
+ * verticals only (screen + print). The TITLE row is exempt so the header
+ * still has a bottom border (Adhunik / Everite already do). */
 .quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-item-meta-row > td,
 .quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-item-grid-row > td {
   border-top: none !important;
   border-bottom: none !important;
+  border-left: 1px solid #000 !important;
+  border-right: 1px solid #000 !important;
+}
+
+.quotation-doc table.bashundhara-goods-table > tbody > tr.bashundhara-goods-title-row > td {
+  border-top: none !important;
+  border-bottom: 1px solid #000 !important;
   border-left: 1px solid #000 !important;
   border-right: 1px solid #000 !important;
 }
