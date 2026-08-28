@@ -219,13 +219,9 @@ export default function EveriteInvoiceContent({
                           </td>
                         </tr>
                         <tr>
-                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4' }}>
-                            1. Please mention this quotation number on your PO and all communications<br />
-                            2. In case of extreme currency volatility prices maybe revised at anytime.<br />
-                            3. This quotation is valid only for the products &amp; quantity mentioned.<br />
-                            4. Packing : Export worthy packing<br />
-                            5. ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request<br />
-                            6. All Foreign Bank charges on Purchaser Account.
+                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                            {/* Remarks value comes from Zoho `General_Remarks` verbatim, no fallback. */}
+                            {String(rawQuotationData?.General_Remarks ?? '').trim()}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '16px 8px', textAlign: 'center', verticalAlign: 'middle', height: '60px' }}>
                             This is an electronically generated document,<br />doesn&apos;t require a signature.

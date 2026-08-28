@@ -113,7 +113,9 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
 
   const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
   const isCategory2Selected = template.includes('category 2') && template.includes('wi')
-  const grossWeight = rawQuotationData?.Gross_Weight || rawQuotationData?.Total_Gross_Weight
+  // Gross-weight line replaced with the raw `Export_Remarks` string from
+  // Zoho (matches Bashundhara). Whole row hides when the field is empty.
+  const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
 
   const toRowArray = (v: unknown): any[] => {
     if (v == null) return []
@@ -205,8 +207,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   const discountDeduct = Math.max(0, discountChargeAmt)
   const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
+  // Discount row is no longer sourced from the WMW subforms. It comes from
+  // Zoho's `Export_Discount` toggle: when true, we render one row using
+  // `Export_Discount_Description` as the label and
+  // `line-items total × Export_Discount_Value%` as the amount. When the
+  // toggle is off, the row is not rendered at all.
   const adhunikChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
-    [discountRowLabel, discountChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
@@ -259,6 +265,9 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
     const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
+    /** UOM_Billing — WMW 2_0 → WMW 3_0 → Cat1 main → Cat2 main. Used in
+     * the "Rate / <Currency> / <uom>" column header. */
+    const uom = firstField([item, ext3, productDetail, cat2ProductDetail], 'UOM_Billing')
 
     let size = ''
     // Size (Mtrs) — prefer Category_1_MM_Database_WMW.Length_field + Width (per requirement).
@@ -287,16 +296,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
-    const totalPriceRaw = productDetail.Total_Price
-    const totalPriceParsed =
-      totalPriceRaw !== undefined && totalPriceRaw !== null && String(totalPriceRaw).trim() !== ''
-        ? parseFloat(String(totalPriceRaw).replace(/,/g, ''))
-        : NaN
-    const amountFromLine = parseFloat(item.Net_Selling_Amount?.replace(/,/g, '') || item.Gross_Amount?.replace(/,/g, '') || '0')
-    const computedAmount = quantity * rate
-    const amount = Number.isFinite(computedAmount)
-      ? computedAmount
-      : (Number.isFinite(totalPriceParsed) ? totalPriceParsed : amountFromLine)
+    // Amount column is always computed as rate × quantity. No fallback
+     // to any other Zoho field, and no defensive substitute when rate is
+     // missing — a blank rate simply yields a blank/NaN amount.
+    const amount = quantity * rate
 
     const fitmentRows = toRowArray((rawQuotationData as any)?.Product_Fitments2_0)
     const fitmentRow =
@@ -339,7 +342,8 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
       rate,
       amount,
       perPc,
-      totalWeight
+      totalWeight,
+      uom,
     }
   })
 
@@ -350,7 +354,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
 
     const perPc = pickFitmentNetWeightPerPc(index)
     const totalWeight = perPc * quantity
-    
+
     return {
       item: index + 1,
       product: '',
@@ -366,6 +370,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
       amount,
       perPc,
       totalWeight,
+      uom: (item.uom || '').trim(),
     }
   })
 
@@ -388,6 +393,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     amount: f.amount,
     perPc: f.perPc,
     totalWeight: f.totalWeight,
+    uom: (f as { uom?: string }).uom ?? '',
   }))
 
   let displayLineItems: typeof lineItemsFromZoho =
@@ -400,8 +406,8 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   // If we only have 0 items and want to match screenshot exactly, inject dummy data
   if (displayLineItems.length === 0) {
     displayLineItems = [
-      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, perPc: 23.0, totalWeight: 138.0 },
-      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, perPc: 22.0, totalWeight: 66.0 }
+      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, perPc: 23.0, totalWeight: 138.0, uom: 'Pcs' },
+      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, perPc: 22.0, totalWeight: 66.0, uom: 'Pcs' }
     ]
   }
 
@@ -419,7 +425,70 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
   )
-  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(displayGrandTotal, currency)
+
+  // Four Zoho-driven charge rows (client rule) — each independently gated
+  // by its own boolean toggle. The Export Discount reduces the grand
+  // total; the other three add to it.
+  const isTruthyToggle = (v: unknown): boolean =>
+    v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  const parseFlatAmt = (raw: unknown): number => {
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+
+  // 1) Export Discount — % of line-item total, subtracts from grand total.
+  const exportDiscountEnabled = isTruthyToggle(rawQuotationData?.Export_Discount)
+  const exportDiscountPct = exportDiscountEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Discount_Value)
+    : 0
+  const exportDiscountAmt = exportDiscountEnabled
+    ? lineSum * (exportDiscountPct / 100)
+    : 0
+  const exportDiscountLabel = String(
+    rawQuotationData?.Export_Discount_Description ?? ''
+  ).trim() || 'Discount'
+
+  // 2) Transaction charges — flat amount, adds to grand total.
+  const transactionChargeEnabled = isTruthyToggle(rawQuotationData?.Transaction_changes)
+  const transactionChargeAmt = transactionChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Transaction_changes_Value)
+    : 0
+  const transactionChargeLabel = String(
+    rawQuotationData?.Transaction_changes_Descriptions ?? ''
+  ).trim() || 'Transaction Charges'
+
+  // 3) Miscellaneous charges — flat amount, adds to grand total. Zoho
+  //    stores the description on `Miscellaneous_Charges_Description1`;
+  //    falls back to `Miscellaneous_Charges_Description` if that's empty.
+  const miscChargeEnabled = isTruthyToggle(rawQuotationData?.Miscellaneous_Charges)
+  const miscChargeAmt = miscChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Miscellaneous_Charges_Value)
+    : 0
+  const miscChargeLabel = (
+    String(rawQuotationData?.Miscellaneous_Charges_Description1 ?? '').trim() ||
+    String(rawQuotationData?.Miscellaneous_Charges_Description ?? '').trim() ||
+    'Miscellaneous Charges'
+  )
+
+  // 4) Export Packing — flat amount, adds to grand total.
+  const exportPackingEnabled = isTruthyToggle(rawQuotationData?.Export_Packing)
+  const exportPackingAmt = exportPackingEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Packing_Value)
+    : 0
+  const exportPackingLabel = String(
+    rawQuotationData?.Export_Packing_Description ?? ''
+  ).trim() || 'Export Packing'
+
+  // Grand total: start with Zoho's rolled-up total, subtract the discount,
+  // then add the three flat charges. "Amount Chargeable (In words)" uses
+  // the same figure so the printed values agree.
+  const finalGrandTotal =
+    displayGrandTotal
+    - exportDiscountAmt
+    + transactionChargeAmt
+    + miscChargeAmt
+    + exportPackingAmt
+  const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
 
   const chunks = [];
   for (let i = 0; i < displayLineItems.length; i += 5) {
@@ -431,6 +500,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     <div className="quotation-goods-pages-stack">
       {chunks.map((chunk, pageIdx) => {
         const isLastChunk = pageIdx === chunks.length - 1;
+        // Rate-column header shows `Rate / <currency> / <uom>` — uom is
+        // read from the first non-empty UOM in this chunk (falls back to
+        // "Pcs" so the header never ends in a stray trailing slash).
+        const chunkUom = chunk.find((r) => r.uom)?.uom || 'Pcs'
 
         return (
           <div
@@ -474,10 +547,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                       Net Weight (Kg.)
                     </td>
                     <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                      Quantity / UOM
+                      Quantity<br />UOM
                     </td>
                     <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                      Rate / {currencySymbol === 'USD' ? 'USD' : currencySymbol}
+                      Rate<br />{currencySymbol} / UOM
                     </td>
                     <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                       Amount {currencySymbol}
@@ -492,22 +565,24 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                     </td>
                   </tr>
 
-                  {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
-                    const head = groupRows[0]
+                  {(() => {
+                    // Product line + Item/MESH/BRAND/SIZE/Sqm-Area sub-header
+                    // render ONCE per page (chunk), right after the main
+                    // "Description of Goods / HSN Code / ..." title row.
+                    // Only Form + Quality still repeat per group. Product is
+                    // taken from the first non-empty product in this chunk
+                    // (falls back to the default label).
+                    const chunkGroups = groupChunkRowsByProductFormQuality(chunk)
+                    const chunkProductLabel =
+                      chunk.find((r) => r.product)?.product ||
+                      chunkGroups[0]?.[0]?.product ||
+                      defaultProductLabel
                     return (
-                      <Fragment key={`adhunik-grp-${pageIdx}-${groupIdx}`}>
-                        <tr className="adhunik-item-meta-row">
+                      <Fragment key={`adhunik-page-header-${pageIdx}`}>
+                        <tr className="adhunik-product-row">
                           <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
-                            <div style={metaRowLine}>
-                              <span>Product</span><span>:</span><span style={metaRowValue}>{head.product}</span>
-                            </div>
-                            {head.form ? (
-                              <div style={metaRowLine}>
-                                <span>Form</span><span>:</span><span style={metaRowValue}>{head.form}</span>
-                              </div>
-                            ) : null}
                             <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                              <span>Quality</span><span>:</span><span style={metaRowValue}>{head.quality}</span>
+                              <span>Product</span><span>:</span><span style={metaRowValue}>{chunkProductLabel}</span>
                             </div>
                           </td>
                           <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
@@ -517,24 +592,54 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                         </tr>
-                        <tr className="adhunik-item-grid-row">
-                          <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                            <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
-                              <span>Item</span>
-                              <span>MESH</span>
-                              <span>BRAND</span>
-                              <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
-                              <span>Sqm Area / PC</span>
-                            </div>
-                          </td>
-                          <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                          <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
-                        </tr>
-                        {groupRows.map((row, rowIdx) => (
+                        {chunkGroups.map((groupRows, groupIdx) => {
+                          const head = groupRows[0]
+                          return (
+                            <Fragment key={`adhunik-grp-${pageIdx}-${groupIdx}`}>
+                              {/* Per-group meta row: Form + Quality only.
+                                * Product is intentionally omitted — it prints
+                                * once at the top of the page. */}
+                              <tr className="adhunik-item-meta-row">
+                                <td colSpan={2} style={{ ...bdProductMeta, padding: '2px 10px 4px 10px', verticalAlign: 'top' }}>
+                                  {head.form ? (
+                                    <div style={metaRowLine}>
+                                      <span>Form</span><span>:</span><span style={metaRowValue}>{head.form}</span>
+                                    </div>
+                                  ) : null}
+                                  <div style={{ ...metaRowLine, marginBottom: 0 }}>
+                                    <span>Quality</span><span>:</span><span style={metaRowValue}>{head.quality}</span>
+                                  </div>
+                                </td>
+                                <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
+                                <td style={rightMergedEmpty} />
+                                <td style={rightMergedEmpty} />
+                                <td style={rightMergedEmpty} />
+                                <td style={rightMergedEmpty} />
+                                <td style={rightMergedEmpty} />
+                              </tr>
+                              {/* Sub-header (Item/MESH/BRAND/SIZE/Sqm Area)
+                                * appears ONCE per page, directly below the
+                                * FIRST group's Form/Quality meta row. */}
+                              {groupIdx === 0 ? (
+                                <tr className="adhunik-item-grid-row">
+                                  <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                                    <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                                      <span>Item</span>
+                                      <span>MESH</span>
+                                      <span>BRAND</span>
+                                      <span style={goodsDescGridSizeSpanOneLine}>SIZE [Mtrs] (LxW)</span>
+                                      <span>Sqm Area / PC</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
+                                  <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                                  <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                                  <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                                  <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                                  <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                                </tr>
+                              ) : null}
+                              {groupRows.map((row, rowIdx) => (
                           <tr key={`adhunik-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="adhunik-item-grid-row">
                             <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
                               <div style={{ ...descGrid, alignItems: 'start' }}>
@@ -557,7 +662,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                                 <span>{formatPiecesInteger(row.quantity)}</span>
-                                <span>Pcs</span>
+                                <span>{row.uom || 'Pcs'}</span>
                               </div>
                             </td>
                             <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -567,10 +672,13 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                               {formatCurrency(row.amount, '')}
                             </td>
                           </tr>
-                        ))}
+                              ))}
+                            </Fragment>
+                          )
+                        })}
                       </Fragment>
                     )
-                  })}
+                  })()}
 
                   {isLastChunk && (
                     <>
@@ -584,38 +692,109 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
                       </tr>
 
-                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
-                        const isDiscountRow = chargeLabel === discountRowLabel
-                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
-                        return (
-                          <tr key={`adhunik-charge-${chargeIdx}`}>
-                            <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>
-                              {chargeLabel}
-                            </td>
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'center', ...discountColor }}>
-                              {formatCurrency(chargeAmt, '')}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
+                        <tr key={`adhunik-charge-${chargeIdx}`}>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {chargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(chargeAmt, '')}
+                          </td>
+                        </tr>
+                      ))}
 
-                      <tr>
-                        <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold' }}>
-                          Gross Weight (kg.) :{' '}
-                          {grossWeight ? `${grossWeight} Kg. approx` : ''}
-                        </td>
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                        <td style={{ ...bdSides, padding: '6px' }} />
-                      </tr>
+                      {/* Export discount — only shown when Zoho's
+                       * `Export_Discount` toggle is checked. Label = Zoho
+                       * `Export_Discount_Description`, amount = lineSum ×
+                       * `Export_Discount_Value%`. Rendered in red (client
+                       * asked for red styling). Grand total below already
+                       * subtracts this via `finalGrandTotal`. */}
+                      {exportDiscountEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', color: '#c00000' }}>
+                            {exportDiscountLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center', color: '#c00000' }}>
+                            {formatCurrency(exportDiscountAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {/* Transaction / Miscellaneous / Export Packing —
+                       * flat-amount charges from Zoho, each toggle-gated.
+                       * Rendered right after the discount row in this
+                       * fixed order and added to the grand total. */}
+                      {transactionChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {transactionChargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(transactionChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {miscChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {miscChargeLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(miscChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {exportPackingEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {exportPackingLabel}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'center' }}>
+                            {formatCurrency(exportPackingAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {exportRemarks ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>
+                            {exportRemarks}
+                          </td>
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                        </tr>
+                      ) : null}
 
                       <tr>
                         <td colSpan={8} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
@@ -628,17 +807,15 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                       </tr>
 
                       <tr>
-                        <td colSpan={6} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top' }}>
-                          <span>
-                            Note : If the total order value is less than {currencySymbol} 2500, transaction fee of {currencySymbol} 100 per invoice
-                            shall be charged extra
-                          </span>
+                        <td colSpan={6} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top', whiteSpace: 'pre-wrap' }}>
+                          {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
+                          {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
                         </td>
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
                         <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '14%' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
 
@@ -653,7 +830,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                           Total:-
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(displayGrandTotal, '')}</span>
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
                     </>
