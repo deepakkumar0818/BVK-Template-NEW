@@ -34,17 +34,19 @@ export default function BashundharaInvoiceContent({
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Bangladesh')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
-  const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
-  // Direct 1:1 mapping to Zoho — no fallback between the two so each
-  // label prints exactly what its own root field holds (blank when empty).
+  // Direct 1:1 map to Zoho — no fallbacks. Blank field → blank cell.
+  const portOfLoading = String(rawQuotationData?.Port_of_Loading ?? '').trim()
   const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
   const finalDestination = String(rawQuotationData?.Final_Destination ?? '').trim()
-  const dispatchExWorks = resolveDispatchExWorksDisplay(rawQuotationData, data.deliveryDate, '')
+  const dispatchExWorks = String(rawQuotationData?.Sales_Proposed_Date_Dispatch_Ex_Works ?? '').trim()
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (
     <>
+      {/* 15mm top spacer — outer wrapper so `.seamless` class'
+       * `padding: 0 !important` doesn't wipe it out. */}
+      <div style={{ paddingTop: '15mm' }}>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <BashundharaGoodsTable
           data={data}
@@ -69,25 +71,35 @@ export default function BashundharaInvoiceContent({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>Exporter</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <img
-                        src="/wmw-logo.svg"
-                        alt="WMW Logo"
-                        style={{ width: '160px', height: '62px', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginBottom: '3px' }}>WMW METAL FABRICS LIMITED</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>Tel : +911417105151</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginTop: '6px' }}>
-                      <span>info@wmwindia.com</span>
-                      <span>www.wmwindia.com</span>
-                    </div>
+                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '6px 8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Exporter</div>
+                    {/* Side-by-side layout: logo LEFT, company text
+                     * RIGHT — same as Saint / Adhunik / Everite. */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} role="presentation">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '120px', verticalAlign: 'middle', padding: 0 }}>
+                            <img
+                              src="/wmw-logo.png"
+                              alt="WMW Logo"
+                              style={{ width: '110px', height: '66px', objectFit: 'contain', display: 'block' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </td>
+                          <td style={{ verticalAlign: 'middle', padding: '0 0 0 8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.2 }}>WMW METAL FABRICS LIMITED</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>Tel : +911417105151</div>
+                            <div style={{ display: 'flex', gap: '14px', fontSize: '10px', marginTop: '2px' }}>
+                              <span>info@wmwindia.com</span>
+                              <span>www.wmwindia.com</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -245,6 +257,7 @@ export default function BashundharaInvoiceContent({
             </table>
           }
         />
+      </div>
       </div>
 
       <div className="conditions-for-print conditions-doc" style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}>

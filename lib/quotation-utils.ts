@@ -132,14 +132,20 @@ export function formatCurrencyRounded(value: string | number | undefined, curren
 
 /** WMWD1 goods “Quantity” column: fixed 4 fractional digits; locale matches {@link formatCurrency}. */
 export function formatQuantityDisplay(value: unknown, currency: string = 'INR'): string {
-  if (value === null || value === undefined || value === '') return '0.0000'
+  if (value === null || value === undefined || value === '') return '0'
   const num =
     typeof value === 'number' && !Number.isNaN(value)
       ? value
       : parseFloat(String(value).replace(/,/g, ''))
-  if (!Number.isFinite(num)) return '0.0000'
+  if (!Number.isFinite(num)) return '0'
   const locale = currency === 'USD' ? 'en-US' : 'en-IN'
-  return num.toLocaleString(locale, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+  // Whole numbers (e.g. 178000, 2743884) print without the ".0000" —
+  // only genuinely fractional quantities keep the 4 decimal places.
+  const isWhole = Number.isInteger(num)
+  return num.toLocaleString(locale, {
+    minimumFractionDigits: isWhole ? 0 : 4,
+    maximumFractionDigits: isWhole ? 0 : 4,
+  })
 }
 
 /**

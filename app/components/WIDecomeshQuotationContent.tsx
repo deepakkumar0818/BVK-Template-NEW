@@ -38,6 +38,9 @@ interface WIDecomeshQuotationContentProps {
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
+  /** CRM Contact (Salutation + Full_Name) resolved via Deal chain.
+   * Replaces the local "Mr. <Contact_Name>" line when present. */
+  contactData?: { salutation: string; fullName: string } | null
 }
 
 export default function WIDecomeshQuotationContent({
@@ -45,6 +48,7 @@ export default function WIDecomeshQuotationContent({
   shippingData,
   billingData,
   rawQuotationData,
+  contactData,
 }: WIDecomeshQuotationContentProps) {
   // Date helper (DD MMM YYYY-ish). Local copy — do not share.
   const formatWdmDate = (dateString?: string): string => {
@@ -91,13 +95,14 @@ export default function WIDecomeshQuotationContent({
   const recipientNameRaw = String(
     shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
   ).trim()
-  // Contact-person display with "Mr. " prefix (skip if the Zoho value
-  // already starts with a title such as Mr / Mrs / Ms / Dr).
-  const recipientName = recipientNameRaw
-    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientNameRaw)
-      ? recipientNameRaw
-      : `Mr. ${recipientNameRaw}`
-    : ''
+  // Recipient name — ONLY from the CRM Contact record
+  // (Salutation + Full_Name). No fallback: if the Deal → Contact chain
+  // doesn't resolve, this line stays blank.
+  const recipientName = (() => {
+    const crmSalutation = (contactData?.salutation ?? '').trim()
+    const crmFullName = (contactData?.fullName ?? '').trim()
+    return crmFullName ? `${crmSalutation} ${crmFullName}`.trim() : ''
+  })()
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -213,7 +218,7 @@ export default function WIDecomeshQuotationContent({
                  * Process Febric: Date used to sit stacked under the logo;
                  * moving it right lets the body ("To,", recipient, etc.)
                  * shift up and end up aligned near the Date row on the right. */}
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ marginBottom: '10px' }}>
                   <img
                     src="/wi.png"
                     alt="WMW Industries Ltd"
@@ -438,47 +443,45 @@ export default function WIDecomeshQuotationContent({
               <td />
             </tr>
           </tbody>
-          {/* Footer — hoisted out of the <tbody> into its own <tfoot> so
-           * the browser repeats it at the bottom of EVERY printed page
-           * (same `display: table-footer-group` trick the <thead> uses).
-           * Text block replaced with the two footer images (same swap
-           * that was applied to SLS and WI Process Febric). */}
+          {/* Empty tfoot spacer — `display: table-footer-group` in print
+           * reserves this row's 32mm height at the bottom of EVERY page.
+           * The visible footer is a separate `position: fixed` div below. */}
           <tfoot className="wi-decomesh-print-footer-row">
             <tr>
-              <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
-                <div
-                  className="wi-decomesh-company-footer"
-                  style={{
-                    marginTop: '40px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-end',
-                    gap: '16px',
-                    pageBreakInside: 'avoid',
-                    breakInside: 'avoid',
-                  }}
-                >
-                  <img
-                    src="/wi bottom left side.png"
-                    alt="WMW Industries Ltd — company details"
-                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                  <img
-                    src="/wi_bottom_rightside.png"
-                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
-                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                </div>
-              </td>
+              <td style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
             </tr>
           </tfoot>
         </table>
+
+        {/* Actual footer — lives OUTSIDE the table. In print media it
+         * gets `position: fixed; bottom: 0` (see globals.css) so the two
+         * images pin to the paper bottom on EVERY generated page. */}
+        <div
+          className="wi-decomesh-page-footer wi-decomesh-company-footer"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            gap: '16px',
+          }}
+        >
+          <img
+            src="/wi bottom left side.png"
+            alt="WMW Industries Ltd — company details"
+            style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <img
+            src="/wi_bottom_rightside.png"
+            alt="WMW Industries Ltd — CIN / GST / BVK Group"
+            style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        </div>
       </div>
 
       <div className="no-print" style={{ marginTop: '24px', textAlign: 'center' }}>

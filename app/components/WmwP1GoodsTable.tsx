@@ -59,7 +59,7 @@ const rightMergedEmpty: CSSProperties = {
   verticalAlign: 'top',
 }
 
-interface AdhunikGoodsTableProps {
+interface WmwP1GoodsTableProps {
   data: QuotationData
   rawQuotationData?: any
   shippingData?: any
@@ -81,7 +81,6 @@ const metaRowLine: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '60px 10px 1fr',
   marginBottom: '3px',
-  fontWeight: 'bold',
   whiteSpace: 'nowrap',
 }
 
@@ -102,7 +101,7 @@ function meshInchFromProductCode(productCode: string): string {
   return m ? `${m[0]}/Inch` : ''
 }
 
-export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData, headerNode, footerNode }: AdhunikGoodsTableProps) {
+export default function WmwP1GoodsTable({ data, rawQuotationData, shippingData, headerNode, footerNode }: WmwP1GoodsTableProps) {
   const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
   const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
 
@@ -212,7 +211,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   // `Export_Discount_Description` as the label and
   // `line-items total × Export_Discount_Value%` as the amount. When the
   // toggle is off, the row is not rendered at all.
-  const adhunikChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
+  const wmwP1ChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
     [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
     [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
@@ -518,10 +517,10 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   // it flows to page 2 on its own with the QUOTATION header and
   // Remarks/Signature footer repeated by the outer wrap's
   // <thead>/<tfoot> in AdhunikInvoiceContent.
-  const ADHUNIK_ITEMS_PER_PAGE = 7
+  const WMW_P1_ITEMS_PER_PAGE = 7
   const chunks: typeof displayLineItems[] = []
-  for (let i = 0; i < displayLineItems.length; i += ADHUNIK_ITEMS_PER_PAGE) {
-    chunks.push(displayLineItems.slice(i, i + ADHUNIK_ITEMS_PER_PAGE))
+  for (let i = 0; i < displayLineItems.length; i += WMW_P1_ITEMS_PER_PAGE) {
+    chunks.push(displayLineItems.slice(i, i + WMW_P1_ITEMS_PER_PAGE))
   }
   if (chunks.length === 0) chunks.push([])
 
@@ -544,7 +543,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
         //     symmetric padding.
         //   - Full last chunk (4 items + tail on one page): compact.
         const isSparseLastChunk =
-          isLastChunk && chunk.length > 0 && chunk.length < ADHUNIK_ITEMS_PER_PAGE
+          isLastChunk && chunk.length > 0 && chunk.length < WMW_P1_ITEMS_PER_PAGE
         const isLoneItemLastChunk = isSparseLastChunk && chunk.length === 1
         // With 5 items per page (up from 4), the non-last chunk has
         // one extra item eating vertical space, so per-item padding
@@ -595,9 +594,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                   width: '100%',
                   borderCollapse: 'collapse',
                   border: '1px solid #000',
-                  // Remove top border — header table already draws its
-                  // own bottom border, so both stacked 1px borders were
-                  // adding up to a "bold" 2px seam line.
+                  // Remove the top border of the goods table — the
+                  // outer header table (headerNode) already draws a
+                  // bottom border on its last row, so both stacked
+                  // 1px borders were visually adding up to a 2px
+                  // "bold" seam line between the header and the
+                  // goods-table's Description-of-Goods header row.
                   borderTop: 'none',
                   marginTop: 0,
                   tableLayout: 'fixed',
@@ -628,30 +630,30 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                 </colgroup>
                 <tbody>
                   <tr className="adhunik-goods-title-row">
-                    <td colSpan={2} rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
+                    <td colSpan={2} rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontSize: '11px', verticalAlign: 'middle', fontWeight: 'bold' }}>
                       Description of Goods
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontSize: '10px', verticalAlign: 'middle', fontWeight: 'bold' }}>
                       HSN Code
                     </td>
-                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
                       Net Weight (Kg.)
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       Quantity<br />UOM
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       Rate<br />{currencySymbol} / UOM
                     </td>
-                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                       Amount {currencySymbol}
                     </td>
                   </tr>
                   <tr className="adhunik-goods-title-row-2">
-                    <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                    <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
                       Per Pc.
                     </td>
-                    <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                    <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontSize: '10px', fontWeight: 'bold' }}>
                       Total
                     </td>
                   </tr>
@@ -668,7 +670,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                     let prevForm: string | undefined
                     let prevQuality: string | undefined
                     return (
-                      <Fragment key={`adhunik-items-${pageIdx}`}>
+                      <Fragment key={`wmw-p1-items-${pageIdx}`}>
                         {chunk.map((row, itemIdx) => {
                           const productLabel = (row.product || defaultProductLabel).trim()
                           const formLabel = (row.form || '').trim()
@@ -688,12 +690,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                           prevQuality = qualityLabel
 
                           return (
-                            <Fragment key={`adhunik-item-${pageIdx}-${itemIdx}`}>
+                            <Fragment key={`wmw-p1-item-${pageIdx}-${itemIdx}`}>
                               {emitProduct ? (
                                 <tr className="adhunik-product-row">
                                   <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
                                     <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                                      <span>Product</span><span>:</span><span style={metaRowValue}>{productLabel}</span>
+                                      <span style={{ fontWeight: 'bold' }}>Product</span><span>:</span><span style={metaRowValue}>{productLabel}</span>
                                     </div>
                                   </td>
                                   <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
@@ -710,11 +712,11 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                                   <td colSpan={2} style={{ ...bdProductMeta, padding: '2px 10px 4px 10px', verticalAlign: 'top' }}>
                                     {formLabel ? (
                                       <div style={metaRowLine}>
-                                        <span>Form</span><span>:</span><span style={metaRowValue}>{formLabel}</span>
+                                        <span style={{ fontWeight: 'bold' }}>Form</span><span>:</span><span style={metaRowValue}>{formLabel}</span>
                                       </div>
                                     ) : null}
                                     <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                                      <span>Quality</span><span>:</span><span style={metaRowValue}>{qualityLabel}</span>
+                                      <span style={{ fontWeight: 'bold' }}>Quality</span><span>:</span><span style={metaRowValue}>{qualityLabel}</span>
                                     </div>
                                   </td>
                                   <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
@@ -729,7 +731,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                               {itemIdx === 0 ? (
                                 <tr className="adhunik-item-grid-row">
                                   <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
-                                    <div style={{ ...descGrid, fontWeight: 'bold', marginBottom: 0 }}>
+                                    <div style={{ ...descGrid, marginBottom: 0, fontWeight: 'bold' }}>
                                       <span>Item</span>
                                       <span>MESH</span>
                                       <span>BRAND</span>
@@ -749,14 +751,14 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                               <tr className="adhunik-item-grid-row">
                                 <td colSpan={2} style={{ ...bdItemGrid, padding: `${itemRowPadTop} 10px ${itemRowPadBottom} 10px`, verticalAlign: 'middle' }}>
                                   <div style={{ ...descGrid, alignItems: 'start' }}>
-                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
+                                    <span style={{ textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                     <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
                                     <span style={goodsDescGridValueSpan}>{row.brand}</span>
                                     <span style={{ ...goodsDescGridValueSpan, ...goodsDescGridSizeSpanOneLine }}>{row.size}</span>
                                     <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                                   </div>
                                 </td>
-                                <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 2px ${itemRowPadBottom} 2px`, textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 2px ${itemRowPadBottom} 2px`, textAlign: 'center', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                                   {row.hsnCode || ''}
                                 </td>
                                 <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 6px ${itemRowPadBottom} 6px`, textAlign: 'center', verticalAlign: 'middle' }}>
@@ -831,8 +833,8 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
                       </tr>
 
-                      {adhunikChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
-                        <tr key={`adhunik-charge-${chargeIdx}`}>
+                      {wmwP1ChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
+                        <tr key={`wmw-p1-charge-${chargeIdx}`}>
                           <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
                             {chargeLabel}
                           </td>
@@ -923,7 +925,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
 
                       {exportRemarks ? (
                         <tr>
-                          <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'pre-wrap' }}>
+                          <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', whiteSpace: 'pre-wrap' }}>
                             {exportRemarks}
                           </td>
                           <td style={{ ...bdSides, padding: '6px' }} />
@@ -940,7 +942,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                       </tr>
 
                       <tr>
-                        <td colSpan={8} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                        <td colSpan={8} style={{ ...bd, padding: '4px 10px', textAlign: 'center' }}>
                           {transportSummaryLine}
                         </td>
                       </tr>
@@ -950,25 +952,25 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                           {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
                           {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '10%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'center', verticalAlign: 'middle', width: '10%' }}>
                           <span>{currency}</span>
                         </td>
-                        <td style={{ ...bd, padding: '6px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle', width: '14%' }}>
+                        <td style={{ ...bd, padding: '6px', textAlign: 'center', verticalAlign: 'middle', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
 
                       <tr>
                         <td style={{ ...bd, padding: '4px 8px', fontSize: '10px', verticalAlign: 'top', width: '14%' }}>
-                          <span style={{ fontWeight: 'bold', display: 'block', lineHeight: 1.2 }}>Amount Chargeable<br />(In words) :</span>
+                          <span style={{ display: 'block', lineHeight: 1.2, fontWeight: 'bold' }}>Amount Chargeable<br />(In words) :</span>
                         </td>
-                        <td colSpan={5} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
+                        <td colSpan={5} style={{ ...bd, padding: '4px 8px', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
                           {amountChargeableInWords}
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontSize: '11px', width: '10%', fontWeight: 'bold' }}>
                           Total:-
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>
+                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', width: '14%' }}>
                           <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>

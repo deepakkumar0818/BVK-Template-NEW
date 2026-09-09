@@ -256,16 +256,29 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     shippingData as Record<string, unknown> | null | undefined,
     ''
   )
-  const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
-  const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
-  const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
+  // Transport line — maps 1:1 to Zoho `Transport`. When empty, builds a
+  // fallback in the fixed shape:
+  //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+  // The words `Total`, `Price`, `upto`, `By` are literals; the three
+  // slot values come from Zoho. Empty slots are elided along with their
+  // adjacent connector so the sentence stays clean.
+  const transportSummaryLine = (() => {
+    const zohoTransport = String(rawQuotationData?.Transport ?? '').trim()
+    if (zohoTransport) return zohoTransport
 
-  const destLabel = finalDestination || portOfDischarge || 'Benapole Border'
-  const transportMethod = modeOfDelivery || 'Road'
-  const transportSummaryLine = resolveTransportDisplayLine(
-    rawQuotationData as Record<string, unknown> | undefined,
-    `Total CPT Price upto ${destLabel} By ${transportMethod}`
-  )
+    // Strict formula, no fallbacks and no elision:
+    //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+    // Delivery_Terms → ALL CAPS; Mode_of_Delivery → first-letter capital;
+    // Port_of_Discharge → root `Port_of_Discharge` only (no fallback).
+    const deliveryTerms = String(rawQuotationData?.Delivery_Terms ?? '').trim().toUpperCase()
+    const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+    const modeRaw = String(rawQuotationData?.Mode_of_Delivery ?? '').trim()
+    const modeOfDelivery = modeRaw
+      ? modeRaw.charAt(0).toUpperCase() + modeRaw.slice(1).toLowerCase()
+      : ''
+
+    return `Total ${deliveryTerms} Price upto ${portOfDischarge} By ${modeOfDelivery}`
+  })()
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -333,8 +346,12 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
       sizeDisplay: size,
     })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
-    const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
+    // Rate — direct 1:1 map to Zoho
+    // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
+    // `ext3` is already the correct row (joined by last_item_ref).
+    // No fallback: blank / non-numeric → NaN → empty cell.
+    const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
+    const rate = sellingPriceUomBilling ? (parseFloat(sellingPriceUomBilling) || NaN) : NaN
     // Amount = rate × quantity, no fallback (matches Adhunik / Bashundhara).
     const amount = quantity * rate
 
@@ -516,12 +533,16 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
     rawQuotationData?.Export_Packing_Description ?? ''
   ).trim() || 'Export Packing'
 
-  const finalGrandTotal =
-    displayGrandTotal
-    - exportDiscountAmt
-    + transactionChargeAmt
-    + miscChargeAmt
-    + exportPackingAmt
+  // Grand total — STRICT direct map to Zoho
+  // `Overall_Grand_Total_incl_Accessories`. No fallback to any other
+  // field, no in-app adjustment for the discount / transaction / misc /
+  // packing rows (those still render for information but do NOT alter
+  // the printed "Total"). Blank / non-numeric field → 0.
+  const finalGrandTotal = (() => {
+    const raw = rawQuotationData?.Overall_Grand_Total_incl_Accessories
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  })()
   const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
 
   const chunks = [];

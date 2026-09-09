@@ -10,21 +10,21 @@ import {
   resolveOtherReferenceDisplay,
   resolveQuotationValidity,
 } from '@/lib/quotation-utils'
-import EveriteGoodsTable from './EveriteGoodsTable'
+import WmwP1GoodsTable from './WmwP1GoodsTable'
 
-interface EveriteInvoiceContentProps {
+interface WmwP1InvoiceContentProps {
   data: QuotationData
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
 }
 
-export default function EveriteInvoiceContent({
+export default function WmwP1InvoiceContent({
   data,
   shippingData,
   billingData,
   rawQuotationData,
-}: EveriteInvoiceContentProps) {
+}: WmwP1InvoiceContentProps) {
   const quotationNumber = data.quotationNumber || rawQuotationData?.Name || ''
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
   const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
@@ -52,13 +52,13 @@ export default function EveriteInvoiceContent({
        * `padding: 0 !important` doesn't wipe it out. */}
       <div style={{ paddingTop: '15mm' }}>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
-        <EveriteGoodsTable
+        <WmwP1GoodsTable
           data={data}
           rawQuotationData={rawQuotationData}
           shippingData={shippingData}
           headerNode={
             <table
-              className="everite-quotation-header-table"
+              className="wmw-p1-quotation-header-table"
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
@@ -70,15 +70,21 @@ export default function EveriteInvoiceContent({
             >
               <tbody>
                 <tr>
-                  <td colSpan={2} style={{ border: '1px solid #000', textAlign: 'center', fontSize: '15px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                    QUOTATION
+                  <td colSpan={2} style={{ border: '1px solid #000', textAlign: 'center', fontSize: '15px', letterSpacing: '0.5px', fontWeight: 'bold' }}>
+                    Proforma Invoice
                   </td>
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '6px 8px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Exporter</div>
+                    <div style={{ fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>Exporter</div>
                     {/* Side-by-side layout: logo LEFT, company text
-                     * RIGHT — same as Saint / Adhunik / Bashundhara. */}
+                     * RIGHT — mirrors the Saint template's Exporter
+                     * cell (see SaintInvoiceContent.tsx) and the WMW
+                     * template's `.qh-supplier-layout`
+                     * (QuotationHeaderThead.tsx#L40-L62). Nested
+                     * table so the two cells align at the top and
+                     * the row height is driven by the taller of the
+                     * two, keeping the whole Exporter box compact. */}
                     <table style={{ width: '100%', borderCollapse: 'collapse' }} role="presentation">
                       <tbody>
                         <tr>
@@ -93,7 +99,7 @@ export default function EveriteInvoiceContent({
                             />
                           </td>
                           <td style={{ verticalAlign: 'middle', padding: '0 0 0 8px' }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.2 }}>WMW METAL FABRICS LIMITED</div>
+                            <div style={{ fontSize: '12px', lineHeight: 1.2, fontWeight: 'bold' }}>WMW METAL FABRICS LIMITED</div>
                             <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
                             <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>Tel : +911417105151</div>
                             <div style={{ display: 'flex', gap: '14px', fontSize: '10px', marginTop: '2px' }}>
@@ -109,26 +115,26 @@ export default function EveriteInvoiceContent({
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Quotation No. &amp; Date</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ marginBottom: '2px', fontWeight: 'bold' }}>Proforma Invoice No. &amp; Date</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{quotationNumber}</span>
                               <span>{quotationDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Buyer&apos;s Enquiry No. &amp; Date</div>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ marginBottom: '2px', fontWeight: 'bold' }}>Buyer&apos;s Enquiry No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{buyerEnquiryNo || 'Email'}</span>
-                              <span style={{ fontWeight: 'bold' }}>{buyerEnquiryDate}</span>
+                              <span>{buyerEnquiryDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Other Reference (s)</div>
+                          <td style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
+                            <div style={{ marginBottom: '2px', fontWeight: 'bold' }}>Other Reference (s)</div>
                             <div>{otherReference}</div>
                           </td>
                         </tr>
@@ -138,25 +144,66 @@ export default function EveriteInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
+                    {/* Adhunik consignee block — direct 1:1 mapping to
+                     * `rawQuotationData` root Billing_* fields. NO
+                     * fallbacks to billing master, NO chained fallbacks
+                     * across sibling fields. Blank Zoho field → blank
+                     * line (the whole line is skipped for that value). */}
+                    {(() => {
+                      const t = (v: unknown) => String(v ?? '').trim()
+                      const name = t(rawQuotationData?.Billing_Address_Name)
+                      const street = t(rawQuotationData?.Billing_Street)
+                      const city = t(rawQuotationData?.Billing_City)
+                      const state = t(rawQuotationData?.Billing_State)
+                      const postal = t(rawQuotationData?.Billing_Postal_Code)
+                      const country = t(rawQuotationData?.Billing_Country)
+                      const gstNo = t(rawQuotationData?.Billing_GST_No)
+                      const cityStatePostal = [
+                        [city, state].filter(Boolean).join(', '),
+                        postal,
+                      ].filter(Boolean).join(' ')
+                      const addressBlock = [street, cityStatePostal]
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .join('\n')
+                      const hasContent = name || addressBlock || country || gstNo
+                      if (!hasContent) return null
+                      return (
+                        <>
+                          <div style={{ fontSize: '11px', marginBottom: '6px', fontWeight: 'bold' }}>Consignee</div>
+                          {name ? (
+                            <div style={{ fontSize: '13px', marginBottom: '4px' }}>{name}</div>
+                          ) : null}
+                          {addressBlock ? (
+                            <div style={{ fontSize: '11px', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{addressBlock}</div>
+                          ) : null}
+                          {country ? (
+                            <div style={{ fontSize: '11px', marginTop: '4px' }}>{country}</div>
+                          ) : null}
+                          {gstNo ? (
+                            <div style={{ fontSize: '11px', marginTop: '8px' }}>GST Number: {gstNo}</div>
+                          ) : null}
+                        </>
+                      )
+                    })()}
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Origin of Goods</div>
+                          <td style={{ width: '50%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ marginBottom: '2px', fontWeight: 'bold' }}>Country of Origin of Goods</div>
                             <div>{countryOfOrigin}</div>
                           </td>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Final Destination</div>
+                          <td style={{ width: '50%', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ marginBottom: '2px', fontWeight: 'bold' }}>Country of Final Destination</div>
                             <div>{countryOfDestination}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
-                            <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
+                          <td colSpan={2} style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ textDecoration: 'underline', marginBottom: '2px', fontWeight: 'bold' }}>Terms of Payment</div>
+                            <div>{termsOfPayment}</div>
                             {ourBankDetails ? (
                               <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
@@ -175,30 +222,30 @@ export default function EveriteInvoiceContent({
                       </colgroup>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Carriage by</div>
-                            <div style={{ textDecoration: 'underline' }}>{modeOfDelivery}</div>
+                            <div>{modeOfDelivery}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Loading</div>
-                            <div style={{ textDecoration: 'underline' }}>{portOfLoading}</div>
+                            <div>{portOfLoading}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Discharge</div>
-                            <div style={{ textDecoration: 'underline' }}>{portOfDischarge}</div>
+                            <div>{portOfDischarge}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Final Destination</div>
-                            <div style={{ textDecoration: 'underline' }}>{finalDestination}</div>
+                            <div>{finalDestination}</div>
                           </td>
                         </tr>
                       </tbody>
                     </table>
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 6px', fontSize: '11px' }}>
-                    <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>Dispatch Ex-Works</div>
+                    <div style={{ textDecoration: 'underline', marginBottom: '4px', fontWeight: 'bold' }}>Dispatch Ex-Works</div>
                     <div>{dispatchExWorks}</div>
                   </td>
                 </tr>
@@ -224,7 +271,7 @@ export default function EveriteInvoiceContent({
                           <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>
                             Remarks
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold', textAlign: 'center' }}>
+                          <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold' }}>
                             For WMW Metal Fabrics Ltd.
                           </td>
                         </tr>
@@ -265,20 +312,20 @@ export default function EveriteInvoiceContent({
       </div>
 
       <div className="conditions-for-print conditions-doc" style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}>
-        <h1 style={{ textAlign: 'center', fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '16px' }}>STANDARD CONDITIONS OF SALE:</h1>
+        <h1 style={{ textAlign: 'center', fontSize: '16px', textTransform: 'uppercase', marginBottom: '16px' }}>STANDARD CONDITIONS OF SALE:</h1>
 
         <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>
           <strong>Pretext -</strong> In the below stated terms and conditions of the sale, WMW Metal Fabrics Ltd., hereby referred to as &apos;The Company&apos; is holding the entity mentioned in the invoice, here by referred to as &quot;The Buyer&quot; liable to all stated terms as on the date of this invoice.
         </p>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>1. Contract</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>1. Contract</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>1.1.</strong> All quotations and orders are subject to these conditions. In the event of any inconsistency between these conditions and the Buyers conditions of purchase or supply, these conditions shall prevail. The Buyer irrevocably accepts these conditions.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>1.2.</strong> The contract is not assignable. The Buyer cannot withdraw from this contract unless specifically agreed to in writing by the company in the event of withdrawal the Buyer shall pay full contract price.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>2. DELIVERY</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>2. DELIVERY</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>2.1.</strong> Goods will be delivered to the location specified in the acceptance of order on the terms as per order. Unless specifically agreed in writing any date for delivery specified by the company is an estimate only and any failure to deliver goods by that shall not constitute a breach of contract or negligence, nor shall the company be liable for the consequences.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>2.2.</strong> If a Buyer falls to take delivery, the company will have the right to make a charge of handling and storage of the goods (@ 1% per week of the invoice price with the maximum of) 50%)and the buyer will also be liable for demurrage and/or additional transportation costs incurred by the company.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>2.3.</strong> Where the contract specifies delivery by installment and the Company makes defective deliveries in respect of one or more installments the Buyer shall not be entitled to repudiate the whole contract.</p>
@@ -286,24 +333,24 @@ export default function EveriteInvoiceContent({
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>3. RISK</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>3. RISK</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>3.1.</strong> Risk shall pass to the Buyer as soon as the goods are dispatched and the Buyer is responsible for all loss damage or deterioration to the goods.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>4. PRICE</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>4. PRICE</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>4.1.</strong> The price quoted by the company is its current price. The Company reserves the rights to revise the contract price of the goods and the date of dispatch to take account of increase in costs including (without lamination) currency fluctuations, wages, materials, transport, overhead and taxes etc. between those prevailing at the date of the contract..</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>4.2.</strong> In the event of any alteration being required by the Buyer in design or specification of the company shall be entitled to make an appropriate adjustment to the contract.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>5. PAYMENT</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>5. PAYMENT</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>5.1.</strong> Each consignment shall be separately invoiced and paid for. The payment shall be made/remitted by the Buyer to the Company&apos;s Bankers at Jaipur, India.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>5.2.</strong> Payment is due in full when the goods leave the company premises or on the expiry of any agreed extended payment period. If the price is payable by installments and any amount is not paid on the due date, the whole outstanding balance becomes immediately due and payable. Interest is chargeable on a day to day basis on all overdue amount at the rate specified in any special conditions or if no such rate is specified, at a rate of 10% over and above of the bank rate for the time being of the Reserve Bank of India.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>6. CLAIMS</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>6. CLAIMS</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.1.</strong> The Buyer shall not be entitled to any claim in respect of any repairs of alterations to goods undertaken by the Buyer without the prior specific written consent of the Company nor in respect of any defect arising by reason of normal wear and tear or damage due to misuse/accident.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as performance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.3.</strong> Without prejudice to any other rights which it may have against the Buyers, the company may rescind the contract, in whole or in part, or suspend deliveries under it or of any other goods in any of the following circumstances:</p>
@@ -314,31 +361,31 @@ export default function EveriteInvoiceContent({
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>7. SPECIFICATION, COPYRIGHT</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>7. SPECIFICATION, COPYRIGHT</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>7.1.</strong> Buyer will indemnify the Company from and against all claims, proceedings, damages, and expenses to which the Company may become liable as a result of work done in accordance with the Buyer specifications which infringes any patent or registered design.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>7.2.</strong> Where specifications are to be supplied to the Company, the Buyer shall supply such specification within a time specified by the Company so as to enable the company tocomplete the delivery within contract period as per predefined written approvals from the company.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>7.3.</strong> The Copyright of all documents (including drawings) furnished to the Buyer by the in connection with this contract shall at all times remain vested in the Company. Neither the documents nor their contents shall be used for any purpose other than for which they were furnished. The Buyer shall not disclose the documents to any other party without the expresses written consent of the company.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>8. GENERAL PLAN</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>8. GENERAL PLAN</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>8.1.</strong> Without prejudice to any other right which it may have against the Buyer the company shall have a general lien over any property of the Buyer which is in the company&apos;s possession, in respect of all unpaid debts to it from the Buyer. The Company shall be entitled to dispose of the property as it thinks fit after expiration of 14 days prior notice to the Buyer, and to apply the proceeds of sale in, or towards payments of the debts.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>8.2.</strong> The company shall be under no liability if it is prevented from, or delayed in carrying out any part of its agreements for any cause beyond its control.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>8.3.</strong> The Buyer warrants that these conditions are freely accepted in the knowledge and on the basis that the price charged for the goods would be higher if the Company were under liability or potential liability, than as set out in these conditions.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>9. LIMITATION OF DAMAGES</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>9. LIMITATION OF DAMAGES</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>9.1.</strong> Seller shall not be liable to Buyer for any SPECIAL, EXEMPLARY, PROXIMATE CONSEQUENTIAL OR INCIDENTAL DAMAGES, WHETHER ARISING UNDER CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY, OR OTHER THEORY OF LAW OR EQUITY. SELLER&apos;S MAXIMUM LIABILITY TO BUYER SHALL NOT EXCEED THE CONTRACT PRICE OF THE ORDER GIVING RISE TO THE CLAIM, DEMAND, OR CAUSE OF ACTION.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>10. INDEMNIFICATION</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>10. INDEMNIFICATION</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>10.1.</strong> Buyer shall defend, indemnify and hold harmless seller, and Seller&apos;s directors, officers and employees, from any and all claims, losses, liability, damages and expenses, including but not limited to, attorney&apos;s fees and costs of defense, arising from, related to, or in any way connected with or alleged to rise from or out of any asserted deficiencies or defects in the Product causes by any alteration or modification thereof by Buyer with or without Seller&apos;s written consent, or improper handling or storage by Buyer.</p>
         </div>
 
         <div className="section" style={{ marginBottom: '16px' }}>
-          <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>11. ARBITRATION & JURISDICTION</div>
+          <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>11. ARBITRATION & JURISDICTION</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>11.1.</strong> In case of any dispute, the same shall be referred to the arbitration of mutually acceptable arbitrator or a panel of two arbitrators, one to be appointed by each of us and who before the start of the proceedings shall appoint an umpire and their decision shall be final and binding on both of us. The arbitration shall be held at Jaipur, India and jurisdiction of this agreement lies at Jaipur, India only.</p>
         </div>
       </div>

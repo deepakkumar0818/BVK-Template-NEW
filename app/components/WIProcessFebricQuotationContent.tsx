@@ -45,6 +45,9 @@ interface WIProcessFebricQuotationContentProps {
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
+  /** CRM Contact (Salutation + Full_Name) resolved via Deal chain.
+   * Replaces the local "Mr. <Contact_Name>" line when present. */
+  contactData?: { salutation: string; fullName: string } | null
 }
 
 export default function WIProcessFebricQuotationContent({
@@ -52,6 +55,7 @@ export default function WIProcessFebricQuotationContent({
   shippingData,
   billingData,
   rawQuotationData,
+  contactData,
 }: WIProcessFebricQuotationContentProps) {
   // Date helper (DD.MM.YYYY). Local copy — do not share.
   const formatWpfDate = (dateString?: string): string => {
@@ -94,13 +98,14 @@ export default function WIProcessFebricQuotationContent({
   const recipientName = String(
     shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
   ).trim()
-  // Contact-person display with "Mr. " prefix (skip if the Zoho value
-  // already starts with a title such as Mr / Mrs / Ms / Dr).
-  const recipientNameDisplay = recipientName
-    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientName)
-      ? recipientName
-      : `Mr. ${recipientName}`
-    : ''
+  // Recipient name — ONLY from the CRM Contact record
+  // (Salutation + Full_Name). No fallback: if the Deal → Contact chain
+  // doesn't resolve, this line stays blank.
+  const recipientNameDisplay = (() => {
+    const crmSalutation = (contactData?.salutation ?? '').trim()
+    const crmFullName = (contactData?.fullName ?? '').trim()
+    return crmFullName ? `${crmSalutation} ${crmFullName}`.trim() : ''
+  })()
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -153,7 +158,21 @@ export default function WIProcessFebricQuotationContent({
   })()
 
   const showDiscountRow = Number.isFinite(discountTotal) && discountTotal !== 0
-  const finalNetTotal = lineItemsTotal - (showDiscountRow ? Math.max(0, discountTotal) : 0)
+
+  // Packing gate — matches the SLS / BVK behaviour: packing charges are
+  // included in "Total" only when Zoho's `Packing_Charge` toggle is on.
+  // Same true/"true" test the packing narrative (`packingLine`) uses.
+  const wpfPackingChargeEnabled = (() => {
+    const charge = rawRec?.[F.packingCharge]
+    return charge === true || (typeof charge === 'string' && charge.trim().toLowerCase() === 'true')
+  })()
+  const packingContribution =
+    wpfPackingChargeEnabled && Number.isFinite(packingTotal) ? packingTotal : 0
+
+  const finalNetTotal =
+    lineItemsTotal
+    - (showDiscountRow ? Math.max(0, discountTotal) : 0)
+    + packingContribution
 
   type WpfSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const summaryRows: WpfSummaryRow[] = [
@@ -281,7 +300,7 @@ export default function WIProcessFebricQuotationContent({
                  * used to sit stacked under the logo; moving it to the right
                  * lets the body content below shift up and end up aligned
                  * near the Date row on the right. */}
-                <div style={{ marginBottom: '30px' }}>
+                <div style={{ marginBottom: '12px' }}>
                   <img
                     src="/wi.png"
                     alt="WMW Industries Ltd"
@@ -362,9 +381,9 @@ export default function WIProcessFebricQuotationContent({
                     <thead>
                       <tr>
                         <th style={itemsHeaderCellStyle(8, 'center', { tight: true })}>Item</th>
-                        <th style={itemsHeaderCellStyle(45, 'left')}>Product</th>
-                        <th style={itemsHeaderCellStyle(9, 'center', { tight: true })}>HSN Code</th>
-                        <th style={itemsHeaderCellStyle(8, 'center', { tight: true })}>Qty</th>
+                        <th style={itemsHeaderCellStyle(39, 'left')}>Product</th>
+                        <th style={itemsHeaderCellStyle(12, 'center', { tight: true })}>HSN Code</th>
+                        <th style={itemsHeaderCellStyle(11, 'center', { tight: true })}>Qty</th>
                         <th style={itemsHeaderCellStyle(15, 'center', { tight: true })}>{`Unit Price / ${displayCurrency}`}</th>
                         <th style={itemsHeaderCellStyle(15, 'center', { tight: true })}>{`Total Price ${displayCurrency}`}</th>
                       </tr>
@@ -608,55 +627,46 @@ export default function WIProcessFebricQuotationContent({
               <td />
             </tr>
           </tbody>
-          {/*
-            Footer as its own <tfoot> (not crammed into the <tbody> cell above)
-            so the browser's table pagination treats it as a distinct section
-            instead of one giant unbreakable-ish <td> — this is what was
-            causing the trailing blank page. Mirrors BVKQuotationContent's
-            <tfoot className="bvk-print-footer-row"> pattern.
-          */}
+          {/* Empty tfoot spacer — `display: table-footer-group` in print
+           * reserves this row's 32mm height at the bottom of EVERY page
+           * (browser's natural table-footer-group behaviour). The visible
+           * footer is a separate `position: fixed` div below. */}
           <tfoot className="wi-process-febric-print-footer-row">
             <tr>
-              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Footer — replaced the old text block (company name,
-                 * address, phone/email/website, Registered Office, tagline,
-                 * CIN, GST, "A BVK Group Company") with two images that
-                 * already contain all of that baked in. Same swap that was
-                 * applied to SLS. Left image raised by 45px margin-bottom
-                 * so its top aligns with the right image's first line. */}
-                <div
-                  className="wi-process-febric-company-footer"
-                  style={{
-                    marginTop: '40px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-end',
-                    gap: '16px',
-                    pageBreakInside: 'avoid',
-                    breakInside: 'avoid',
-                  }}
-                >
-                  <img
-                    src="/wi bottom left side.png"
-                    alt="WMW Industries Ltd — company details"
-                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                  <img
-                    src="/wi_bottom_rightside.png"
-                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
-                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                </div>
-              </td>
+              <td style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
             </tr>
           </tfoot>
         </table>
+
+        {/* Actual footer — lives OUTSIDE the table. In print media it
+         * gets `position: fixed; bottom: 0` (see globals.css) so the two
+         * images pin to the paper bottom on EVERY generated page. */}
+        <div
+          className="wi-process-febric-page-footer wi-process-febric-company-footer"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            gap: '16px',
+          }}
+        >
+          <img
+            src="/wi bottom left side.png"
+            alt="WMW Industries Ltd — company details"
+            style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <img
+            src="/wi_bottom_rightside.png"
+            alt="WMW Industries Ltd — CIN / GST / BVK Group"
+            style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        </div>
       </div>
 
       <div className="no-print" style={{ marginTop: '24px', textAlign: 'center' }}>

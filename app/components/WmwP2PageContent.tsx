@@ -13,9 +13,9 @@ import type {
 import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData, determineTemplateType } from '@/lib/quotation-utils'
 import PrintButton from './PrintButton'
-import AdhunikInvoiceContent from './AdhunikInvoiceContent'
+import WmwP2InvoiceContent from './WmwP2InvoiceContent'
 
-export default function AdhunikPageContent() {
+export default function WmwP2PageContent() {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : ''
 
@@ -45,7 +45,7 @@ export default function AdhunikPageContent() {
         }
 
         const quotation = data.data[0]
-        logQuotationPayloadForUrlId(id, quotation, 'adhunik')
+        logQuotationPayloadForUrlId(id, quotation, 'wmw-p2')
         setRawQuotationData(quotation)
 
         // Debug: pull the linked Deal record via the new /api/zoho-deals
@@ -157,13 +157,13 @@ export default function AdhunikPageContent() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-          <div>Loading Adhunik Invoice...</div>
+          <div>Loading WMW P2 Invoice...</div>
         </div>
       )}
 
       {error && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#d32f2f' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading Adhunik Invoice</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading WMW P2 Invoice</div>
           <div>{error}</div>
           <div style={{ marginTop: '16px', fontSize: '14px' }}>
             <Link href="/" style={{ color: '#1e40af', textDecoration: 'underline' }}>
@@ -179,7 +179,7 @@ export default function AdhunikPageContent() {
             <tbody>
               <tr>
                 <td colSpan={2} style={{ verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <AdhunikInvoiceContent
+                  <WmwP2InvoiceContent
                     data={quotationData}
                     shippingData={shippingData}
                     billingData={billingData}

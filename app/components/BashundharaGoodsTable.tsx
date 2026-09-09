@@ -223,16 +223,27 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
     [otherChargesLabel, otherChargesAmt],
   ])
 
-  const portOfDischarge = rawQuotationData?.Port_of_Discharge || ''
-  const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || ''
-  const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
+  // Transport line — maps 1:1 to Zoho `Transport`. When empty, builds a
+  // fallback in the fixed shape:
+  //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+  // The words `Total`, `Price`, `upto`, `By` are literals; the three
+  // slot values come from Zoho. Empty slots are elided along with their
+  // adjacent connector so the sentence stays clean.
+  const transportSummaryLine = (() => {
+    const zohoTransport = String(rawQuotationData?.Transport ?? '').trim()
+    if (zohoTransport) return zohoTransport
 
-  const destLabel = finalDestination || portOfDischarge || 'Benapole'
-  const transportMethod = modeOfDelivery || 'Road'
-  const transportSummaryLine = resolveTransportDisplayLine(
-    rawQuotationData as Record<string, unknown> | undefined,
-    `Total CFR Price upto ${destLabel} By ${transportMethod}`
-  )
+    // Strict formula, no fallbacks and no elision:
+    //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+    const deliveryTerms = String(rawQuotationData?.Delivery_Terms ?? '').trim().toUpperCase()
+    const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+    const modeRaw = String(rawQuotationData?.Mode_of_Delivery ?? '').trim()
+    const modeOfDelivery = modeRaw
+      ? modeRaw.charAt(0).toUpperCase() + modeRaw.slice(1).toLowerCase()
+      : ''
+
+    return `Total ${deliveryTerms} Price upto ${portOfDischarge} By ${modeOfDelivery}`
+  })()
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -308,8 +319,12 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
       sizeDisplay: size,
     })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
-    const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
+    // Rate — direct 1:1 map to Zoho
+    // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
+    // `ext3` is already the correct row (joined by last_item_ref).
+    // No fallback: blank / non-numeric → NaN → empty cell.
+    const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
+    const rate = sellingPriceUomBilling ? (parseFloat(sellingPriceUomBilling) || NaN) : NaN
     // Amount = rate × quantity, no fallback (matches Adhunik rule).
     const amount = quantity * rate
 
@@ -478,12 +493,16 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
     rawQuotationData?.Export_Packing_Description ?? ''
   ).trim() || 'Export Packing'
 
-  const finalGrandTotal =
-    displayGrandTotal
-    - exportDiscountAmt
-    + transactionChargeAmt
-    + miscChargeAmt
-    + exportPackingAmt
+  // Grand total — STRICT direct map to Zoho
+  // `Overall_Grand_Total_incl_Accessories`. No fallback to any other
+  // field, no in-app adjustment for the discount / transaction / misc /
+  // packing rows (those still render for information but do NOT alter
+  // the printed "Total"). Blank / non-numeric field → 0.
+  const finalGrandTotal = (() => {
+    const raw = rawQuotationData?.Overall_Grand_Total_incl_Accessories
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  })()
   const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
 
   // Weight band replaced with the raw `Export_Remarks` string from Zoho —
@@ -494,11 +513,15 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
   ).trim()
   const showBashundharaWeightBand = bashundharaExportRemarks.length > 0
 
-  const chunks = [];
-  for (let i = 0; i < displayLineItems.length; i += 5) {
-    chunks.push(displayLineItems.slice(i, i + 5));
+  // Bashundhara pagination: 5 items per page (matches Adhunik).
+  // Header (headerNode) renders per chunk; Remarks/Signature footer
+  // is pinned via `.bashundhara-page-footer` fixed div (see below).
+  const BASHUNDHARA_ITEMS_PER_PAGE = 5
+  const chunks: typeof displayLineItems[] = []
+  for (let i = 0; i < displayLineItems.length; i += BASHUNDHARA_ITEMS_PER_PAGE) {
+    chunks.push(displayLineItems.slice(i, i + BASHUNDHARA_ITEMS_PER_PAGE))
   }
-  if (chunks.length === 0) chunks.push([]);
+  if (chunks.length === 0) chunks.push([])
 
   return (
     <div className="quotation-goods-pages-stack">
@@ -514,6 +537,26 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
           chunk.find((r) => r.product)?.product ||
           chunkGroups[0]?.[0]?.product ||
           defaultProductLabel
+
+        // Padding matrix, three-way (matches Adhunik):
+        //   - Non-last chunk (5 items, no tail on this page): larger
+        //     top/bottom padding so items spread down the paper.
+        //   - Sparse last chunk with exactly 1 item (e.g. 6 total →
+        //     item 6 alone on page 2 with the tail block below):
+        //     extra padding-bottom so the item doesn't hug the tail.
+        //   - Sparse last chunk with >1 item: moderate symmetric padding.
+        //   - Full last chunk (5 items + tail): compact.
+        const isSparseLastChunk =
+          isLastChunk && chunk.length > 0 && chunk.length < BASHUNDHARA_ITEMS_PER_PAGE
+        const isLoneItemLastChunk = isSparseLastChunk && chunk.length === 1
+        const itemRowPadTop = !isLastChunk ? '40px' : isSparseLastChunk ? '18px' : '6px'
+        const itemRowPadBottom = !isLastChunk
+          ? '40px'
+          : isLoneItemLastChunk
+            ? '48px'
+            : isSparseLastChunk
+              ? '18px'
+              : '6px'
 
         return (
           <div
@@ -618,7 +661,7 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                         ) : null}
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`bashundhara-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="bashundhara-item-grid-row">
-                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: `${itemRowPadTop} 10px ${itemRowPadBottom} 10px`, verticalAlign: 'middle' }}>
                               <div style={{ ...descGrid, alignItems: 'start' }}>
                                 <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                 <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
@@ -627,19 +670,19 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                                 <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
+                            <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 4px ${itemRowPadBottom} 4px`, textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                               {row.hsnCode || ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 6px ${itemRowPadBottom} 6px`, textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                                 <span>{formatPiecesInteger(row.quantity)}</span>
                                 <span>{row.uom || 'Pcs'}</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 6px ${itemRowPadBottom} 6px`, textAlign: 'center', verticalAlign: 'middle' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: `${itemRowPadTop} 6px ${itemRowPadBottom} 6px`, textAlign: 'center', verticalAlign: 'middle' }}>
                               {formatCurrency(row.amount, currency)}
                             </td>
                           </tr>
@@ -648,8 +691,33 @@ export default function BashundharaGoodsTable({ data, rawQuotationData, headerNo
                     )
                   })}
 
+                  {/* Non-last chunk: bordered filler <tr> so the
+                   * seven-column vertical borders extend down toward
+                   * the fixed footer strip. Mirrors Adhunik. */}
+                  {!isLastChunk && (
+                    <tr aria-hidden>
+                      <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', height: '80px' }} />
+                      <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                      <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                      <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                      <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                    </tr>
+                  )}
+
                   {isLastChunk && (
                     <>
+                      {/* Pre-tail filler — tall bordered <tr> between
+                       * the last item row and the tail (charge rows,
+                       * DAP, Transport, Amount Chargeable). Pushes
+                       * the tail down just above the fixed
+                       * `.bashundhara-page-footer`. Mirrors Adhunik. */}
+                      <tr aria-hidden className="bashundhara-goods-spacer" style={{ height: '40mm' }}>
+                        <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '20mm 0', lineHeight: 0, fontSize: 0, height: '40mm' }}>&nbsp;</td>
+                      </tr>
 
                       {bashundharaChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => (
                         <tr key={`bashundhara-charge-${chargeIdx}`}>
