@@ -106,6 +106,13 @@ export interface QuotationTemplateByTypeProps {
   rawQuotationData: ZohoQuotation
   shippingData?: unknown
   billingData?: unknown
+  /**
+   * CRM Contact (Salutation + Full_Name) resolved via
+   * Quotation → Deal_Id_s → Deals → Contact_Name.id → Contacts.
+   * Consumed by SLS / BVK / WI Process Febric / WI Decomesh; other
+   * templates ignore it.
+   */
+  contactData?: { salutation: string; fullName: string } | null
   /** WMW wmwd1 layout only: overrides header title (default “PERFORMA INVOICE”). */
   wmwd1DocumentTitle?: string
   /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Inside_Quotation_Text`, then `Please_Note`. */
@@ -123,6 +130,7 @@ export default function QuotationTemplateByType({
   rawQuotationData,
   shippingData,
   billingData,
+  contactData,
   wmwd1DocumentTitle,
   wmwd1NotesRemarksFromApi,
   useWmwPagination,
@@ -149,6 +157,7 @@ export default function QuotationTemplateByType({
           shippingData={shippingData}
           billingData={billingData}
           rawQuotationData={rawQuotationData}
+          contactData={contactData}
         />
       ) : templateType === 'GKD' ? (
         <GKDQuotationContent
@@ -163,6 +172,7 @@ export default function QuotationTemplateByType({
           shippingData={shippingData}
           billingData={billingData}
           rawQuotationData={rawQuotationData}
+          contactData={contactData}
         />
       ) : templateType === 'WI_PROCESS_FEBRIC' ? (
         // Isolated template — the second developer owns this branch and
@@ -172,6 +182,7 @@ export default function QuotationTemplateByType({
           shippingData={shippingData}
           billingData={billingData}
           rawQuotationData={rawQuotationData}
+          contactData={contactData}
         />
       ) : templateType === 'WI_DECOMESH' ? (
         // Isolated template — see the isolation note in WIDecomeshQuotationContent.tsx.
@@ -180,6 +191,7 @@ export default function QuotationTemplateByType({
           shippingData={shippingData}
           billingData={billingData}
           rawQuotationData={rawQuotationData}
+          contactData={contactData}
         />
       ) : templateType === 'WMW' ? (
         <table className="print-doc-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>

@@ -177,8 +177,28 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const discountDeduct = Math.max(0, discountChargeAmt)
   const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
 
-  // Transport line — maps 1:1 to Zoho `Transport`, no fallback.
-  const saintTransportSummaryLine = String(rawQuotationData?.Transport ?? '').trim()
+  // Transport line — maps 1:1 to Zoho `Transport`. When `Transport` is
+  // empty, build a fallback string in the fixed shape:
+  //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+  // The words `Total`, `Price`, `upto`, `By` are literals; the three
+  // slot values come from Zoho. Any slot that's blank is elided along
+  // with its adjacent literal so the sentence never contains double
+  // spaces or dangling connectors.
+  const saintTransportSummaryLine = (() => {
+    const zohoTransport = String(rawQuotationData?.Transport ?? '').trim()
+    if (zohoTransport) return zohoTransport
+
+    // Strict formula, no fallbacks and no elision:
+    //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+    const deliveryTerms = String(rawQuotationData?.Delivery_Terms ?? '').trim().toUpperCase()
+    const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+    const modeRaw = String(rawQuotationData?.Mode_of_Delivery ?? '').trim()
+    const modeOfDelivery = modeRaw
+      ? modeRaw.charAt(0).toUpperCase() + modeRaw.slice(1).toLowerCase()
+      : ''
+
+    return `Total ${deliveryTerms} Price upto ${portOfDischarge} By ${modeOfDelivery}`
+  })()
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -267,8 +287,12 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       sizeDisplay: size,
     })
     const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
-    const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
+    // Rate — direct 1:1 map to Zoho
+    // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
+    // `ext3` is already the correct row (joined by last_item_ref).
+    // No fallback: blank / non-numeric field → NaN → empty cell.
+    const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
+    const rate = sellingPriceUomBilling ? (parseFloat(sellingPriceUomBilling) || NaN) : NaN
     const totalPriceRaw = productDetail.Total_Price
     const totalPriceParsed =
       totalPriceRaw !== undefined && totalPriceRaw !== null && String(totalPriceRaw).trim() !== ''
@@ -298,15 +322,30 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
     const wiLine = data.lineItems?.[index]
     const product = blendCategory || ''
-    /** Form row: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
-    const form = endType
-    const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
-    const uom =
-      String(productDetail.UOM ?? productDetail.uom ?? '').trim() ||
-      String(productDetail.Supply_Form ?? '')
-        .trim()
-        .split(/\s+/)[0] ||
-      'Roll'
+
+    // Per-item WMW_4_0 join (by Line_ref = index + 1) — used to
+    // override Form / Quality when the 4_0 row has them populated.
+    // Falls back to the previous End_Type / Material_Code chain
+    // when the 4_0 slot is empty.
+    const wmw4Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_4_0)
+    const wmw4LineRef = String(index + 1)
+    const wmw4Row =
+      wmw4Rows.find((x: any) => String(x?.Line_ref ?? '').trim() === wmw4LineRef) ||
+      wmw4Rows[index] ||
+      {}
+    const wmw4Form1 = String(wmw4Row?.Form1 ?? '').trim()
+    const wmw4Quality1 = String(wmw4Row?.Quality1 ?? '').trim()
+
+    /** Form row: prefer Zoho `Category_1_MM_Database_WMW_4_0[i].Form1`;
+     * else fall back to `End_Type` (WMW 3_0 → 2_0 line → main). */
+    const form = wmw4Form1 || endType
+    /** Quality row: prefer Zoho `Category_1_MM_Database_WMW_4_0[i].Quality1`;
+     * else fall back to `AISI ${Material_Code}`. */
+    const quality = wmw4Quality1 || (materialCode ? `AISI ${materialCode}` : 'AISI')
+    /** UOM_Billing — direct 1:1 to Zoho, same precedence as
+     * Adhunik / Bashundhara / Everite: WMW 2_0 → WMW 3_0 → Cat1
+     * main. No 'Roll' fallback. */
+    const uom = firstField([item, ext3, productDetail], 'UOM_Billing')
 
     const perPcFromCategory = pickNetWeightPerPc(itemRef, index)
     const perPc =
@@ -353,7 +392,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       quantity,
       rate,
       amount,
-      uom: 'Roll',
+      uom: '',
       perPc,
       totalWeight,
       remarks: String((item as { remarks?: string }).remarks ?? '').trim(),
@@ -446,13 +485,28 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     rawQuotationData?.Export_Packing_Description ?? ''
   ).trim() || 'Export Packing'
 
-  const finalGrandTotal =
-    displayGrandTotal
-    - exportDiscountAmt
-    + transactionChargeAmt
-    + miscChargeAmt
-    + exportPackingAmt
+  // Grand total — STRICT direct map to Zoho
+  // `Overall_Grand_Total_incl_Accessories`. No fallback to any other
+  // field, no in-app adjustment for the discount / transaction / misc /
+  // packing rows (those still render for information but do NOT alter
+  // the printed "Total"). Blank / non-numeric field → 0.
+  const finalGrandTotal = (() => {
+    const raw = rawQuotationData?.Overall_Grand_Total_incl_Accessories
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  })()
   const amountChargeableInWords = formatGoodsTableAmountChargeableInWords(finalGrandTotal, currency)
+
+  // Export Remarks — printed AFTER all charge rows, only when the
+  // Zoho field is non-empty (matches Bashundhara / Adhunik).
+  const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
+  const showExportRemarks = exportRemarks.length > 0
+
+  // Product_Description — shown INLINE next to the Product value in
+  // each chunk's Product row (e.g. "Product : Stainless Steel Wire
+  // Cloth  Roll form with treatment"). Zoho `Product_Description`
+  // is a top-level field. Blank field → nothing appended.
+  const productDescription = String(rawQuotationData?.Product_Description ?? '').trim()
 
   const renderQtyUomCell = (qty: unknown, uom: unknown) => {
     const uomText = String(uom ?? '').trim()
@@ -469,10 +523,77 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     )
   }
 
+  // Saint pagination — WMW-style: split line items into pages of
+  // SAINT_ITEMS_PER_PAGE, and for EACH page render a complete
+  // .quotation-goods-pages-segment containing its own fully-bordered
+  // goods table. Header (QUOTATION block) and footer (Remarks /
+  // Signature) repeat on every printed page via the outer wrap
+  // table's <thead>/<tfoot> in SaintInvoiceContent.
+  const SAINT_ITEMS_PER_PAGE = 3
+  const itemChunks: typeof displayLineItems[] = []
+  for (let i = 0; i < displayLineItems.length; i += SAINT_ITEMS_PER_PAGE) {
+    itemChunks.push(displayLineItems.slice(i, i + SAINT_ITEMS_PER_PAGE))
+  }
+  if (itemChunks.length === 0) itemChunks.push([])
+
   return (
     <div className="quotation-goods-pages-stack">
-      <div className="quotation-goods-pages-segment" style={{ pageBreakInside: 'avoid', marginTop: '0' }}>
-        <div className="quotation-seamless-stack">
+      {itemChunks.map((chunkItems, pageIdx) => {
+        const isLastChunk = pageIdx === itemChunks.length - 1
+        // Re-group items by product/form/quality WITHIN this page —
+        // if a group splits across pages, the second page shows its
+        // own group title/sub-header at the top so the row context
+        // stays readable.
+        const groupedForPage = groupChunkRowsByProductFormQuality(chunkItems)
+        // Non-last chunks carry 3 items and NO tail (totals live on
+        // the last page). Left with default padding, the 3 items
+        // cluster near the top of the page and the rest is blank.
+        // Bumping the vertical padding on each item cell spreads them
+        // down the printable area, AND a tall spacer <tr> is emitted
+        // below the last item so the vertical column borders continue
+        // to the bottom of the printable area (see spacer render
+        // further down). Last chunk keeps the compact padding because
+        // its tail rows (Total / Discount / DAP / Transport / etc.)
+        // already fill the vertical space.
+        // Non-last chunk padding kept moderate (20px) — larger
+        // values combined with the bottom filler push the chunk past
+        // the tbody's per-page allocation and the vertical column
+        // borders spill onto the next page. If items look too
+        // cramped, raise this but also lower the filler height
+        // below.
+        // Both last and non-last chunks now get generous vertical
+        // padding — the pre-tail filler (`.saint-tail-fill-row`) /
+        // bottom filler (`.saint-goods-fill-row`) grow dynamically
+        // via `height: 100%`, so bigger padding here just means the
+        // items spread further down and the filler shrinks; no
+        // overflow risk.
+        const itemRowPadY = '23px'
+        return (
+      <div
+        key={`saint-page-${pageIdx}`}
+        className={`quotation-goods-pages-segment saint-nonlast-fill ${!isLastChunk ? 'quotation-goods-pages-break' : ''}`}
+        style={{
+          pageBreakInside: 'avoid',
+          marginTop: pageIdx > 0 ? '-1px' : '0',
+          // ALWAYS stretch segment to fill the tbody's per-page area
+          // (both last and non-last chunks) so the goods table's
+          // bottom border always reaches the printable-area bottom
+          // — regardless of item count. `min-height: calc(100vh - 22mm)`
+          // accounts for top padding + safety buffer. Combined with
+          // the `.saint-nonlast-fill .saint-goods-fill-row` and
+          // `.saint-nonlast-fill .saint-tail-fill-row` chains in
+          // globals.css, the bordered filler <tr> absorbs leftover
+          // space (non-last: bottom filler; last: pre-tail filler
+          // that pushes the tail rows down).
+          minHeight: 'calc(100vh - 22mm)',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <div
+          className="quotation-seamless-stack"
+          style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+        >
           {headerNode}
 
           <table
@@ -481,9 +602,15 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               width: '100%',
               borderCollapse: 'collapse',
               border: '1px solid #000',
+              // Remove top border — header table already draws its
+              // own bottom border, so both stacked 1px borders were
+              // adding up to a "bold" 2px seam line.
+              borderTop: 'none',
               marginTop: 0,
               tableLayout: 'fixed',
               fontSize: '11px',
+              flex: 1,
+              height: '100%',
             }}
           >
             {/* Column widths mirror Everite. Everite splits its Description
@@ -510,71 +637,120 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   Quantity / UOM
                 </td>
                 <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                  Rate / {currencySymbol}
+                  Rate<br />{currencySymbol} / UOM
                 </td>
                 <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                   Amount {currencySymbol}
                 </td>
               </tr>
 
-              {displayLineItems.length === 0 ? (
+              {chunkItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ ...contentBdSides, padding: '8px 10px', textAlign: 'center' }}>
                     No line items
                   </td>
                 </tr>
               ) : (
-                groupedSaintLineItems.map((groupRows, groupIdx) => {
-                  const head = groupRows[0]
-                  const isLastGroup = groupIdx === groupedSaintLineItems.length - 1
-                  return (
-                    <Fragment key={`saint-grp-${groupIdx}`}>
-                      <tr>
-                        <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
-                            {groupIdx === 0 ? 'Trial Batch' : head.product || `Item ${head.item}`}
-                          </div>
-                          <div style={{ ...metaGrid }}>
-                            <span>Product</span>
-                            <span>:</span>
-                            <span>{head.product || '\u00A0'}</span>
-                          </div>
-                          <div style={{ ...metaGrid }}>
-                            <span>Form</span>
-                            <span>:</span>
-                            <span>{head.form || '\u00A0'}</span>
-                          </div>
-                          <div style={{ ...metaGrid, marginBottom: isLastGroup ? '16px' : '8px' }}>
-                            <span>Quality</span>
-                            <span>:</span>
-                            <span>{head.quality || '\u00A0'}</span>
-                          </div>
-                        </td>
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                      </tr>
-                      <tr>
-                        <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
-                          <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
-                            <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
-                            <span style={descGridCell}>Mesh</span>
-                            <span style={descGridCell}>Brand</span>
-                            <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, lineHeight: 1.25 }}>
-                              Size [m] (L x W)
-                            </span>
-                            <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
-                          </div>
-                        </td>
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                        <td style={contentBdSides} />
-                      </tr>
-                      {groupRows.map((row, rowIdx) => (
-                        <tr key={`saint-line-${groupIdx}-${rowIdx}`}>
-                          <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '4px 10px' }}>
+                (() => {
+                  // Per-item diff render:
+                  //   - Product renders once at top of chunk AND
+                  //     whenever `product` differs from previous item
+                  //   - Form + Quality re-render whenever product,
+                  //     form, or quality differs from previous item
+                  //   - "Trial Batch" title shown only on the FIRST
+                  //     item of the chunk
+                  //   - Item sub-header (Item/Mesh/Brand/\u2026) renders
+                  //     ONCE per chunk before the very first item
+                  let prevProduct: string | undefined
+                  let prevForm: string | undefined
+                  let prevQuality: string | undefined
+                  return chunkItems.map((row, itemIdx) => {
+                    const productLabel = (row.product || '').trim()
+                    const formLabel = (row.form || '').trim()
+                    const qualityLabel = (row.quality || '').trim()
+
+                    const productChanged = itemIdx === 0 || productLabel !== prevProduct
+                    const formOrQualityChanged =
+                      itemIdx === 0 ||
+                      formLabel !== prevForm ||
+                      qualityLabel !== prevQuality
+
+                    const emitProduct = productChanged
+                    const emitFormQuality = productChanged || formOrQualityChanged
+
+                    prevProduct = productLabel
+                    prevForm = formLabel
+                    prevQuality = qualityLabel
+
+                    return (
+                      <Fragment key={`saint-item-${itemIdx}`}>
+                        {emitProduct ? (
+                          <tr>
+                            <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
+                              {itemIdx === 0 ? (
+                                <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
+                                  Trial Batch
+                                </div>
+                              ) : null}
+                              <div style={{ ...metaGrid, marginBottom: 0 }}>
+                                <span>Product</span>
+                                <span>:</span>
+                                <span>
+                                  {productLabel || ' '}
+                                  {productDescription ? ` ${productDescription}` : ''}
+                                </span>
+                              </div>
+                            </td>
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                          </tr>
+                        ) : null}
+
+                        {emitFormQuality ? (
+                          <tr>
+                            <td style={{ ...contentBdSides, padding: '4px 10px 0px 10px', verticalAlign: 'top' }}>
+                              <div style={{ ...metaGrid }}>
+                                <span>Form</span>
+                                <span>:</span>
+                                <span>{formLabel || ' '}</span>
+                              </div>
+                              <div style={{ ...metaGrid, marginBottom: '8px' }}>
+                                <span>Quality</span>
+                                <span>:</span>
+                                <span>{qualityLabel || ' '}</span>
+                              </div>
+                            </td>
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                          </tr>
+                        ) : null}
+
+                        {itemIdx === 0 ? (
+                          <tr>
+                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
+                              <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
+                                <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
+                                <span style={descGridCell}>Mesh</span>
+                                <span style={descGridCell}>Brand</span>
+                                <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, lineHeight: 1.25 }}>
+                                  Size [m] (L x W)
+                                </span>
+                                <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
+                              </div>
+                            </td>
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                            <td style={contentBdSides} />
+                          </tr>
+                        ) : null}
+
+                        <tr key={`saint-line-${itemIdx}`}>
+                          <td style={{ ...contentBdSides, ...descGridTdWrap, padding: `${itemRowPadY} 10px` }}>
                               {quotationScalarFieldPresent(row.remarks) ? (
                                 <div
                                   style={{
@@ -611,7 +787,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                                       gridColumn: 3,
                                       gridRow: 1,
                                       fontWeight: 'bold',
-                                      fontSize: '13px',
+                                      fontSize: '10px',
                                     }}
                                   >
                                     {row.brand || '\u00A0'}
@@ -650,7 +826,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                                 <div style={{ ...descGrid, fontSize: '11px' }}>
                                   <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
                                   <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
-                                  <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '13px' }}>{row.brand || '\u00A0'}</span>
+                                  <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '10px' }}>{row.brand || '\u00A0'}</span>
                                   <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine }}>{row.size || '\u00A0'}</span>
                                   <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
                                 </div>
@@ -659,7 +835,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             <td
                               style={{
                                 ...contentBdSides,
-                                padding: '4px 8px',
+                                padding: `${itemRowPadY} 8px`,
                                 textAlign: 'center',
                                 verticalAlign: 'top',
                                 fontWeight: 'bold',
@@ -670,30 +846,77 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             >
                               {row.hsnCode || ''}
                             </td>
-                            <td style={{ ...contentBdSides, padding: '4px 8px', verticalAlign: 'top' }}>
+                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 8px`, textAlign: 'center', verticalAlign: 'top' }}>
                               {renderQtyUomCell(row.quantity || '', row.uom)}
                               {row.remarks1 ? (
                                 <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px', textAlign: 'center' }}>{row.remarks1}</div>
                               ) : null}
                             </td>
-                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
+                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
                               <div>{Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}</div>
                               {row.remarks2 ? (
                                 <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px' }}>{row.remarks2}</div>
                               ) : null}
                             </td>
-                            <td style={{ ...contentBdSides, padding: '4px 10px', textAlign: 'center', verticalAlign: 'top' }}>
+                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
                               {formatCurrency(row.amount, currency)}
                             </td>
                         </tr>
-                      ))}
-                    </Fragment>
-                  )
-                })
+                      </Fragment>
+                    )
+                  })
+                })()
               )}
 
-              <tr>
-                <td style={{ ...contentBdSides, height: '16px' }} />
+              {/* Non-last chunk: emit a tall "fill" spacer row so the
+               * vertical column borders keep going to the bottom of
+               * the printable area, and the page reads as fully
+               * framed instead of cutting off mid-page. Empty <td>s
+               * with contentBdSides (left/right borders) draw the
+               * lines; a fixed height ~260px is enough to reach the
+               * bottom on A4 with the current header/footer sizes
+               * but stays below the page-break threshold so the
+               * segment's `page-break-inside: avoid` still fits. */}
+              {!isLastChunk && (
+                <tr className="saint-goods-fill-row">
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                </tr>
+              )}
+
+              {isLastChunk && (
+              <>
+              {/* Export Remarks (Zoho `Export_Remarks`) — printed
+               * directly BELOW the item rows (before the pre-tail
+               * filler / tail block). Text lives in the first
+               * (Description) column; the remaining 4 cells stay as
+               * empty <td>s with contentBdSides so the vertical
+               * column dividers keep running through this row. Row
+               * hides when field is empty. */}
+              {showExportRemarks ? (
+                <tr>
+                  <td style={{ ...contentBdSides, padding: '6px 10px', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
+                    {exportRemarks}
+                  </td>
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                  <td style={contentBdSides} />
+                </tr>
+              ) : null}
+
+              {/* Dynamic pre-tail filler — grows via a
+               * `height: 100%` chain (see .saint-tail-fill-row in
+               * globals.css). Outer wrap table's height is set to
+               * `calc(100vh - 27mm)` (100vh minus 15mm top padding
+               * minus 12mm @page bottom margin) so Chrome allocates
+               * exactly the printable area to the table and
+               * correctly reserves the tfoot at the bottom. */}
+              <tr className="saint-tail-fill-row">
+                <td style={{ ...contentBdSides }}>&nbsp;</td>
                 <td style={contentBdSides} />
                 <td style={contentBdSides} />
                 <td style={contentBdSides} />
@@ -758,48 +981,32 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               ) : null}
 
               <tr>
-                <td style={{ ...bd, padding: '10px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle' }}>
-                  Add : DAP by Air
-                </td>
-                <td style={bd} />
-                <td style={{ ...bd, padding: '6px 8px', verticalAlign: 'middle' }}>
-                  {renderQtyUomCell(primaryQty > 0 ? primaryQty : '', primaryLine?.uom || 'Rolls')}
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
-                  {dapChargesTotal > 0 && primaryQty > 0 ? formatCurrency(dapRate, currency) : ''}
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
-                  {formatCurrency(dapChargesTotal, currency)}
-                </td>
+                <td colSpan={4} style={{ ...bd, borderBottom: 'none', padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
+                <td style={{ ...bd, borderBottom: 'none' }} />
               </tr>
 
               <tr>
-                <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
-                <td style={bd} />
-                <td colSpan={2} style={bd} />
-                <td style={bd} />
-              </tr>
-
-              <tr>
-                <td style={{ ...bd, padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
+                <td colSpan={4} style={{ ...bd, borderTop: 'none', padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
                   <div>{saintTransportSummaryLine}</div>
-                  <div style={{ marginTop: '6px', fontSize: '12px' }}>( Transport Time Estimated between 13 - 16 days )</div>
+                  <div style={{ marginTop: '6px', fontSize: '9px' }}>( Transport Time Estimated between 13 - 16 days )</div>
                 </td>
-                <td style={bd} />
-                <td colSpan={2} style={bd} />
-                <td style={bd} />
+                {/* <td style={{ ...bd, borderTop: 'none' }} /> */}
               </tr>
 
               <tr>
-                <td style={{ ...bd, padding: '6px 10px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
+                <td colSpan={3} style={{ ...bd, padding: '6px 10px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
                   {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
                   {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
                 </td>
-                <td style={bd} />
-                <td colSpan={2} style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
                   {currencySymbol}
                 </td>
-                <td style={bd} />
+                {/* Grand total figure — same number as the "Total:-" row
+                 * below (finalGrandTotal). Was empty before, so USD had no
+                 * value next to it. */}
+                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
+                  <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
+                </td>
               </tr>
 
               <tr>
@@ -847,12 +1054,16 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                   <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, currency)}</span>
                 </td>
               </tr>
+              </>
+              )}
             </tbody>
           </table>
 
-          {footerNode}
+          {isLastChunk && footerNode}
         </div>
       </div>
+        )
+      })}
     </div>
   )
 }

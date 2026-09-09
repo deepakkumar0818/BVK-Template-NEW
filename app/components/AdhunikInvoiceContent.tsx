@@ -38,19 +38,19 @@ export default function AdhunikInvoiceContent({
     'Benapole, Bangladesh'
   )
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Road'
-  const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
-  const portOfDischarge = rawQuotationData?.Port_of_Discharge || 'Benapole Border'
-  const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || 'Benapole, Bangladesh'
-  const dispatchExWorks = resolveDispatchExWorksDisplay(
-    rawQuotationData,
-    data.deliveryDate,
-    '3-4 Weeks after receipt of confirm PO'
-  )
+  // Direct 1:1 map to Zoho — no fallbacks. Blank field → blank cell.
+  const portOfLoading = String(rawQuotationData?.Port_of_Loading ?? '').trim()
+  const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+  const finalDestination = String(rawQuotationData?.Final_Destination ?? '').trim()
+  const dispatchExWorks = String(rawQuotationData?.Sales_Proposed_Date_Dispatch_Ex_Works ?? '').trim()
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Payment against at sight LC'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (
     <>
+      {/* 15mm top spacer — outer wrapper so `.seamless` class'
+       * `padding: 0 !important` doesn't wipe it out. */}
+      <div style={{ paddingTop: '15mm' }}>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <AdhunikGoodsTable
           data={data}
@@ -75,49 +75,65 @@ export default function AdhunikInvoiceContent({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>Exporter</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <img
-                        src="/wmw-logo.svg"
-                        alt="WMW Logo"
-                        style={{ width: '160px', height: '62px', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginBottom: '3px' }}>WMW METAL FABRICS LIMITED</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>Tel : +911417105151</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginTop: '6px' }}>
-                      <span>info@wmwindia.com</span>
-                      <span>www.wmwindia.com</span>
-                    </div>
+                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '6px 8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Exporter</div>
+                    {/* Side-by-side layout: logo LEFT, company text
+                     * RIGHT — mirrors the Saint template's Exporter
+                     * cell (see SaintInvoiceContent.tsx) and the WMW
+                     * template's `.qh-supplier-layout`
+                     * (QuotationHeaderThead.tsx#L40-L62). Nested
+                     * table so the two cells align at the top and
+                     * the row height is driven by the taller of the
+                     * two, keeping the whole Exporter box compact. */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} role="presentation">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '120px', verticalAlign: 'middle', padding: 0 }}>
+                            <img
+                              src="/wmw-logo.png"
+                              alt="WMW Logo"
+                              style={{ width: '110px', height: '66px', objectFit: 'contain', display: 'block' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </td>
+                          <td style={{ verticalAlign: 'middle', padding: '0 0 0 8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.2 }}>WMW METAL FABRICS LIMITED</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>Tel : +911417105151</div>
+                            <div style={{ display: 'flex', gap: '14px', fontSize: '10px', marginTop: '2px' }}>
+                              <span>info@wmwindia.com</span>
+                              <span>www.wmwindia.com</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Quotation No. &amp; Date</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{quotationNumber}</span>
                               <span>{quotationDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Buyer&apos;s Enquiry No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{buyerEnquiryNo || 'Email'}</span>
-                              <span style={{ fontWeight: 'bold' }}>{buyerEnquiryDate}</span>
+                              <span>{buyerEnquiryDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
+                          <td style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Other Reference (s)</div>
                             <div>{otherReference}</div>
                           </td>
@@ -128,25 +144,66 @@ export default function AdhunikInvoiceContent({
                 </tr>
                 <tr>
                   <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
+                    {/* Adhunik consignee block — direct 1:1 mapping to
+                     * `rawQuotationData` root Billing_* fields. NO
+                     * fallbacks to billing master, NO chained fallbacks
+                     * across sibling fields. Blank Zoho field → blank
+                     * line (the whole line is skipped for that value). */}
+                    {(() => {
+                      const t = (v: unknown) => String(v ?? '').trim()
+                      const name = t(rawQuotationData?.Billing_Address_Name)
+                      const street = t(rawQuotationData?.Billing_Street)
+                      const city = t(rawQuotationData?.Billing_City)
+                      const state = t(rawQuotationData?.Billing_State)
+                      const postal = t(rawQuotationData?.Billing_Postal_Code)
+                      const country = t(rawQuotationData?.Billing_Country)
+                      const gstNo = t(rawQuotationData?.Billing_GST_No)
+                      const cityStatePostal = [
+                        [city, state].filter(Boolean).join(', '),
+                        postal,
+                      ].filter(Boolean).join(' ')
+                      const addressBlock = [street, cityStatePostal]
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                        .join('\n')
+                      const hasContent = name || addressBlock || country || gstNo
+                      if (!hasContent) return null
+                      return (
+                        <>
+                          <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>Consignee</div>
+                          {name ? (
+                            <div style={{ fontSize: '13px', marginBottom: '4px' }}>{name}</div>
+                          ) : null}
+                          {addressBlock ? (
+                            <div style={{ fontSize: '11px', lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{addressBlock}</div>
+                          ) : null}
+                          {country ? (
+                            <div style={{ fontSize: '11px', marginTop: '4px' }}>{country}</div>
+                          ) : null}
+                          {gstNo ? (
+                            <div style={{ fontSize: '11px', marginTop: '8px' }}>GST Number: {gstNo}</div>
+                          ) : null}
+                        </>
+                      )
+                    })()}
                   </td>
                   <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ width: '50%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Origin of Goods</div>
                             <div>{countryOfOrigin}</div>
                           </td>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ width: '50%', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Final Destination</div>
                             <div>{countryOfDestination}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td colSpan={2} style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
-                            <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
+                            <div>{termsOfPayment}</div>
                             {ourBankDetails ? (
                               <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
                             ) : null}
@@ -165,23 +222,23 @@ export default function AdhunikInvoiceContent({
                       </colgroup>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Carriage by</div>
-                            <div style={{ textDecoration: 'underline' }}>{modeOfDelivery}</div>
+                            <div>{modeOfDelivery}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Loading</div>
-                            <div style={{ textDecoration: 'underline' }}>{portOfLoading}</div>
+                            <div>{portOfLoading}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Discharge</div>
-                            <div style={{ textDecoration: 'underline' }}>{portOfDischarge}</div>
+                            <div>{portOfDischarge}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Final Destination</div>
-                            <div style={{ textDecoration: 'underline' }}>{finalDestination}</div>
+                            <div>{finalDestination}</div>
                           </td>
                         </tr>
                       </tbody>
@@ -251,6 +308,7 @@ export default function AdhunikInvoiceContent({
             </table>
           }
         />
+      </div>
       </div>
 
       <div className="conditions-for-print conditions-doc" style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}>

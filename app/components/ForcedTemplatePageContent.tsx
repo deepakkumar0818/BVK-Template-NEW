@@ -42,6 +42,14 @@ export default function ForcedTemplatePageContent({
   const [rawQuotationData, setRawQuotationData] = useState<ZohoQuotation | null>(null)
   const [shippingData, setShippingData] = useState<unknown>(null)
   const [billingData, setBillingData] = useState<unknown>(null)
+  // CRM Contact for the recipient line — resolved via
+  // Quotation.Deal_Id_s → Deals.Contact_Name.id → Contacts/{id}.
+  // Populated only for the four templates that use it (SLS, BVK,
+  // WI_PROCESS_FEBRIC, WI_DECOMESH). Passed through to the render.
+  const [contactData, setContactData] = useState<{
+    salutation: string
+    fullName: string
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,6 +81,42 @@ export default function ForcedTemplatePageContent({
           Boolean(useWmwPagination)
         )
         setQuotationData(transformed)
+
+        // Recipient-name resolution via Deals → Contacts (only for the
+        // four templates that consume it; the API calls are silent
+        // no-ops on other templates because they don't read contactData).
+        const templatesUsingContact: TemplateType[] = ['SLS', 'BVK', 'WI_PROCESS_FEBRIC', 'WI_DECOMESH']
+        if (templatesUsingContact.includes(templateType)) {
+          const dealId = String(
+            (quotation as unknown as Record<string, unknown>)?.Deal_Id_s ?? ''
+          ).trim()
+          if (dealId) {
+            try {
+              const dealRes = await fetch(`/api/zoho-deals?id=${encodeURIComponent(dealId)}`)
+              const dealJson = await dealRes.json()
+              const dealRow = (dealJson?.data?.[0] ?? null) as
+                | Record<string, unknown>
+                | null
+              const contactField = dealRow?.Contact_Name as { id?: string } | null | undefined
+              const contactId = String(contactField?.id ?? '').trim()
+              if (contactId) {
+                const contactRes = await fetch(`/api/zoho-contacts?id=${encodeURIComponent(contactId)}`)
+                const contactJson = await contactRes.json()
+                const contactRow = (contactJson?.data?.[0] ?? null) as
+                  | Record<string, unknown>
+                  | null
+                if (contactRow) {
+                  setContactData({
+                    salutation: String(contactRow?.Salutation ?? '').trim(),
+                    fullName: String(contactRow?.Full_Name ?? '').trim(),
+                  })
+                }
+              }
+            } catch (err) {
+              console.error('Error resolving CRM contact via Deal:', err)
+            }
+          }
+        }
 
         if (quotation.Account_Module?.CRM_Account_ID) {
           const accountId = quotation.Account_Module.CRM_Account_ID
@@ -155,6 +199,7 @@ export default function ForcedTemplatePageContent({
           rawQuotationData={rawQuotationData}
           shippingData={shippingData}
           billingData={billingData}
+          contactData={contactData}
           wmwd1DocumentTitle={wmwd1DocumentTitle}
           wmwd1NotesRemarksFromApi={wmwd1NotesRemarksFromApi}
           useWmwPagination={useWmwPagination}

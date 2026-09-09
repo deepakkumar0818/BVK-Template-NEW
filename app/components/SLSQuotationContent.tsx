@@ -18,9 +18,15 @@ interface SLSQuotationContentProps {
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
+  /** CRM Contact record — Salutation + Full_Name. Fed in from
+   * ForcedTemplatePageContent via the Quotation → Deal → Contact chain.
+   * When present, its `<salutation> <fullName>` combination replaces
+   * the recipient-name line. Absent → falls back to the local
+   * "Mr. <Contact_Name>" line. */
+  contactData?: { salutation: string; fullName: string } | null
 }
 
-export default function SLSQuotationContent({ data, shippingData, billingData, rawQuotationData }: SLSQuotationContentProps) {
+export default function SLSQuotationContent({ data, shippingData, billingData, rawQuotationData, contactData }: SLSQuotationContentProps) {
   // Format date helper for DD.MM.YYYY format
   const formatSLSDate = (dateString?: string): string => {
     if (!dateString) return ''
@@ -63,14 +69,14 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     (rawQuotationData as Record<string, unknown> | undefined)?.Remarks ?? ''
   ).trim()
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
-  const recipientName = String(shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? '').trim()
-  // Contact-person display with "Mr. " prefix (skip if the Zoho value
-  // already starts with a title such as Mr / Mrs / Ms / Dr).
-  const recipientNameDisplay = recipientName
-    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(recipientName)
-      ? recipientName
-      : `Mr. ${recipientName}`
-    : ''
+  // Recipient name — ONLY from the CRM Contact record
+  // (Salutation + Full_Name). No fallback: if the Deal → Contact chain
+  // doesn't resolve, the recipient name line stays blank.
+  const recipientNameDisplay = (() => {
+    const crmSalutation = (contactData?.salutation ?? '').trim()
+    const crmFullName = (contactData?.fullName ?? '').trim()
+    return crmFullName ? `${crmSalutation} ${crmFullName}`.trim() : ''
+  })()
   const recipientCompany =
     String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
@@ -157,13 +163,25 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     totalBeforeTax: slsTotalBeforeTax,
     totalAfterTax: slsTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, slsLineItemsTotalFallback)
+  // Packing Charges row and its contribution to the grand total are gated
+  // on Zoho's `Packing_Charge` toggle (same true/"true" test as the
+  // packing narrative below). When the toggle is off, the row is hidden
+  // AND the packing amount is subtracted back out of Zoho's rolled-up
+  // grand total so the "Total" figure stays consistent.
+  const slsPackingChargeEnabled = (() => {
+    const v = (rawQuotationData as Record<string, unknown> | undefined)?.Packing_Charge
+    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  })()
   const slsGrandTotal = (() => {
     const fromZoho = parseOverallGrandTotalInclAccessories(
       rawQuotationData as Record<string, unknown> | null | undefined
     )
-    if (Number.isFinite(fromZoho)) return fromZoho
-    if (Number.isFinite(slsTotalAfterTax)) return slsTotalAfterTax
-    return slsLineItemsTotalFallback
+    const base = Number.isFinite(fromZoho)
+      ? fromZoho
+      : (Number.isFinite(slsTotalAfterTax) ? slsTotalAfterTax : slsLineItemsTotalFallback)
+    return slsPackingChargeEnabled
+      ? base
+      : base - (Number.isFinite(slsPackingTotal) ? slsPackingTotal : 0)
   })()
   const slsSafe = (n: number) => (Number.isFinite(n) ? n : 0)
   /** A tax row renders only when its amount is non-zero. */
@@ -211,8 +229,13 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   type SlsSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const slsSummaryRows: SlsSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(slsTotalInrValue, displayCurrency), bold: true },
-    { label: 'Packing Charges', value: formatCurrency(slsSafe(slsPackingTotal), displayCurrency) },
   ]
+  if (slsPackingChargeEnabled) {
+    slsSummaryRows.push({
+      label: 'Packing Charges',
+      value: formatCurrency(slsSafe(slsPackingTotal), displayCurrency),
+    })
+  }
   if (slsTaxHasValue(slsFreightTotal)) {
     slsSummaryRows.push({
       label: 'Freight Charges',
@@ -443,7 +466,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                  * the left column is only as tall as the logo, so the body
                  * content below the header naturally shifts up and ends up
                  * aligned near the Date row on the right. */}
-                <div style={{ marginBottom: '30px', marginTop: 0 }}>
+                <div style={{ marginBottom: '12px', marginTop: 0 }}>
           <img
             src="/wi.png"
             alt="WMW Industries Ltd"
@@ -521,9 +544,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                  * with `white-space: normal` so the browser breaks the line at
                  * the space before the currency — same look as Process Febric. */}
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '45%' }}>Product</th>
-                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '9%', whiteSpace: 'nowrap' }}>HSN Code</th>
-                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '8%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
+                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '39%' }}>Product</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '12%', whiteSpace: 'nowrap' }}>HSN Code</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '11%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
               </tr>
@@ -770,47 +793,51 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <td />
             </tr>
           </tbody>
-          {/* Footer — the two footer images live in <tfoot> so the browser
-           * repeats them at the bottom of EVERY printed page (same
-           * `display: table-footer-group` trick the <thead> uses at the top).
-           * The `.sls-print-footer-row` CSS in globals.css enables this in
-           * `@media print`. */}
+          {/* Empty tfoot spacer — `display: table-footer-group` in print
+           * makes the browser reserve this row's height at the bottom of
+           * EVERY printed page (the natural table-footer-group behaviour
+           * for a paginated table). We keep it EMPTY so nothing is
+           * actually painted here — the visible footer is a separate
+           * position-fixed div below. This is what stops body content
+           * from flowing under the fixed footer on intermediate pages. */}
           <tfoot className="sls-print-footer-row">
             <tr>
-              <td style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
-                <div
-                  className="sls-company-footer"
-                  style={{
-                    marginTop: '40px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-end',
-                    gap: '16px',
-                    pageBreakInside: 'avoid',
-                    breakInside: 'avoid',
-                  }}
-                >
-                  <img
-                    src="/wi bottom left side.png"
-                    alt="WMW Industries Ltd — company details"
-                    style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                  <img
-                    src="/wi_bottom_rightside.png"
-                    alt="WMW Industries Ltd — CIN / GST / BVK Group"
-                    style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                </div>
-              </td>
+              <td style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
             </tr>
           </tfoot>
         </table>
+
+        {/* Actual footer — lives OUTSIDE the table. In print media it
+         * gets `position: fixed; bottom: 0` (see globals.css) so the two
+         * images pin to the paper bottom on EVERY generated page,
+         * including the last. On screen it flows normally at the end of
+         * the container. */}
+        <div
+          className="sls-page-footer sls-company-footer"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-end',
+            gap: '16px',
+          }}
+        >
+          <img
+            src="/wi bottom left side.png"
+            alt="WMW Industries Ltd — company details"
+            style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <img
+            src="/wi_bottom_rightside.png"
+            alt="WMW Industries Ltd — CIN / GST / BVK Group"
+            style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+        </div>
       </div>
 
       <div className="no-print" style={{ marginTop: '24px', textAlign: 'center' }}>

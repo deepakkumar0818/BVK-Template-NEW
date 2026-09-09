@@ -18,6 +18,10 @@ interface BVKQuotationContentProps {
   shippingData?: any
   billingData?: any
   rawQuotationData?: ZohoQuotation
+  /** CRM Contact (Salutation + Full_Name), resolved via
+   * Quotation → Deal → Contact chain. Replaces the local
+   * "Mr. <Contact_Name>" line when present. */
+  contactData?: { salutation: string; fullName: string } | null
 }
 
 /** BVK tab: show mesh count with `/Inch` suffix when a value exists. */
@@ -27,7 +31,7 @@ function bvkMeshCellValue(meshDisplay?: string): string {
   return m.endsWith('/Inch') ? m : `${m}/Inch`
 }
 
-export default function BVKQuotationContent({ data, shippingData, billingData, rawQuotationData }: BVKQuotationContentProps) {
+export default function BVKQuotationContent({ data, shippingData, billingData, rawQuotationData, contactData }: BVKQuotationContentProps) {
   const tolerancesFromZoho = String(rawQuotationData?.Tolerances ?? '').trim()
   const pleaseNoteFromZoho =
     String(rawQuotationData?.Inside_Quotation_Text ?? '').trim() ||
@@ -71,20 +75,25 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const quotationRef = data.quotationNumber || rawQuotationData?.Name || ''
   
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
+  // Recipient (company) line — priority order:
+  //   1. Shipping_Address_Name (shipping master → raw record)
+  //   2. Billing_Address_Name  (billing master → raw record)
+  // Deliberately DOES NOT fall back to `Contact_Name` even though
+  // `resolveConsigneeDisplay` does, otherwise a stray value like
+  // `Contact_Name: "test123"` on the quotation record would print as
+  // the company name.
   const recipientName =
-    consignee.name ||
+    String(shippingData?.Shipping_Address_Name ?? rawQuotationData?.Shipping_Address_Name ?? '').trim() ||
     String(billingData?.Billing_Address_Name ?? rawQuotationData?.Billing_Address_Name ?? '').trim()
-  // Person's contact name (separate from the company/recipient name).
-  // Rendered on its own line with an "Mr. " prefix — skips the prefix if
-  // the Zoho value already starts with a common title (Mr/Mrs/Ms/Dr).
-  const contactPersonRaw = String(
-    shippingData?.Contact_Name ?? rawQuotationData?.Contact_Name ?? ''
-  ).trim()
-  const contactPersonDisplay = contactPersonRaw
-    ? /^(mr|mrs|ms|dr)\.?\s+/i.test(contactPersonRaw)
-      ? contactPersonRaw
-      : `Mr. ${contactPersonRaw}`
-    : ''
+  // Contact-person display — ONLY from the CRM Contact record
+  // (Salutation + Full_Name). No fallback to the local Contact_Name
+  // field: when the Deal → Contact chain doesn't resolve, this line
+  // stays blank.
+  const contactPersonDisplay = (() => {
+    const crmSalutation = (contactData?.salutation ?? '').trim()
+    const crmFullName = (contactData?.fullName ?? '').trim()
+    return crmFullName ? `${crmSalutation} ${crmFullName}`.trim() : ''
+  })()
   const recipientAddressShipping = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
   const recipientAddressBilling = billingData?.Billing_Street
     ? `${billingData.Billing_Street || rawQuotationData?.Billing_Street || ''}, ${billingData.Billing_City || rawQuotationData?.Billing_City || ''}, ${billingData.Billing_State || rawQuotationData?.Billing_State || ''} ${billingData.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || ''}`
@@ -134,13 +143,24 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     totalBeforeTax: bvkTotalBeforeTax,
     totalAfterTax: bvkTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, bvkLineItemsTotalFallback)
+  // Packing gate — moved above `bvkGrandTotal` so the grand-total math
+  // can subtract packing when the toggle is off (matches SLS behaviour).
+  const bvkPackingChargeChecked = (() => {
+    const v = rawQuotationData?.Packing_Charge
+    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  })()
   const bvkGrandTotal = (() => {
     const fromZoho = parseOverallGrandTotalInclAccessories(
       rawQuotationData as Record<string, unknown> | null | undefined
     )
-    if (Number.isFinite(fromZoho)) return fromZoho
-    if (Number.isFinite(bvkTotalAfterTax)) return bvkTotalAfterTax
-    return bvkLineItemsTotalFallback
+    const base = Number.isFinite(fromZoho)
+      ? fromZoho
+      : (Number.isFinite(bvkTotalAfterTax) ? bvkTotalAfterTax : bvkLineItemsTotalFallback)
+    // Zoho's rolled-up total already includes packing. Subtract it back
+    // out when the packing toggle is off so summary row + total agree.
+    return bvkPackingChargeChecked
+      ? base
+      : base - (Number.isFinite(bvkPackingTotal) ? bvkPackingTotal : 0)
   })()
   const bvkSafe = (n: number) => (Number.isFinite(n) ? n : 0)
   /** A tax row renders only when its amount is non-zero. */
@@ -179,13 +199,9 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const bvkCgstLabelRate = bvkGstRates.cgst > 0 ? bvkGstRates.cgst : 9
   const bvkSgstLabelRate = bvkGstRates.sgst > 0 ? bvkGstRates.sgst : 9
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
-  // Packing Charges row is shown only when Zoho's `Packing_Charge` toggle
-  // is checked. Same true/"true" test the "Packing: included/excluded"
-  // narrative below uses.
-  const bvkPackingChargeChecked = (() => {
-    const v = rawQuotationData?.Packing_Charge
-    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
-  })()
+  // Packing Charges row is shown only when `bvkPackingChargeChecked` is
+  // true (declared above, above `bvkGrandTotal` so the total math can
+  // also react to the toggle).
   const bvkSummaryRows: BvkSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
   ]
@@ -461,9 +477,9 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                          * 4px 2px padding + `whiteSpace: nowrap` so labels
                          * don't wrap into overlapping lines. */}
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '45%' }}>Product</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '9%', whiteSpace: 'nowrap' }}>HSN Code</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '8%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '39%' }}>Product</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '12%', whiteSpace: 'nowrap' }}>HSN Code</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '11%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
                       </tr>
@@ -847,37 +863,46 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
             </tr>
           </tbody>
 
-          {/* Footer - Repeats on every page in print */}
+          {/* Empty tfoot spacer — `display: table-footer-group` in print
+           * reserves this row's ~32mm height at the bottom of EVERY
+           * printed page (browser's natural table-footer-group behaviour).
+           * The visible footer is a separate `position: fixed` div below —
+           * same trick used for SLS / WI Process Febric / WI Decomesh. */}
           <tfoot className="bvk-print-footer-row">
             <tr>
-              <td colSpan={2} style={{ border: 'none', padding: 0, verticalAlign: 'bottom' }}>
-                <div className="bvk-print-footer" style={{ marginTop: '20px', paddingTop: '15px', fontSize: '10px' }}>
-                  {/* Company Information */}
-                  <div style={{ marginBottom: '8px' }}>
-                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>BVK Hydrotech India Pvt. Ltd.</div>
-                    <div style={{ marginBottom: '4px' }}>
-                      <span style={{ color: '#00a651' }}>Reg. Office:</span> Imax Imperial, Room No. 1C, 1st Floor, 101/5, S.N. Banerjee Road, Taltala, Kolkata - 700014, West Bengal, India
-                    </div>
-                    <div style={{ marginBottom: '4px' }}>
-                      <span style={{ color: '#00a651' }}>CIN:</span> U46103WB2024PTC269415 | <span style={{ color: '#00a651' }}>GSTIN:</span> 08AAMCB4592K1Z3
-                    </div>
-                    <div>
-                      <span style={{ color: '#00a651' }}>Correspondence Address:</span> 54-B.1, Industrial Area, Jhotwara, Jaipur - 302012, Rajasthan, India
-                    </div>
-                  </div>
-                  
-                  {/* Bottom green line and tagline */}
-                  <div style={{ borderTop: '2px solid #00a651', marginTop: '10px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ width: '60%' }}></div>
-                    <div style={{ color: '#00a651', fontSize: '10px', textAlign: 'right' }}>
-                      Woven Solutions for Electrolyzers and Fuel Cells
-                    </div>
-                  </div>
-                </div>
-              </td>
+              <td colSpan={2} style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
             </tr>
           </tfoot>
         </table>
+
+        {/* Actual footer — lives OUTSIDE the table. In print media it
+         * gets `position: fixed; bottom: 0` (see globals.css) so the
+         * company info block pins to the paper bottom on EVERY generated
+         * page (including the last). On screen it flows normally at the
+         * end of the container. */}
+        <div className="bvk-page-footer bvk-print-footer" style={{ paddingTop: '15px', fontSize: '10px' }}>
+          {/* Company Information */}
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>BVK Hydrotech India Pvt. Ltd.</div>
+            <div style={{ marginBottom: '4px' }}>
+              <span style={{ color: '#00a651' }}>Reg. Office:</span> Imax Imperial, Room No. 1C, 1st Floor, 101/5, S.N. Banerjee Road, Taltala, Kolkata - 700014, West Bengal, India
+            </div>
+            <div style={{ marginBottom: '4px' }}>
+              <span style={{ color: '#00a651' }}>CIN:</span> U46103WB2024PTC269415 | <span style={{ color: '#00a651' }}>GSTIN:</span> 08AAMCB4592K1Z3
+            </div>
+            <div>
+              <span style={{ color: '#00a651' }}>Correspondence Address:</span> 54-B.1, Industrial Area, Jhotwara, Jaipur - 302012, Rajasthan, India
+            </div>
+          </div>
+
+          {/* Bottom green line and tagline */}
+          <div style={{ borderTop: '2px solid #00a651', marginTop: '10px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ width: '60%' }}></div>
+            <div style={{ color: '#00a651', fontSize: '10px', textAlign: 'right' }}>
+              Woven Solutions for Electrolyzers and Fuel Cells
+            </div>
+          </div>
+        </div>
       </div>
     </>
   )

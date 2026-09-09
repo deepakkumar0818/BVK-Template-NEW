@@ -35,19 +35,20 @@ export default function SaintInvoiceContent({
   const countryOfOrigin = 'India'
   const countryOfDestination = resolveCountryOfFinalDestination(rawQuotationData, shippingData, 'Germany')
   const modeOfDelivery = rawQuotationData?.Mode_of_Delivery || data.termsOfDelivery || 'Air'
-  const portOfLoading = rawQuotationData?.Port_of_Loading || 'Any Indian Port'
-  const portOfDischarge = rawQuotationData?.Port_of_Discharge || 'Dusseldorf'
-  const finalDestination = rawQuotationData?.Final_Destination || portOfDischarge || 'Germany'
-  const dispatchExWorks = resolveDispatchExWorksDisplay(
-    rawQuotationData,
-    data.deliveryDate,
-    '14-16 Weeks from the date of receipt of Confirm PO & Advance'
-  )
+  // Direct 1:1 map to Zoho — no fallbacks. Blank field → blank cell.
+  const portOfLoading = String(rawQuotationData?.Port_of_Loading ?? '').trim()
+  const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+  const finalDestination = String(rawQuotationData?.Final_Destination ?? '').trim()
+  const dispatchExWorks = String(rawQuotationData?.Sales_Proposed_Date_Dispatch_Ex_Works ?? '').trim()
   const termsOfPayment = data.termsOfPayment || rawQuotationData?.Term_of_Payment || '100% Advance TT'
   const ourBankDetails = quotationRichText(rawQuotationData, 'Our_Bank_Details')
 
   return (
     <>
+      {/* 15mm top spacer — an OUTER wrapper so the .seamless class'
+       * `padding: 0 !important` doesn't wipe it out. Doesn't collapse
+       * because the wrapper is a block element with padding-top. */}
+      <div style={{ paddingTop: '15mm' }}>
       <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <SaintGoodsTable
           data={data}
@@ -72,49 +73,63 @@ export default function SaintInvoiceContent({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '56%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>Exporter</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <img
-                        src="/wmw-logo.svg"
-                        alt="WMW Logo"
-                        style={{ width: '160px', height: '62px', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginBottom: '3px' }}>WMW METAL FABRICS LIMITED</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>Tel : +91-141-7105151</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', fontSize: '10px', marginTop: '6px' }}>
-                      <span>info@wmwindia.com</span>
-                      <span>www.wmwindia.com</span>
-                    </div>
+                  <td style={{ width: '56%', verticalAlign: 'top', border: '1px solid #000', padding: '6px 8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Exporter</div>
+                    {/* Side-by-side layout: logo LEFT, company text RIGHT
+                     * — mirrors the WMW template's `.qh-supplier-layout`
+                     * ([QuotationHeaderThead.tsx](app/components/QuotationHeaderThead.tsx#L40-L62)).
+                     * Uses a nested table so the two cells align at the
+                     * top and the row height is driven by the taller of
+                     * the two, keeping the whole Exporter box compact. */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} role="presentation">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '120px', verticalAlign: 'middle', padding: 0 }}>
+                            <img
+                              src="/wmw-logo.png"
+                              alt="WMW Logo"
+                              style={{ width: '110px', height: '66px', objectFit: 'contain', display: 'block' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </td>
+                          <td style={{ verticalAlign: 'middle', padding: '0 0 0 8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.2 }}>WMW METAL FABRICS LIMITED</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>Tel : +91-141-7105151</div>
+                            <div style={{ display: 'flex', gap: '14px', fontSize: '10px', marginTop: '2px' }}>
+                              <span>info@wmwindia.com</span>
+                              <span>www.wmwindia.com</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
                   <td style={{ width: '44%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Quotation No. &amp; Date</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                               <span>{quotationNumber || 'WMW-11079.01'}</span>
                               <span>{quotationDate || '24-Jun-2024'}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Buyer&apos;s Enquiry No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span>{buyerEnquiryNo}</span>
-                              <span style={{ fontWeight: 'bold' }}>{buyerEnquiryDate}</span>
+                              <span>{buyerEnquiryDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
+                          <td style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Other Reference (s)</div>
                             <div>{otherReference}</div>
                           </td>
@@ -131,18 +146,18 @@ export default function SaintInvoiceContent({
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ marginBottom: '2px' }}>Country of Origin of Goods</div>
+                          <td style={{ width: '50%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Origin of Goods</div>
                             <div>{countryOfOrigin}</div>
                           </td>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ marginBottom: '2px' }}>Country of Final Destination</div>
+                          <td style={{ width: '50%', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Final Destination</div>
                             <div>{countryOfDestination}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
+                          <td colSpan={2} style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
                             <div>{termsOfPayment}</div>
                             {ourBankDetails ? (
                               <div style={ourBankDetailsBlockStyle}>{ourBankDetails}</div>
@@ -162,21 +177,21 @@ export default function SaintInvoiceContent({
                       </colgroup>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Carriage by</div>
                             <div>{modeOfDelivery}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Loading</div>
                             <div>{portOfLoading}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Discharge</div>
                             <div>{portOfDischarge}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Final Destination</div>
                             <div>{finalDestination}</div>
                           </td>
@@ -185,7 +200,7 @@ export default function SaintInvoiceContent({
                     </table>
                   </td>
                   <td style={{ width: '44%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 6px', fontSize: '11px' }}>
-                    <div style={{ textDecoration: 'underline', marginBottom: '4px' }}>Dispatch Ex-Works</div>
+                    <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>Dispatch Ex-Works</div>
                     <div>{dispatchExWorks}</div>
                   </td>
                 </tr>
@@ -248,6 +263,7 @@ export default function SaintInvoiceContent({
             </table>
           }
         />
+      </div>
       </div>
 
       <div className="conditions-for-print conditions-doc" style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}>

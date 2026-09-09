@@ -50,6 +50,153 @@
   margin: 8mm 8mm 8mm 8mm;
 }
 
+/* SLS / WI Process Febric / WI Decomesh — per-page footer.
+ *
+ * We use a two-part trick so the footer sits at the paper bottom on
+ * EVERY printed page including the last:
+ *
+ *   1. An empty `<tfoot>` spacer inside each template's outer table
+ *      (`display: table-footer-group` in print) reserves a 32mm strip
+ *      at the bottom of every printed page. This is the ONLY reliable
+ *      per-page space reservation in Chrome — @page margins won't
+ *      target specific elements, and CSS Paged Media running elements
+ *      aren't fully supported in Chrome.
+ *
+ *   2. The visible footer div (`.<template>-page-footer`) lives
+ *      OUTSIDE the table. In print media it becomes
+ *      `position: fixed; bottom: 0; left: 0; right: 0` so Chrome paints
+ *      it at the paper's bottom edge on every generated page.
+ *
+ * The two are the same height (32mm) so they overlap cleanly: the
+ * empty tfoot reserves the space, the fixed footer paints the images
+ * into that space. Result: no overlap with body content on any page,
+ * footer always at the paper bottom. */
+@media print {
+  /* Adhunik non-last chunk: stretch the goods table so its bottom
+   * border touches the paper's printable-area bottom. The segment
+   * has `min-height: calc(100vh - 22mm)` inline and `display: flex;
+   * flex-direction: column`, the goods table has `flex: 1;
+   * height: 100%` — Chrome then distributes the extra height into
+   * the LAST bordered filler row so the item rows keep their
+   * natural (padded) height and the filler absorbs the leftover
+   * space. Last chunk is untouched (tail rows + inline footerNode
+   * still size naturally).
+   *
+   * `.adhunik-goods-fill-row td { height: 100% }` on the empty
+   * bordered <tr> at the bottom of the goods table's tbody makes
+   * that row grow to fill remaining space. */
+  .adhunik-nonlast-fill .adhunik-goods-fill-row,
+  .adhunik-nonlast-fill .adhunik-goods-fill-row > td {
+    height: 100% !important;
+  }
+
+  /* Saint non-last chunk: same pattern as Adhunik above. The
+   * segment has `min-height: calc(100vh - 155mm)` inline (155mm
+   * accounts for @page 12mm bottom, 15mm top padding, outer wrap
+   * thead ~55mm, outer wrap tfoot ~60mm, and safety buffer) plus
+   * `display: flex; flex-direction: column`. Goods table has
+   * `flex: 1; height: 100%`. The bordered filler <tr> at the
+   * bottom of the tbody stretches via `height: 100%` to fill the
+   * leftover space so the table's bottom border reaches the
+   * printable-area bottom. Last chunk (with tail totals + outer
+   * tfoot) is untouched. */
+  .saint-nonlast-fill .saint-goods-fill-row,
+  .saint-nonlast-fill .saint-goods-fill-row > td,
+  .saint-nonlast-fill .saint-tail-fill-row,
+  .saint-nonlast-fill .saint-tail-fill-row > td {
+    height: 100% !important;
+  }
+
+  .sls-page-footer,
+  .wi-process-febric-page-footer,
+  .wi-decomesh-page-footer,
+  .bvk-page-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 32mm;
+  }
+
+  /* BVK footer: give it a small side inset so the company text
+   * doesn't hug the paper edges (matches the 8mm inset the SLS
+   * left image uses). */
+  .bvk-page-footer {
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media print {
+  /* Saint / Adhunik / Bashundhara / Everite: monolithic outer wrap
+   * (BVK pattern). Header lives in outer <thead>, footer in outer
+   * <tfoot>; Chrome repeats them on every printed page. */
+  .saint-print-table thead.saint-print-header-row,
+  .adhunik-print-table thead.adhunik-print-header-row,
+  .bashundhara-print-table thead.bashundhara-print-header-row,
+  .everite-print-table thead.everite-print-header-row {
+    display: table-header-group !important;
+  }
+  .saint-print-table tfoot.saint-print-footer-row,
+  .adhunik-print-table tfoot.adhunik-print-footer-row,
+  .bashundhara-print-table tfoot.bashundhara-print-footer-row,
+  .everite-print-table tfoot.everite-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  /* Saint dynamic filler chain: makes the outer wrap table fill
+   * the printable page area, then chains `height: 100%` through
+   * the nested divs and tables down to `.saint-tail-fill-row` so
+   * that row grows to consume all leftover vertical space between
+   * items+tail and the outer <tfoot>.
+   *
+   * Height subtraction (28mm) accounts for what eats into raw
+   * 100vh — 15mm top padding on the SaintInvoiceContent wrapper
+   * plus ~13mm safety buffer for <main> padding, print-container
+   * padding, and any implicit browser margins. Page numbering is
+   * disabled for Saint, so no @page bottom margin to reserve. */
+  .saint-print-table {
+    height: calc(100vh - 28mm) !important;
+  }
+  .saint-print-table > tbody > tr > td {
+    height: 100% !important;
+    vertical-align: top !important;
+  }
+  .saint-print-table .quotation-goods-pages-stack,
+  .saint-print-table .quotation-goods-pages-segment,
+  .saint-print-table .quotation-seamless-stack {
+    height: 100% !important;
+  }
+  .saint-print-table .goods-description-table {
+    height: 100% !important;
+  }
+  .saint-tail-fill-row,
+  .saint-tail-fill-row > td {
+    height: 100% !important;
+  }
+
+
+}
+
+/* Screen: outer-wrap header/footer render inline (no repeat behaviour). */
+.saint-print-table thead.saint-print-header-row,
+.adhunik-print-table thead.adhunik-print-header-row,
+.bashundhara-print-table thead.bashundhara-print-header-row,
+.everite-print-table thead.everite-print-header-row {
+  display: table-header-group;
+}
+.saint-print-table tfoot.saint-print-footer-row,
+.adhunik-print-table tfoot.adhunik-print-footer-row,
+.bashundhara-print-table tfoot.bashundhara-print-footer-row,
+.everite-print-table tfoot.everite-print-footer-row {
+  display: table-footer-group;
+}
+
 html,
 body {
   max-width: 210mm;
@@ -159,6 +306,13 @@ body {
    * across pages (which is what actually breaks thead repetition).
    * Padding-top is zeroed so the .print-page-top-spacer inside the thead
    * owns the top inset — same trick BVK uses. */
+  /* SLS: tighter top page inset than the default 25mm so there's less
+   * blank space before the logo on every printed page. Only affects
+   * SLS — other templates keep the global 25mm inset. */
+  .quotation-doc:has(.sls-quotation-container) {
+    --quotation-print-top-inset: 12mm;
+  }
+
   .sls-quotation-container {
     /* Full-width in print so the outer <table>'s <thead> can repeat across
      * pages. Left / right padding is intentionally NOT overridden here — the
@@ -174,7 +328,7 @@ body {
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
-    padding-bottom: 2mm !important;
+    padding-bottom: 0 !important;
     min-height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
@@ -238,8 +392,30 @@ body {
   }
 
   .sls-company-footer {
+    /* Full-bleed to the physical page edges — `width: 100vw` +
+     * `margin-left/right: calc(50% - 50vw)` overrides any parent padding
+     * so the left/right images touch the paper edges (paired with the
+     * global `@page { margin: 0 }` at the top of this file and
+     * `padding-bottom: 0` on the container above). Zeroing bottom padding
+     * / margin + line-height so no stray whitespace sits under the
+     * images at the paper bottom. */
     margin-top: 10px !important;
     padding-top: 8px !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* SLS footer: slight inset only on the LEFT image so it doesn't hug
+   * the paper edge. Right image (blue triangle) stays flush right. */
+  .sls-company-footer > img:first-child {
+    margin-left: 8mm !important;
   }
 
   /* Keep the content-to-conditions gap tight (2–3 lines). */
@@ -1083,6 +1259,7 @@ body {
   .quotation-doc.quotation-doc--wmw-numbered {
     page: wmw-numbered-page;
   }
+
 
   /* Conditions use their own @page margins (top/bottom inset), not wmw-numbered-page (margin-top: 0). */
   .conditions-for-print,
@@ -3254,18 +3431,28 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 }
 
 @media print {
+  /* WI Process Febric: tighter top page inset than the default 25mm so
+   * there's less blank space before the logo on every printed page.
+   * The `.wi-process-febric-print-page-top-spacer` reads this variable
+   * for its height, so scoping it to the container narrows just this
+   * template's inset. Matches the SLS override. */
+  .quotation-doc:has(.wi-process-febric-quotation-container) {
+    --quotation-print-top-inset: 12mm;
+  }
+
   /* Container in print: full width so the outer <table> can page-break
    * across pages (that is what unlocks <thead> repetition). */
   .wi-process-febric-quotation-container {
     /* Flex-column at 100vh min-height so the last-page <tfoot> pins to
      * the bottom instead of following the content when it's short.
-     * Matches SLS. */
+     * `padding-bottom: 0` so the footer's right image touches the paper
+     * bottom edge (matches SLS). */
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
     padding-left: 8mm !important;
     padding-right: 8mm !important;
-    padding-bottom: 5mm !important;
+    padding-bottom: 0 !important;
     min-height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
@@ -3341,10 +3528,27 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
     break-inside: avoid;
   }
 
-  /* Footer: avoid orphaning the small "Registered Office" block. */
+  /* Footer: avoid orphaning the small "Registered Office" block.
+   * Full-bleed via 100vw + centred negative margin so the left/right
+   * images touch the physical page edges (matches SLS). Zero bottom
+   * padding/margin/line-height eliminates the whitespace strip below
+   * the images. */
   .wi-process-febric-company-footer {
     page-break-inside: avoid;
     break-inside: avoid;
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 0 !important;
+  }
+
+  .wi-process-febric-company-footer > img:first-child {
+    margin-left: 8mm !important;
   }
 }
 
@@ -3386,18 +3590,25 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
 }
 
 @media print {
+  /* WI Decomesh: tighter top page inset than the default 25mm — matches
+   * SLS / WI Process Febric. Scoped to this container only. */
+  .quotation-doc:has(.wi-decomesh-quotation-container) {
+    --quotation-print-top-inset: 12mm;
+  }
+
   /* Container in print: full width so the outer <table> can page-break
    * across pages (that is what unlocks <thead> repetition). */
   .wi-decomesh-quotation-container {
     /* Flex-column at 100vh min-height so the last-page <tfoot> pins to
      * the bottom instead of following the content when it's short.
-     * Matches SLS / WI Process Febric. */
+     * `padding-bottom: 0` so the footer's right image touches the paper
+     * bottom edge (matches SLS / WI Process Febric). */
     max-width: 100% !important;
     width: 100% !important;
     padding-top: 0 !important;
     padding-left: 8mm !important;
     padding-right: 8mm !important;
-    padding-bottom: 5mm !important;
+    padding-bottom: 0 !important;
     min-height: 100vh !important;
     display: flex !important;
     flex-direction: column !important;
@@ -3470,10 +3681,27 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
     break-inside: avoid;
   }
 
-  /* Footer: avoid orphaning the small "Registered Office" block. */
+  /* Footer: avoid orphaning the small "Registered Office" block.
+   * Full-bleed via 100vw + centred negative margin so the left/right
+   * images touch the physical page edges (matches SLS). Zero bottom
+   * padding/margin/line-height eliminates the whitespace strip below
+   * the images. */
   .wi-decomesh-company-footer {
     page-break-inside: avoid;
     break-inside: avoid;
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 0 !important;
+  }
+
+  .wi-decomesh-company-footer > img:first-child {
+    margin-left: 8mm !important;
   }
 }
 
