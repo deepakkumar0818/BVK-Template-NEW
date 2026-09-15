@@ -133,8 +133,8 @@ export default function WIDecomeshQuotationContent({
   // WI Process Febric, but each read goes through the ISOLATED field
   // registry so a rename picks up here automatically.
   const deliveryTime = String(rawRec?.[F.deliveryTime] ?? '').trim()
-  const incoterms = String(rawRec?.[F.deliveryTerms] ?? rawRec?.[F.deliveryTermsAlt] ?? '').trim() ||
-    'Ex-Works, WMW Industries, Jaipur'
+  const incoterms = (String(rawRec?.[F.deliveryTerms] ?? rawRec?.[F.deliveryTermsAlt] ?? '').trim() ||
+    'Ex-Works, WMW Industries, Jaipur').toUpperCase()
   const packingLine = (() => {
     const packingText = String(rawRec?.[F.packing] ?? '').trim()
     if (packingText) return packingText

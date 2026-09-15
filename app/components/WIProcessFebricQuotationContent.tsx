@@ -220,7 +220,7 @@ export default function WIProcessFebricQuotationContent({
     'To be paid as per actual by the client directly.'
   const incoterms = String(
     rawRec?.[F.deliveryTerms] ?? rawRec?.[F.deliveryTermsAlt] ?? ''
-  ).trim()
+  ).trim().toUpperCase()
   const deliveryTime = String(rawRec?.[F.deliveryTime] ?? '').trim()
   const paymentTerms = String(rawRec?.[F.paymentTerms] ?? '').trim()
   const quotationValidity = String(rawRec?.[F.quotationValidity] ?? '').trim()

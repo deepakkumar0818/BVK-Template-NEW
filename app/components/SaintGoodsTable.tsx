@@ -925,7 +925,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
               <tr>
                 <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
-                  Total Ex-Works Price
+                  Subtotal
                 </td>
                 <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
                   {formatCurrency(baseAmount, currency)}
