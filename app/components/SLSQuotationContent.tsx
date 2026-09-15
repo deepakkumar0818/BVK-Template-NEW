@@ -302,15 +302,15 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       (typeof charge === 'string' && charge.trim().toLowerCase() === 'true')
     return `Normal Box packing ${isTrue ? 'included' : 'excluded'} in above price`
   })()
-  const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim()
+  const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim().toUpperCase()
   const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
   // "Taxes:" row content — per-tax notice lines derived from CGST/SGST/IGST amounts (rates hard-coded
   // to the standard 9%/9%/18% split, same convention as the summary block). When no per-tax amount has
   // data, fall back to the Zoho root `Taxes` scalar. When neither is present, the whole row is hidden.
   const slsTaxNoticeLines: string[] = []
-  if (slsTaxHasValue(slsIgstAmount)) slsTaxNoticeLines.push(`${slsIgstLabelRate}% IGST will be applicable extra.`)
-  if (slsTaxHasValue(slsCgstAmount)) slsTaxNoticeLines.push(`${slsCgstLabelRate}% CGST will be applicable extra.`)
-  if (slsTaxHasValue(slsSgstAmount)) slsTaxNoticeLines.push(`${slsSgstLabelRate}% SGST will be applicable extra.`)
+  if (slsTaxHasValue(slsIgstAmount)) slsTaxNoticeLines.push(`${slsIgstLabelRate}% IGST will be applicable.`)
+  if (slsTaxHasValue(slsCgstAmount)) slsTaxNoticeLines.push(`${slsCgstLabelRate}% CGST will be applicable.`)
+  if (slsTaxHasValue(slsSgstAmount)) slsTaxNoticeLines.push(`${slsSgstLabelRate}% SGST will be applicable.`)
   const slsTaxesScalar = String(
     (rawQuotationData as Record<string, unknown> | undefined)?.Taxes ?? ''
   ).trim()
