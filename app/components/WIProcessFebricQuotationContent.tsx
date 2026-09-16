@@ -35,7 +35,6 @@ import {
   buildWiProcessFebricDeliverySchedule,
   buildWiProcessFebricTableRows,
   resolveWiProcessFebricChargeTotals,
-  resolveWiProcessFebricGstLine,
   resolveWiProcessFebricOtherCharges,
 } from '@/lib/wi-process-febric-line-display'
 import PrintButton from './PrintButton'
@@ -226,10 +225,10 @@ export default function WIProcessFebricQuotationContent({
   const quotationValidity = String(rawRec?.[F.quotationValidity] ?? '').trim()
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
 
-  // Taxes narrative — exactly one of root `IGST` / `CGST` / `SGST` is
-  // expected to be non-zero at a time; shows "<Type> is <rate>%" for that
-  // one only, under the always-shown hard-coded sentence.
-  const gstLine = resolveWiProcessFebricGstLine(rawRec)
+  // Taxes narrative — GST is never summed into this template's "Total" (see
+  // comment above `parseQuotationTaxForSummary` usage), so the notice is
+  // always the fixed "not included" wording.
+  const gstNoticeText = '18% GST will be applicable extra.'
 
   // Delivery Schedule — reads the desired-date subform for the active
   // family and returns one group per Line_Item_ref. `null` when nothing is
@@ -514,8 +513,8 @@ export default function WIProcessFebricQuotationContent({
                   <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
                   <div>
                     Will be Extra as applicable over and above the Ex-factory prices quoted.
-                    {gstLine ? ` ${gstLine.type} is ${gstLine.rate}%` : ''}
                   </div>
+                  <div style={{ marginTop: '6px' }}>{gstNoticeText}</div>
                   <div style={{ marginTop: '6px' }}>
                     However, if there is any change in Sales Tax, Excise Duty and any New Statutory Levies is introduced by Government at the time of delivery, the same will be billed as per actual.
                   </div>
