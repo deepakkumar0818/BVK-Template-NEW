@@ -198,6 +198,17 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const bvkIgstLabelRate = bvkGstRates.igst > 0 ? bvkGstRates.igst : 18
   const bvkCgstLabelRate = bvkGstRates.cgst > 0 ? bvkGstRates.cgst : 9
   const bvkSgstLabelRate = bvkGstRates.sgst > 0 ? bvkGstRates.sgst : 9
+  // "Taxes and Duties" GST line: when a CGST/SGST/IGST amount is already
+  // added into the total, show "<rate>% GST Included" (rate = IGST rate,
+  // else CGST+SGST summed). Otherwise show the fixed "18% GST will be
+  // applicable extra." notice.
+  const bvkGstIncluded = bvkTaxHasValue(bvkIgstAmount) || bvkTaxHasValue(bvkCgstAmount) || bvkTaxHasValue(bvkSgstAmount)
+  const bvkGstIncludedRate = bvkTaxHasValue(bvkIgstAmount)
+    ? bvkIgstLabelRate
+    : (bvkTaxHasValue(bvkCgstAmount) ? bvkCgstLabelRate : 0) + (bvkTaxHasValue(bvkSgstAmount) ? bvkSgstLabelRate : 0)
+  const bvkGstNoticeText = bvkGstIncluded
+    ? `${bvkGstIncludedRate}% GST Included`
+    : '18% GST will be applicable extra.'
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   // Packing Charges row is shown only when `bvkPackingChargeChecked` is
   // true (declared above, above `bvkGrandTotal` so the total math can
@@ -774,21 +785,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Taxes and Duties**:</div>
                     <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
                       <li style={{ marginBottom: '4px' }}>Will be Extra as applicable over and above the Ex-factory prices quoted.</li>
-                      {(() => {
-                        // Dynamic tax-narrative bullets: emit one per non-zero
-                        // GST rate from Zoho, in priority order IGST → CGST →
-                        // SGST. When no rate is set anywhere, fall back to the
-                        // legacy hard-coded "18% IGST" line so existing
-                        // records keep their previous wording.
-                        const lines: string[] = []
-                        if (bvkGstRates.igst > 0) lines.push(`${bvkGstRates.igst}% IGST will be applicable extra.`)
-                        if (bvkGstRates.cgst > 0) lines.push(`${bvkGstRates.cgst}% CGST will be applicable extra.`)
-                        if (bvkGstRates.sgst > 0) lines.push(`${bvkGstRates.sgst}% SGST will be applicable extra.`)
-                        if (lines.length === 0) lines.push('18% IGST will be applicable extra.')
-                        return lines.map((line) => (
-                          <li key={line} style={{ marginBottom: '4px' }}>{line}</li>
-                        ))
-                      })()}
+                      <li style={{ marginBottom: '4px' }}>{bvkGstNoticeText}</li>
                       <li style={{ marginBottom: '4px' }}>However, if there is any change in Tax and any New Statutory Levies is introduced by Government at the time of delivery of the same will be billed as per actual.</li>
                       <li style={{ marginBottom: '4px' }}>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.</li>
                     </ul>

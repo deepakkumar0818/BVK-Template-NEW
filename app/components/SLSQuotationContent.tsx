@@ -304,17 +304,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   })()
   const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim().toUpperCase()
   const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
-  // "Taxes:" row content — per-tax notice lines derived from CGST/SGST/IGST amounts (rates hard-coded
-  // to the standard 9%/9%/18% split, same convention as the summary block). When no per-tax amount has
-  // data, fall back to the Zoho root `Taxes` scalar. When neither is present, the whole row is hidden.
-  const slsTaxNoticeLines: string[] = []
-  if (slsTaxHasValue(slsIgstAmount)) slsTaxNoticeLines.push(`${slsIgstLabelRate}% IGST will be applicable.`)
-  if (slsTaxHasValue(slsCgstAmount)) slsTaxNoticeLines.push(`${slsCgstLabelRate}% CGST will be applicable.`)
-  if (slsTaxHasValue(slsSgstAmount)) slsTaxNoticeLines.push(`${slsSgstLabelRate}% SGST will be applicable.`)
-  const slsTaxesScalar = String(
-    (rawQuotationData as Record<string, unknown> | undefined)?.Taxes ?? ''
-  ).trim()
-  const slsShowTaxesRow = slsTaxNoticeLines.length > 0 || slsTaxesScalar !== ''
+  // "Taxes:" row content — single line: when a CGST/SGST/IGST amount is
+  // already added into the total, show "<rate>% GST Included" (rate = IGST
+  // rate, else CGST+SGST summed). Otherwise show the fixed "18% GST will be
+  // applicable extra." notice.
+  const slsGstIncluded = slsTaxHasValue(slsIgstAmount) || slsTaxHasValue(slsCgstAmount) || slsTaxHasValue(slsSgstAmount)
+  const slsGstIncludedRate = slsTaxHasValue(slsIgstAmount)
+    ? slsIgstLabelRate
+    : (slsTaxHasValue(slsCgstAmount) ? slsCgstLabelRate : 0) + (slsTaxHasValue(slsSgstAmount) ? slsSgstLabelRate : 0)
+  const slsTaxNoticeText = slsGstIncluded
+    ? `${slsGstIncludedRate}% GST Included`
+    : '18% GST will be applicable extra.'
   // "Payment:" row body — read from Zoho `Payment_Condition` (same field
   // used by BVK's "Payment conditions:" section). No fallback.
   const payment = String(rawQuotationData?.Term_of_Payment ?? '').trim()
@@ -650,26 +650,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <div>{slsPackingTransportFreight || '\u00A0'}</div>
             </div>
           </div>
-          {slsShowTaxesRow ? (
-            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' ,}}>
-              <strong>Taxes:</strong>
-              {slsTaxNoticeLines.length > 0 ? (
-                slsTaxNoticeLines.map((line, idx) => (
-                  <div
-                    key={line}
-                    style={{
-                      marginTop: idx === 0 ? '4px' : '2px',
-                     marginLeft: '10px',
-                    }}
-                  >
-                    {line}
-                  </div>
-                ))
-              ) : (
-                <span> {slsTaxesScalar}</span>
-              )}
-            </div>
-          ) : null}
+          <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' ,}}>
+            <strong>Taxes:</strong> {slsTaxNoticeText}
+          </div>
           {slsDeliverySchedule ? (
             <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Schedule:</div>
