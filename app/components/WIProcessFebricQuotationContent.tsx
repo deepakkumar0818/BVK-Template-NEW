@@ -353,9 +353,7 @@ export default function WIProcessFebricQuotationContent({
                       <div style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{v}</div>
                     )
                   })()}
-                  {rootRemarks ? (
-                    <div style={{ marginBottom: '20px', whiteSpace: 'pre-wrap' }}>{rootRemarks}</div>
-                  ) : (
+                  {rootRemarks ? null : (
                     <div style={{ marginBottom: '15px' }}>
                       With reference to your inquiry for belts, we are pleased to quote our price hereunder.
                       The size and prices given below are based on the information provided by you.
@@ -575,6 +573,13 @@ export default function WIProcessFebricQuotationContent({
                         </ul>
                       </div>
                     ))}
+                  </div>
+                ) : null}
+
+                {/* Root Remarks — moved below Delivery Schedule. */}
+                {rootRemarks ? (
+                  <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', whiteSpace: 'pre-wrap' }}>
+                    {rootRemarks}
                   </div>
                 ) : null}
 

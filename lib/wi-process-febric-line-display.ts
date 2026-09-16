@@ -68,8 +68,8 @@ export const WI_PROCESS_FEBRIC_ZOHO_FIELDS = {
   sgstRate: 'SGST',
   /** Confirmed field name for "Payment Terms" — Zoho stores it as `Term_of_Payment`, NOT `Payment_Condition`. */
   paymentTerms: 'Term_of_Payment',
-  /** Confirmed field name for "Quotation Validity" — Zoho stores it as `Quantity_Validity`, NOT `Quotation_Validity`. */
-  quotationValidity: 'Quantity_Validity',
+  /** "Quotation Validity" — `Expiry_Date`, same field SLS / BVK / WMW use for "Quotation Valid Till". */
+  quotationValidity: 'Expiry_Date',
   deliveryTime: 'Delivery_Time',
   generalRemarks: 'General_Remarks',
   exclusions: 'The_following_is_not_included_in_this_quotation',
