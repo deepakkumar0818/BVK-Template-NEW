@@ -318,9 +318,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   // "Payment:" row body — read from Zoho `Payment_Condition` (same field
   // used by BVK's "Payment conditions:" section). No fallback.
   const payment = String(rawQuotationData?.Term_of_Payment ?? '').trim()
-  // "Quotation Valid Till Time:" row body — read from Zoho `Quotation_Validity`
-  // (same field used by BVK's "Quotation Valid Till" section). No fallback.
-  const quotationValidity = String(rawQuotationData?.Quotation_Validity ?? '').trim()
+  // "Quotation Valid Till Time:" row body — read from Zoho `Expiry_Date`
+  // (same field BVK's "Quotation Valid Till" section uses). No fallback.
+  const quotationValidity = String(rawQuotationData?.Expiry_Date ?? '').trim()
   const warrantyDisclaimer = rawQuotationData?.Warranty_Disclaimer || 'We declare that our products are wearing parts. Therefore, they are excluded from any warranty regulations.'
   const generalTerms = rawQuotationData?.General_Terms || 'All WMW goods and services are subject to the WMW General Terms and Conditions, a copy of which is available on the WMW website (www.wmwindia.com) or you may request a hard copy which we can send to you. This is in line with the wording on the website.'
   const closingStatement = rawQuotationData?.Closing_Statement || 'We hope that the above quotation is of interest and will gladly be of further help with any request you may have.'
@@ -529,9 +529,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <div style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{v}</div>
             )
           })()}
-          {slsRootRemarks ? (
-            <div style={{ marginBottom: '20px' }}>{slsRootRemarks}</div>
-          ) : null}
         </div>
 
         {/* Product Table */}
@@ -674,6 +671,12 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               ))}
             </div>
           ) : null}
+          {/* Root Remarks — moved below Delivery Schedule. */}
+          {slsRootRemarks ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
+              {slsRootRemarks}
+            </div>
+          ) : null}
           {payment ? (
             <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
               <strong>Payment:</strong> {payment}
@@ -730,7 +733,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
           })()}
           {quotationValidity ? (
             <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
-              <strong>Quotation Valid Till Time:</strong> {quotationValidity}
+              <strong>Quotation Valid Till Date:</strong> {quotationValidity}
             </div>
           ) : null}
           {/* Quantity Validity — body from Zoho `Quantity_Validity`; skip when
