@@ -353,47 +353,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const slsDeliverySchedule = (() => {
     const raw = rawQuotationData as Record<string, unknown> | undefined
     if (!raw) return null
-    const template = String(raw.Template ?? '').trim().toLowerCase()
-    const family = (() => {
-      if (template.includes('product fitment')) {
-        return {
-          desiredDateKey: 'Product_Fitments_Desired_Date',
-          mainKey: 'Product_Fitments',
-          twoZeroKey: 'Product_Fitments2_0',
-          isCat1Wi: false,
-        }
-      }
-      if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
-        return {
-          desiredDateKey: 'Category_2_MM_Database_WMW_Desired_Date',
-          mainKey: 'Category_2_MM_Database_WMW',
-          twoZeroKey: 'Category_2_MM_Database_WMW_2_0',
-          isCat1Wi: false,
-        }
-      }
-      if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
-        return {
-          desiredDateKey: 'Category_1_MM_Database_WMW_Desired_Date',
-          mainKey: 'Category_1_MM_Database_WMW',
-          twoZeroKey: 'Category_1_MM_Database_WMW_2_0',
-          isCat1Wi: false,
-        }
-      }
-      if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
-        return {
-          desiredDateKey: 'Category_2_MM_Database_WI_Desired_Date',
-          mainKey: 'Category_2_MM_Database_WI',
-          twoZeroKey: 'Category_2_MM_Database_WI_2_0',
-          isCat1Wi: false,
-        }
-      }
-      return {
-        desiredDateKey: 'Category_1_MM_Database_WI_Desired_Date',
-        mainKey: 'Category_1_MM_Database_WI',
-        twoZeroKey: 'Category_1_MM_Database_WI_2_0',
-        isCat1Wi: true,
-      }
-    })()
 
     const arrOf = (key: string): Array<Record<string, unknown>> => {
       const v = raw[key]
@@ -402,12 +361,27 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       if (typeof v === 'object') return [v as Record<string, unknown>]
       return []
     }
+
+    // Family is picked directly by which of the 6 `*_Desired_Date` subforms
+    // actually has rows — NOT derived from `Template` text. A record only
+    // ever populates one family's subform set.
+    type Family = { desiredDateKey: string; mainKey: string; twoZeroKey: string; isCat1Wi: boolean }
+    const candidates: Family[] = [
+      { desiredDateKey: 'Accessories_Desired_Date', mainKey: 'Accessories', twoZeroKey: 'Accessories2_0', isCat1Wi: false },
+      { desiredDateKey: 'Product_Fitments_Desired_Date', mainKey: 'Product_Fitments', twoZeroKey: 'Product_Fitments2_0', isCat1Wi: false },
+      { desiredDateKey: 'Category_1_MM_Database_WI_Desired_Date', mainKey: 'Category_1_MM_Database_WI', twoZeroKey: 'Category_1_MM_Database_WI_2_0', isCat1Wi: true },
+      { desiredDateKey: 'Category_2_MM_Database_WI_Desired_Date', mainKey: 'Category_2_MM_Database_WI', twoZeroKey: 'Category_2_MM_Database_WI_2_0', isCat1Wi: false },
+      { desiredDateKey: 'Category_1_MM_Database_WMW_Desired_Date', mainKey: 'Category_1_MM_Database_WMW', twoZeroKey: 'Category_1_MM_Database_WMW_2_0', isCat1Wi: false },
+      { desiredDateKey: 'Category_2_MM_Database_WMW_Desired_Date', mainKey: 'Category_2_MM_Database_WMW', twoZeroKey: 'Category_2_MM_Database_WMW_2_0', isCat1Wi: false },
+    ]
+    const family = candidates.find((f) => arrOf(f.desiredDateKey).length > 0)
+    if (!family) return null
+
     // Ref field name differs by family: WI subforms use `Line_Item_ref`,
     // WMW subforms use `last_item_ref` (lowercase) / `Last_item_ref`.
     const refOf = (row: Record<string, unknown>): string =>
       String(row.Last_item_ref ?? row.last_item_ref ?? row.Line_Item_ref ?? '').trim()
     const desiredRows = arrOf(family.desiredDateKey)
-    if (desiredRows.length === 0) return null
     const mainRows = arrOf(family.mainKey)
     const twoZeroRows = arrOf(family.twoZeroKey)
     const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>

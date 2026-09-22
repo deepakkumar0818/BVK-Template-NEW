@@ -398,7 +398,6 @@ export function buildWiDecomeshDeliverySchedule(
 ): WiDecomeshDeliveryScheduleGroup[] | null {
   if (!raw) return null
   const F = WI_DECOMESH_ZOHO_FIELDS
-  const template = strVal(raw[F.template]).toLowerCase()
 
   type FamilyKeys = {
     desiredDateKey: string
@@ -406,49 +405,21 @@ export function buildWiDecomeshDeliverySchedule(
     twoZeroKey: string
     isCat1Wi: boolean
   }
-  const family: FamilyKeys = (() => {
-    if (template.includes('product fitment')) {
-      return {
-        desiredDateKey: F.fitmentsDesiredDate,
-        mainKey: F.subformFitmentsMain,
-        twoZeroKey: F.subformFitmentsTwoZero,
-        isCat1Wi: false,
-      }
-    }
-    if (template.includes('category 2 mm database wmw') || template.includes('category 2 wmw')) {
-      return {
-        desiredDateKey: F.cat2WmwDesiredDate,
-        mainKey: F.subformCat2WmwMain,
-        twoZeroKey: F.subformCat2WmwTwoZero,
-        isCat1Wi: false,
-      }
-    }
-    if (template.includes('category 1 mm database wmw') || template.includes('category 1 wmw')) {
-      return {
-        desiredDateKey: F.cat1WmwDesiredDate,
-        mainKey: F.subformCat1WmwMain,
-        twoZeroKey: F.subformCat1WmwTwoZero,
-        isCat1Wi: false,
-      }
-    }
-    if (template.includes('category 2 mm database wi') || template.includes('category 2 wi')) {
-      return {
-        desiredDateKey: F.cat2WiDesiredDate,
-        mainKey: F.subformCat2WiMain,
-        twoZeroKey: F.subformCat2WiTwoZero,
-        isCat1Wi: false,
-      }
-    }
-    return {
-      desiredDateKey: F.cat1WiDesiredDate,
-      mainKey: F.subformCat1WiMain,
-      twoZeroKey: F.subformCat1WiTwoZero,
-      isCat1Wi: true,
-    }
-  })()
+  // Family is picked directly by which of the 6 `*_Desired_Date` subforms
+  // actually has rows — NOT derived from `Template` text. A record only
+  // ever populates one family's subform set.
+  const candidates: FamilyKeys[] = [
+    { desiredDateKey: 'Accessories_Desired_Date', mainKey: 'Accessories', twoZeroKey: 'Accessories2_0', isCat1Wi: false },
+    { desiredDateKey: F.fitmentsDesiredDate, mainKey: F.subformFitmentsMain, twoZeroKey: F.subformFitmentsTwoZero, isCat1Wi: false },
+    { desiredDateKey: F.cat1WiDesiredDate, mainKey: F.subformCat1WiMain, twoZeroKey: F.subformCat1WiTwoZero, isCat1Wi: true },
+    { desiredDateKey: F.cat2WiDesiredDate, mainKey: F.subformCat2WiMain, twoZeroKey: F.subformCat2WiTwoZero, isCat1Wi: false },
+    { desiredDateKey: F.cat1WmwDesiredDate, mainKey: F.subformCat1WmwMain, twoZeroKey: F.subformCat1WmwTwoZero, isCat1Wi: false },
+    { desiredDateKey: F.cat2WmwDesiredDate, mainKey: F.subformCat2WmwMain, twoZeroKey: F.subformCat2WmwTwoZero, isCat1Wi: false },
+  ]
+  const family = candidates.find((f) => subformRows(raw, f.desiredDateKey).length > 0)
+  if (!family) return null
 
   const desiredRows = subformRows(raw, family.desiredDateKey)
-  if (desiredRows.length === 0) return null
   const mainRows = subformRows(raw, family.mainKey)
   const twoZeroRows = subformRows(raw, family.twoZeroKey)
 
