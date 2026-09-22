@@ -402,24 +402,28 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       if (typeof v === 'object') return [v as Record<string, unknown>]
       return []
     }
+    // Ref field name differs by family: WI subforms use `Line_Item_ref`,
+    // WMW subforms use `last_item_ref` (lowercase) / `Last_item_ref`.
+    const refOf = (row: Record<string, unknown>): string =>
+      String(row.Last_item_ref ?? row.last_item_ref ?? row.Line_Item_ref ?? '').trim()
     const desiredRows = arrOf(family.desiredDateKey)
     if (desiredRows.length === 0) return null
     const mainRows = arrOf(family.mainKey)
     const twoZeroRows = arrOf(family.twoZeroKey)
     const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
-      rows.find((r) => String(r.Line_Item_ref ?? '').trim() === ref)
+      rows.find((r) => refOf(r) === ref)
 
     type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string }
     type Group = { ref: string; heading: string; entries: Entry[] }
     const groups = new Map<string, Group>()
     for (const row of desiredRows) {
-      const ref = String(row.Line_Item_ref ?? '').trim()
+      const ref = refOf(row)
       if (!ref) continue
       const dateVal = String(row.Date_field ?? '').trim()
       const weekVal = String(row.Week ?? '').trim()
-      const monthVal = String(row.Month_field ?? '').trim()
+      const monthVal = String(row.Month_field ?? row.month_field ?? '').trim()
       let entry: Entry | null = null
-      const count = String(row.No_Of_Items ?? '').trim()
+      const count = String(row.No_of_Items ?? row.No_Of_Items ?? '').trim()
       const twoZeroRow = findByRef(twoZeroRows, ref)
       const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
       if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }

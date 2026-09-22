@@ -452,18 +452,22 @@ export function buildWiDecomeshDeliverySchedule(
   const mainRows = subformRows(raw, family.mainKey)
   const twoZeroRows = subformRows(raw, family.twoZeroKey)
 
+  // Ref field name differs by family: WI subforms use `Line_Item_ref`, WMW
+  // subforms use `last_item_ref` (lowercase) / `Last_item_ref`.
+  const refOf = (row: Record<string, unknown>): string =>
+    strVal(row.Last_item_ref ?? row.last_item_ref ?? row[F.lineItemRef])
   const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
-    rows.find((r) => strVal(r[F.lineItemRef]) === ref)
+    rows.find((r) => refOf(r) === ref)
 
   const groups = new Map<string, WiDecomeshDeliveryScheduleGroup>()
   for (const row of desiredRows) {
-    const ref = strVal(row[F.lineItemRef])
+    const ref = refOf(row)
     if (!ref) continue
     const dateVal = strVal(row[F.desiredDateField])
     const weekVal = strVal(row[F.desiredWeekField])
-    const monthVal = strVal(row[F.desiredMonthField])
+    const monthVal = strVal(row[F.desiredMonthField] ?? row.month_field)
     let entry: WiDecomeshDeliveryScheduleEntry | null = null
-    const count = strVal(row[F.desiredNoOfItems])
+    const count = strVal(row.No_of_Items ?? row[F.desiredNoOfItems])
     const twoZeroRow = findByRef(twoZeroRows, ref)
     const uom = strVal(twoZeroRow?.[F.itemUomBilling])
     if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
