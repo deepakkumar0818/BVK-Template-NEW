@@ -225,11 +225,6 @@ export default function WIProcessFebricQuotationContent({
   const quotationValidity = String(rawRec?.[F.quotationValidity] ?? '').trim()
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
 
-  // Taxes narrative — GST is never summed into this template's "Total" (see
-  // comment above `parseQuotationTaxForSummary` usage), so the notice is
-  // always the fixed "not included" wording.
-  const gstNoticeText = '18% GST will be applicable extra.'
-
   // Delivery Schedule — reads the desired-date subform for the active
   // family and returns one group per Line_Item_ref. `null` when nothing is
   // renderable, in which case the whole section is hidden.
@@ -512,7 +507,6 @@ export default function WIProcessFebricQuotationContent({
                   <div>
                     Will be Extra as applicable over and above the Ex-factory prices quoted.
                   </div>
-                  <div style={{ marginTop: '6px' }}>{gstNoticeText}</div>
                   <div style={{ marginTop: '6px' }}>
                     However, if there is any change in Sales Tax, Excise Duty and any New Statutory Levies is introduced by Government at the time of delivery, the same will be billed as per actual.
                   </div>
