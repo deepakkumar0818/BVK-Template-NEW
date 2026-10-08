@@ -72,8 +72,22 @@ export default function AcceptanceOrderPageContent() {
           throw new Error('Missing quotation id in URL')
         }
 
-        const response = await fetch(`/api/zoho-quotations?id=${encodeURIComponent(id)}`)
-        const data: ZohoQuotationResponse = await response.json()
+        // Try the Quotations report first (this template's original data
+        // source). Some record ids only exist in Sales_Order_Report (a
+        // Quotation that was converted to a Sales Order no longer matches
+        // `ID == <id>` in All_Quotations) — fall back to that report so the
+        // same id works regardless of which report it actually lives in.
+        let response = await fetch(`/api/zoho-quotations?id=${encodeURIComponent(id)}`)
+        let data: ZohoQuotationResponse = await response.json()
+
+        if (!response.ok || data.code !== 3000 || !data.data || data.data.length === 0) {
+          const fallbackResponse = await fetch(`/api/zoho-sales-order-report?id=${encodeURIComponent(id)}`)
+          const fallbackData: ZohoQuotationResponse = await fallbackResponse.json()
+          if (fallbackResponse.ok && fallbackData.code === 3000 && fallbackData.data && fallbackData.data.length > 0) {
+            response = fallbackResponse
+            data = fallbackData
+          }
+        }
 
         if (!response.ok || data.code !== 3000 || !data.data || data.data.length === 0) {
           throw new Error(data.error || 'No quotation data found')

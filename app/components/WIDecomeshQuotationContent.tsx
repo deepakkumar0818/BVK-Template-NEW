@@ -148,9 +148,6 @@ export default function WIDecomeshQuotationContent({
   })()
   const paymentConditions = String(rawRec?.[F.paymentCondition] ?? '').trim() || 'Payment in advance'
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
-  // Taxes: GST is never summed into this template's total, so the notice is
-  // always the fixed "not included" wording (matches SLS / Process Febric / BVK).
-  const gstNoticeText = '18% GST will be applicable extra.'
 
   // Delivery Schedule — reads the desired-date subform for the active
   // family (mirrors the SLS Delivery Schedule spec). Returns `null` when
@@ -354,11 +351,6 @@ export default function WIDecomeshQuotationContent({
                     <span style={{ fontWeight: 'bold' }}>Packing included:</span> {packingLine}
                   </div>
                 ) : null}
-
-                {/* Taxes */}
-                <div style={{ marginBottom: '20px' }}>
-                  <span style={{ fontWeight: 'bold' }}>Taxes:</span> {gstNoticeText}
-                </div>
 
                 {/* Delivery Schedule — mirrors the SLS Delivery Schedule
                     section (see wi-decomesh-line-display.ts). Groups
