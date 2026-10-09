@@ -35,6 +35,7 @@ import {
   buildWiProcessFebricDeliverySchedule,
   buildWiProcessFebricTableRows,
   resolveWiProcessFebricChargeTotals,
+  resolveWiProcessFebricGstLine,
   resolveWiProcessFebricOtherCharges,
 } from '@/lib/wi-process-febric-line-display'
 import PrintButton from './PrintButton'
@@ -224,6 +225,16 @@ export default function WIProcessFebricQuotationContent({
   const paymentTerms = String(rawRec?.[F.paymentTerms] ?? '').trim()
   const quotationValidity = String(rawRec?.[F.quotationValidity] ?? '').trim()
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
+
+  // No GST at all on Export quotations (client directive) — the whole
+  // "Taxes and Duties" section is hidden for those; shown (with a dynamic
+  // rate, no hardcoded fallback) for everything else.
+  const isExportQuotation =
+    String(rawRec?.Type_Of_Quotation ?? '').trim().toLowerCase() === 'export'
+  // Taxes narrative — exactly one of root `IGST` / `CGST` / `SGST` is
+  // expected to be non-zero at a time; shows "<Type> is <rate>%" for that
+  // one only, under the always-shown hard-coded sentence.
+  const gstLine = resolveWiProcessFebricGstLine(rawRec)
 
   // Delivery Schedule — reads the desired-date subform for the active
   // family and returns one group per Line_Item_ref. `null` when nothing is
@@ -501,19 +512,22 @@ export default function WIProcessFebricQuotationContent({
                   )
                 })()}
 
-                {/* Taxes and Duties */}
-                <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
-                  <div>
-                    Will be Extra as applicable over and above the Ex-factory prices quoted.
+                {/* Taxes and Duties — hidden entirely for Export quotations */}
+                {isExportQuotation ? null : (
+                  <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '6px' }}>Taxes and Duties**:</div>
+                    <div>
+                      Will be Extra as applicable over and above the Ex-factory prices quoted.
+                      {gstLine ? ` ${gstLine.type} is ${gstLine.rate}%` : ''}
+                    </div>
+                    <div style={{ marginTop: '6px' }}>
+                      However, if there is any change in Sales Tax, Excise Duty and any New Statutory Levies is introduced by Government at the time of delivery, the same will be billed as per actual.
+                    </div>
+                    <div style={{ marginTop: '6px' }}>
+                      <strong>**</strong>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actuals.
+                    </div>
                   </div>
-                  <div style={{ marginTop: '6px' }}>
-                    However, if there is any change in Sales Tax, Excise Duty and any New Statutory Levies is introduced by Government at the time of delivery, the same will be billed as per actual.
-                  </div>
-                  <div style={{ marginTop: '6px' }}>
-                    <strong>**</strong>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actuals.
-                  </div>
-                </div>
+                )}
 
                 {/* Packing / Freight — 2-row grid */}
                 <div

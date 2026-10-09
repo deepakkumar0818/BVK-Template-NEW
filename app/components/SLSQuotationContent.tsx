@@ -157,8 +157,18 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     0
   )
   const {
+    cgstAmount: slsCgstAmount,
+    sgstAmount: slsSgstAmount,
+    igstAmount: slsIgstAmount,
+    totalBeforeTax: slsTotalBeforeTax,
     totalAfterTax: slsTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, slsLineItemsTotalFallback)
+  // No GST at all on Export quotations (client directive) — gate the whole
+  // GST display (summary rows + "Taxes:" line) on root `Type_Of_Quotation`.
+  const slsIsExportQuotation =
+    String((rawQuotationData as Record<string, unknown> | undefined)?.Type_Of_Quotation ?? '')
+      .trim()
+      .toLowerCase() === 'export'
   // Packing Charges row and its contribution to the grand total are gated
   // on Zoho's `Packing_Charge` toggle (same true/"true" test as the
   // packing narrative below). When the toggle is off, the row is hidden
@@ -182,6 +192,39 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const slsSafe = (n: number) => (Number.isFinite(n) ? n : 0)
   /** A row renders only when its amount is non-zero. */
   const slsTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
+
+  // Dynamic GST rates — read from the active WI category's `_2_0` (IGST/CGST)
+  // and `_3_0` (SGST) rows. Falls back to the standard 9/9/18 split when the
+  // subform doesn't carry a rate, so previously-correct records don't change.
+  // Amounts are not recomputed — only the % text on the label / narrative.
+  const slsGstRates = (() => {
+    const raw = rawQuotationData as Record<string, unknown> | undefined
+    const template = String(raw?.Template ?? '').trim().toLowerCase()
+    const isCat2 = template.includes('category 2 mm database wi') || template.includes('category 2 wi')
+    const line20Key = isCat2 ? 'Category_2_MM_Database_WI_2_0' : 'Category_1_MM_Database_WI_2_0'
+    const line30Key = isCat2 ? 'Category_2_MM_Database_WI_3_0' : 'Category_1_MM_Database_WI_3_0'
+    const arrOf = (key: string): Array<Record<string, unknown>> => {
+      const v = raw?.[key]
+      if (Array.isArray(v)) return v as Array<Record<string, unknown>>
+      if (v && typeof v === 'object') return [v as Record<string, unknown>]
+      return []
+    }
+    const row20 = arrOf(line20Key)[0]
+    const row30 = arrOf(line30Key)[0]
+    const parseRate = (v: unknown): number => {
+      if (v == null) return 0
+      const n = parseFloat(String(v).replace(/,/g, '').trim())
+      return Number.isFinite(n) ? n : 0
+    }
+    return {
+      igst: parseRate(row20?.IGST),
+      cgst: parseRate(row20?.CGST),
+      sgst: parseRate(row30?.SGST),
+    }
+  })()
+  const slsIgstLabelRate = slsGstRates.igst > 0 ? slsGstRates.igst : 18
+  const slsCgstLabelRate = slsGstRates.cgst > 0 ? slsGstRates.cgst : 9
+  const slsSgstLabelRate = slsGstRates.sgst > 0 ? slsGstRates.sgst : 9
 
   // `Total <currency>` row: sum of the goods table's "Total Price" column minus the (red) discount value
   // shown in that table. Other summary rows still source their values from Zoho directly.
@@ -211,14 +254,46 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       value: formatCurrency(slsOtherChargesAmt, displayCurrency),
     })
   }
-  // No GST on WI Export templates (SLS / Process Febric / Decomesh) — show
-  // the grand total once, not split into Before Tax / Add GST / After GST.
-  slsSummaryRows.push({
-    label: 'Total',
-    value: formatCurrency(slsGrandTotal, displayCurrency),
-    bold: true,
-    big: true,
-  })
+  if (slsIsExportQuotation) {
+    // Export quotations carry no GST — show the grand total once, not
+    // split into Before Tax / Add GST / After GST.
+    slsSummaryRows.push({
+      label: 'Total',
+      value: formatCurrency(slsGrandTotal, displayCurrency),
+      bold: true,
+      big: true,
+    })
+  } else {
+    slsSummaryRows.push({
+      label: 'Total Amount Before Tax',
+      value: formatCurrency(slsSafe(slsTotalBeforeTax), displayCurrency),
+      bold: true,
+    })
+    if (slsTaxHasValue(slsCgstAmount)) {
+      slsSummaryRows.push({
+        label: `Add CGST @ ${slsCgstLabelRate}%`,
+        value: formatCurrency(slsCgstAmount, displayCurrency),
+      })
+    }
+    if (slsTaxHasValue(slsSgstAmount)) {
+      slsSummaryRows.push({
+        label: `Add SGST @ ${slsSgstLabelRate}%`,
+        value: formatCurrency(slsSgstAmount, displayCurrency),
+      })
+    }
+    if (slsTaxHasValue(slsIgstAmount)) {
+      slsSummaryRows.push({
+        label: `Add IGST @ ${slsIgstLabelRate}%`,
+        value: formatCurrency(slsIgstAmount, displayCurrency),
+      })
+    }
+    slsSummaryRows.push({
+      label: 'Total Amount After GST',
+      value: formatCurrency(slsGrandTotal, displayCurrency),
+      bold: true,
+      big: true,
+    })
+  }
 
   // "Please Note:" prefers Zoho `Inside_Quotation_Text`; else `Please_Note` only when that key exists on the record;
   // empty Please_Note must not fall through to `Remarks` (|| would treat "" as missing).
@@ -246,6 +321,15 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   })()
   const slsPackingTransportIncoterms = String(rawRec?.Delivery_Terms ?? rawRec?.Delivery_terms ?? '').trim().toUpperCase()
   const slsPackingTransportFreight = String(rawRec?.Transport ?? '').trim()
+  // "Taxes:" row — only on non-Export quotations. Shows "<rate>% GST
+  // Included" when a CGST/SGST/IGST amount is present (rate = IGST rate,
+  // else CGST+SGST summed); hidden entirely when no amount is present.
+  const slsGstIncluded = slsTaxHasValue(slsIgstAmount) || slsTaxHasValue(slsCgstAmount) || slsTaxHasValue(slsSgstAmount)
+  const slsGstIncludedRate = slsTaxHasValue(slsIgstAmount)
+    ? slsIgstLabelRate
+    : (slsTaxHasValue(slsCgstAmount) ? slsCgstLabelRate : 0) + (slsTaxHasValue(slsSgstAmount) ? slsSgstLabelRate : 0)
+  const slsShowTaxesRow = !slsIsExportQuotation && slsGstIncluded
+  const slsTaxNoticeText = `${slsGstIncludedRate}% GST Included`
   // "Payment:" row body — read from Zoho `Payment_Condition` (same field
   // used by BVK's "Payment conditions:" section). No fallback.
   const payment = String(rawQuotationData?.Term_of_Payment ?? '').trim()
@@ -556,6 +640,11 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               <div>{slsPackingTransportFreight || '\u00A0'}</div>
             </div>
           </div>
+          {slsShowTaxesRow ? (
+            <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
+              <strong>Taxes:</strong> {slsTaxNoticeText}
+            </div>
+          ) : null}
           {slsDeliverySchedule ? (
             <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Delivery Schedule:</div>

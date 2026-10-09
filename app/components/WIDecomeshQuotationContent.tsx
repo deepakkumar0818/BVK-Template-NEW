@@ -148,6 +148,12 @@ export default function WIDecomeshQuotationContent({
   })()
   const paymentConditions = String(rawRec?.[F.paymentCondition] ?? '').trim() || 'Payment in advance'
   const generalRemarks = String(rawRec?.[F.generalRemarks] ?? '').trim()
+  // No GST at all on Export quotations (client directive) — "Taxes:" line
+  // is hidden for those; shown as a fixed "18% GST Included" otherwise
+  // (this template has no per-record GST rate lookup).
+  const isExportQuotation =
+    String(rawRec?.Type_Of_Quotation ?? '').trim().toLowerCase() === 'export'
+  const gstNoticeText = '18% GST Included'
 
   // Delivery Schedule — reads the desired-date subform for the active
   // family (mirrors the SLS Delivery Schedule spec). Returns `null` when
@@ -351,6 +357,13 @@ export default function WIDecomeshQuotationContent({
                     <span style={{ fontWeight: 'bold' }}>Packing included:</span> {packingLine}
                   </div>
                 ) : null}
+
+                {/* Taxes — hidden entirely for Export quotations */}
+                {isExportQuotation ? null : (
+                  <div style={{ marginBottom: '20px' }}>
+                    <span style={{ fontWeight: 'bold' }}>Taxes:</span> {gstNoticeText}
+                  </div>
+                )}
 
                 {/* Delivery Schedule — mirrors the SLS Delivery Schedule
                     section (see wi-decomesh-line-display.ts). Groups
