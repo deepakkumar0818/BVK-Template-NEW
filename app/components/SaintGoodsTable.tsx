@@ -1001,7 +1001,6 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               <tr>
                 <td colSpan={4} style={{ ...bd, borderTop: 'none', padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
                   <div>{saintTransportSummaryLine}</div>
-                  <div style={{ marginTop: '6px', fontSize: '9px' }}>( Transport Time Estimated between 13 - 16 days )</div>
                 </td>
                 {/* <td style={{ ...bd, borderTop: 'none' }} /> */}
               </tr>
