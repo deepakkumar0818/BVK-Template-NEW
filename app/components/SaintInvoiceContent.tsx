@@ -29,7 +29,7 @@ export default function SaintInvoiceContent({
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
   const otherReference = resolveOtherReferenceDisplay(
     rawQuotationData,
-    'Document: E012 150 & Appendix 1'
+    ''
   )
 
   const countryOfOrigin = 'India'
