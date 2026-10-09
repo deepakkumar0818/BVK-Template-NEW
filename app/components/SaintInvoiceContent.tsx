@@ -25,7 +25,7 @@ export default function SaintInvoiceContent({
 }: SaintInvoiceContentProps) {
   const quotationNumber = data.quotationNumber || rawQuotationData?.Name || ''
   const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
-  const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || 'Ref Meeting dt. 7th May 2024'
+  const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference
   const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
   const otherReference = resolveOtherReferenceDisplay(
     rawQuotationData,
