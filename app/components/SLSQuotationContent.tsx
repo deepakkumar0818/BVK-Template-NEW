@@ -169,15 +169,17 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     String((rawQuotationData as Record<string, unknown> | undefined)?.Type_Of_Quotation ?? '')
       .trim()
       .toLowerCase() === 'export'
-  // Packing Charges row and its contribution to the grand total are gated
-  // on Zoho's `Packing_Charge` toggle (same true/"true" test as the
-  // packing narrative below). When the toggle is off, the row is hidden
-  // AND the packing amount is subtracted back out of Zoho's rolled-up
-  // grand total so the "Total" figure stays consistent.
+  // "Normal Box packing included/excluded..." narrative line stays tied to
+  // Zoho's `Packing_Charge` toggle (true/"true").
   const slsPackingChargeEnabled = (() => {
     const v = (rawQuotationData as Record<string, unknown> | undefined)?.Packing_Charge
     return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
   })()
+  // Packing Charges row + its contribution to the grand total are gated on
+  // an actual packing VALUE being present — independent of the toggle above.
+  // When there's no value, the row is hidden AND nothing is subtracted (Zoho's
+  // rolled-up total has nothing to subtract in that case anyway).
+  const slsPackingValuePresent = Number.isFinite(slsPackingTotal) && slsPackingTotal !== 0
   const slsGrandTotal = (() => {
     const fromZoho = parseOverallGrandTotalInclAccessories(
       rawQuotationData as Record<string, unknown> | null | undefined
@@ -185,7 +187,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     const base = Number.isFinite(fromZoho)
       ? fromZoho
       : (Number.isFinite(slsTotalAfterTax) ? slsTotalAfterTax : slsLineItemsTotalFallback)
-    return slsPackingChargeEnabled
+    return slsPackingValuePresent
       ? base
       : base - (Number.isFinite(slsPackingTotal) ? slsPackingTotal : 0)
   })()
@@ -236,7 +238,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
   const slsSummaryRows: SlsSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(slsTotalInrValue, displayCurrency), bold: true },
   ]
-  if (slsPackingChargeEnabled) {
+  if (slsPackingValuePresent) {
     slsSummaryRows.push({
       label: 'Packing Charges',
       value: formatCurrency(slsSafe(slsPackingTotal), displayCurrency),

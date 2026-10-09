@@ -259,39 +259,52 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
         ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
-    const blendCategory = firstField([item], 'Blend_Category')
+    const blendCategory = firstField([item, ext3, productDetail], 'Blend_Category')
     const endType = firstField([ext3, item, productDetail], 'End_Type')
     /** Zoho `Material_Code` only — same row precedence as HSN on this template. */
     const materialCode = firstField([item, ext3, ext3Cat2, productDetail, cat2ProductDetail], 'Material_Code')
+
+    // Dimensions — Category 1 WMW carries these on `item` (the `_2_0` row);
+    // Category 2 WMW carries them on `productDetail` (the main product
+    // row) instead. Check both so either family's data is picked up.
+    const invoiceDim1 = item.Invoice_Dimension_1 || productDetail.Invoice_Dimension_1
+    const invoiceDim2 = item.Invoice_Dimension_2 || productDetail.Invoice_Dimension_2
 
     let size = ''
     const len = String(productDetail.Length_field ?? '').trim()
     const wid = String(productDetail.Width ?? '').trim()
     if (len && wid) {
       size = `${len} x ${wid}`
-    } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
+    } else if (invoiceDim1 && invoiceDim2) {
       const extractNumber = (str: string) => {
         const match = str.match(/(\d+\.?\d*)/)
         return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
       }
-      const dim1 = extractNumber(item.Invoice_Dimension_1)
-      const dim2 = extractNumber(item.Invoice_Dimension_2)
+      const dim1 = extractNumber(invoiceDim1)
+      const dim2 = extractNumber(invoiceDim2)
       size = `${dim1} x ${dim2}`
     }
 
     const sqmArea = resolveGoodsSqmArea({
-      invoiceDimension1: item.Invoice_Dimension_1,
-      invoiceDimension2: item.Invoice_Dimension_2,
+      invoiceDimension1: invoiceDim1,
+      invoiceDimension2: invoiceDim2,
       lengthField: productDetail.Length_field,
       width: productDetail.Width,
       sizeDisplay: size,
     })
-    const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    // Rate — direct 1:1 map to Zoho
-    // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
-    // `ext3` is already the correct row (joined by last_item_ref).
-    // No fallback: blank / non-numeric field → NaN → empty cell.
-    const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
+    // Quantity — maps to `Total_UOM_Billing` on the linked `_3_0` row (`ext3`:
+    // `Category_1_MM_Database_WMW_3_0[i]` or `Category_2_MM_Database_WMW_3_0[i]`
+    // depending on family), falling back to the main row / `_2_0` Qty when absent.
+    const quantity = parseFloat(
+      String(ext3?.Total_UOM_Billing ?? '').trim() || productDetail.Qty?.trim() || item.Qty?.trim() || '0'
+    )
+    // Rate — Category 1 WMW: `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`
+    // (`ext3`, joined by last_item_ref). Category 2 WMW's `_3_0` row has no
+    // such field — its rate lives on `item.Selling_Price` (the `_2_0` row)
+    // instead, so check that as a fallback. No fallback beyond these two.
+    const sellingPriceUomBilling = String(
+      ext3?.Selling_Price_UOM_Billing ?? item?.Selling_Price ?? ''
+    ).replace(/,/g, '').trim()
     const rate = sellingPriceUomBilling ? (parseFloat(sellingPriceUomBilling) || NaN) : NaN
     const totalPriceRaw = productDetail.Total_Price
     const totalPriceParsed =
