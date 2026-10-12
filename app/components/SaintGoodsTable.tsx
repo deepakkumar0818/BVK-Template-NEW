@@ -1001,6 +1001,11 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
               <tr>
                 <td colSpan={4} style={{ ...bd, borderTop: 'none', padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
                   <div>{saintTransportSummaryLine}</div>
+                  {String(rawQuotationData?.Transport_Under_section ?? '').trim() ? (
+                    <div style={{ marginTop: '6px', fontSize: '9px' }}>
+                      ( {String(rawQuotationData?.Transport_Under_section ?? '').trim()} )
+                    </div>
+                  ) : null}
                 </td>
                 {/* <td style={{ ...bd, borderTop: 'none' }} /> */}
               </tr>
