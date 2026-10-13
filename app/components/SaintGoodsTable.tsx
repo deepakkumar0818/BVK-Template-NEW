@@ -204,8 +204,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
     const productDetail = itemRef
       ? rawProductDetails.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || rawProductDetails[index] || {}
+        (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+      ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
     const rows3Linked = toRowArray(
@@ -216,8 +216,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const ext3 =
       (itemRef
         ? rows3Linked.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+        )
         : undefined) || rows3Linked[index]
 
     // 4.0 extras — per-line `Remarks1` (under Quantity) and `Remarks2`
@@ -234,8 +234,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
       rows4Linked.find((x: any) => String(x?.Line_ref ?? '').trim() === lineRefStr) ||
       (itemRef
         ? rows4Linked.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+        )
         : undefined) ||
       rows4Linked[index]
     const remarks1 = String(ext4?.Remarks1 ?? '').trim()
@@ -246,8 +246,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const ext3Cat2 =
       (itemRef
         ? rows3Cat2Linked.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+        )
         : undefined) ||
       rows3Cat2Linked.find((x: any) => String(x?.Line_Item_ref ?? '').trim() === lineItemRef) ||
       rows3Cat2Linked[index]
@@ -255,8 +255,8 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const cat2WmwMainRows = toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW)
     const cat2ProductDetail = itemRef
       ? cat2WmwMainRows.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || cat2WmwMainRows[index] || {}
+        (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+      ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
     const blendCategory = firstField([item, ext3, productDetail], 'Blend_Category')
@@ -582,306 +582,306 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
         // overflow risk.
         const itemRowPadY = '23px'
         return (
-      <div
-        key={`saint-page-${pageIdx}`}
-        className={`quotation-goods-pages-segment saint-nonlast-fill ${!isLastChunk ? 'quotation-goods-pages-break' : ''}`}
-        style={{
-          pageBreakInside: 'avoid',
-          marginTop: pageIdx > 0 ? '-1px' : '0',
-          // ALWAYS stretch segment to fill the tbody's per-page area
-          // (both last and non-last chunks) so the goods table's
-          // bottom border always reaches the printable-area bottom
-          // — regardless of item count. `min-height: calc(100vh - 22mm)`
-          // accounts for top padding + safety buffer. Combined with
-          // the `.saint-nonlast-fill .saint-goods-fill-row` and
-          // `.saint-nonlast-fill .saint-tail-fill-row` chains in
-          // globals.css, the bordered filler <tr> absorbs leftover
-          // space (non-last: bottom filler; last: pre-tail filler
-          // that pushes the tail rows down).
-          minHeight: 'calc(100vh - 22mm)',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <div
-          className="quotation-seamless-stack"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
-        >
-          {headerNode}
-
-          <table
-            className="goods-description-table quotation-stack-table"
+          <div
+            key={`saint-page-${pageIdx}`}
+            className={`quotation-goods-pages-segment saint-nonlast-fill ${!isLastChunk ? 'quotation-goods-pages-break' : ''}`}
             style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              border: '1px solid #000',
-              // Remove top border — header table already draws its
-              // own bottom border, so both stacked 1px borders were
-              // adding up to a "bold" 2px seam line.
-              borderTop: 'none',
-              marginTop: 0,
-              tableLayout: 'fixed',
-              fontSize: '11px',
-              flex: 1,
-              height: '100%',
+              pageBreakInside: 'avoid',
+              marginTop: pageIdx > 0 ? '-1px' : '0',
+              // ALWAYS stretch segment to fill the tbody's per-page area
+              // (both last and non-last chunks) so the goods table's
+              // bottom border always reaches the printable-area bottom
+              // — regardless of item count. `min-height: calc(100vh - 22mm)`
+              // accounts for top padding + safety buffer. Combined with
+              // the `.saint-nonlast-fill .saint-goods-fill-row` and
+              // `.saint-nonlast-fill .saint-tail-fill-row` chains in
+              // globals.css, the bordered filler <tr> absorbs leftover
+              // space (non-last: bottom filler; last: pre-tail filler
+              // that pushes the tail rows down).
+              minHeight: 'calc(100vh - 22mm)',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            {/* Column widths mirror Everite. Everite splits its Description
+            <div
+              className="quotation-seamless-stack"
+              style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+            >
+              {headerNode}
+
+              <table
+                className="goods-description-table quotation-stack-table"
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  border: '1px solid #000',
+                  // Remove top border — header table already draws its
+                  // own bottom border, so both stacked 1px borders were
+                  // adding up to a "bold" 2px seam line.
+                  borderTop: 'none',
+                  marginTop: 0,
+                  tableLayout: 'fixed',
+                  fontSize: '11px',
+                  flex: 1,
+                  height: '100%',
+                }}
+              >
+                {/* Column widths mirror Everite. Everite splits its Description
              * of Goods across two <col> (22% + 28%); here it's a single
              * column, so those two are combined to 50%. The remaining four
              * columns (HSN 12% / Qty 13% / Rate 12% / Amount 13%) match
              * Everite exactly. */}
-            <colgroup>
-              <col style={{ width: '50%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '13%' }} />
-            </colgroup>
-            <tbody>
-              <tr>
-                <td style={{ ...bd, padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                  Description of Goods
-                </td>
-                <td style={{ ...bd, padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                  HSN Code
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                  Quantity / UOM
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                  Rate<br />{currencySymbol} / UOM
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                  Amount {currencySymbol}
-                </td>
-              </tr>
+                <colgroup>
+                  <col style={{ width: '50%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '13%' }} />
+                </colgroup>
+                <tbody>
+                  <tr>
+                    <td style={{ ...bd, padding: '12px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Description of Goods
+                    </td>
+                    <td style={{ ...bd, padding: '6px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                      HSN Code
+                    </td>
+                    <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Quantity / UOM
+                    </td>
+                    <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Rate<br />{currencySymbol} / UOM
+                    </td>
+                    <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      Amount {currencySymbol}
+                    </td>
+                  </tr>
 
-              {chunkItems.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ ...contentBdSides, padding: '8px 10px', textAlign: 'center' }}>
-                    No line items
-                  </td>
-                </tr>
-              ) : (
-                (() => {
-                  // Per-item diff render:
-                  //   - Product renders once at top of chunk AND
-                  //     whenever `product` differs from previous item
-                  //   - Form + Quality re-render whenever product,
-                  //     form, or quality differs from previous item
-                  //   - "Trial Batch" title shown only on the FIRST
-                  //     item of the chunk
-                  //   - Item sub-header (Item/Mesh/Brand/\u2026) renders
-                  //     ONCE per chunk before the very first item
-                  let prevProduct: string | undefined
-                  let prevForm: string | undefined
-                  let prevQuality: string | undefined
-                  return chunkItems.map((row, itemIdx) => {
-                    const productLabel = (row.product || '').trim()
-                    const formLabel = (row.form || '').trim()
-                    const qualityLabel = (row.quality || '').trim()
+                  {chunkItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ ...contentBdSides, padding: '8px 10px', textAlign: 'center' }}>
+                        No line items
+                      </td>
+                    </tr>
+                  ) : (
+                    (() => {
+                      // Per-item diff render:
+                      //   - Product renders once at top of chunk AND
+                      //     whenever `product` differs from previous item
+                      //   - Form + Quality re-render whenever product,
+                      //     form, or quality differs from previous item
+                      //   - "Trial Batch" title shown only on the FIRST
+                      //     item of the chunk
+                      //   - Item sub-header (Item/Mesh/Brand/\u2026) renders
+                      //     ONCE per chunk before the very first item
+                      let prevProduct: string | undefined
+                      let prevForm: string | undefined
+                      let prevQuality: string | undefined
+                      return chunkItems.map((row, itemIdx) => {
+                        const productLabel = (row.product || '').trim()
+                        const formLabel = (row.form || '').trim()
+                        const qualityLabel = (row.quality || '').trim()
 
-                    const productChanged = itemIdx === 0 || productLabel !== prevProduct
-                    const formOrQualityChanged =
-                      itemIdx === 0 ||
-                      formLabel !== prevForm ||
-                      qualityLabel !== prevQuality
+                        const productChanged = itemIdx === 0 || productLabel !== prevProduct
+                        const formOrQualityChanged =
+                          itemIdx === 0 ||
+                          formLabel !== prevForm ||
+                          qualityLabel !== prevQuality
 
-                    const emitProduct = productChanged
-                    const emitFormQuality = productChanged || formOrQualityChanged
+                        const emitProduct = productChanged
+                        const emitFormQuality = productChanged || formOrQualityChanged
 
-                    prevProduct = productLabel
-                    prevForm = formLabel
-                    prevQuality = qualityLabel
+                        prevProduct = productLabel
+                        prevForm = formLabel
+                        prevQuality = qualityLabel
 
-                    return (
-                      <Fragment key={`saint-item-${itemIdx}`}>
-                        {emitProduct ? (
-                          <tr>
-                            <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
-                              {itemIdx === 0 ? (
-                                <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
-                                  Trial Batch
-                                </div>
-                              ) : null}
-                              <div style={{ ...metaGrid, marginBottom: 0 }}>
-                                <span>Product</span>
-                                <span>:</span>
-                                <span>
-                                  {productLabel || ' '}
-                                  {productDescription ? ` ${productDescription}` : ''}
-                                </span>
-                              </div>
-                            </td>
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                          </tr>
-                        ) : null}
+                        return (
+                          <Fragment key={`saint-item-${itemIdx}`}>
+                            {emitProduct ? (
+                              <tr>
+                                <td style={{ ...contentBdSides, padding: '8px 10px 0px 10px', verticalAlign: 'top' }}>
+                                  {itemIdx === 0 ? (
+                                    <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>
+                                      {String(rawQuotationData?.Trial_Batch ?? '').trim()}
+                                    </div>
+                                  ) : null}
+                                  <div style={{ ...metaGrid, marginBottom: 0 }}>
+                                    <span>Product</span>
+                                    <span>:</span>
+                                    <span>
+                                      {productLabel || ' '}
+                                      {productDescription ? ` ${productDescription}` : ''}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                              </tr>
+                            ) : null}
 
-                        {emitFormQuality ? (
-                          <tr>
-                            <td style={{ ...contentBdSides, padding: '4px 10px 0px 10px', verticalAlign: 'top' }}>
-                              <div style={{ ...metaGrid }}>
-                                <span>Form</span>
-                                <span>:</span>
-                                <span>{formLabel || ' '}</span>
-                              </div>
-                              <div style={{ ...metaGrid, marginBottom: '8px' }}>
-                                <span>Quality</span>
-                                <span>:</span>
-                                <span>{qualityLabel || ' '}</span>
-                              </div>
-                            </td>
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                          </tr>
-                        ) : null}
+                            {emitFormQuality ? (
+                              <tr>
+                                <td style={{ ...contentBdSides, padding: '4px 10px 0px 10px', verticalAlign: 'top' }}>
+                                  <div style={{ ...metaGrid }}>
+                                    <span>Form</span>
+                                    <span>:</span>
+                                    <span>{formLabel || ' '}</span>
+                                  </div>
+                                  <div style={{ ...metaGrid, marginBottom: '8px' }}>
+                                    <span>Quality</span>
+                                    <span>:</span>
+                                    <span>{qualityLabel || ' '}</span>
+                                  </div>
+                                </td>
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                              </tr>
+                            ) : null}
 
-                        {itemIdx === 0 ? (
-                          <tr>
-                            <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
-                              <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
-                                <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
-                                <span style={descGridCell}>Mesh</span>
-                                <span style={descGridCell}>Brand</span>
-                                <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, lineHeight: 1.25 }}>
-                                  Size [m] (L x W)
-                                </span>
-                                <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
-                              </div>
-                            </td>
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                            <td style={contentBdSides} />
-                          </tr>
-                        ) : null}
+                            {itemIdx === 0 ? (
+                              <tr>
+                                <td style={{ ...contentBdSides, ...descGridTdWrap, padding: '0px 10px 6px 10px' }}>
+                                  <div style={{ ...descGrid, fontWeight: 'bold', fontSize: '10px' }}>
+                                    <span style={{ ...descGridCell, textAlign: 'center' }}>Item</span>
+                                    <span style={descGridCell}>Mesh</span>
+                                    <span style={descGridCell}>Brand</span>
+                                    <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, lineHeight: 1.25 }}>
+                                      Size [m] (L x W)
+                                    </span>
+                                    <span style={{ ...descGridCell, lineHeight: 1.25, textAlign: 'right' }}>Sqm Area / PC</span>
+                                  </div>
+                                </td>
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                                <td style={contentBdSides} />
+                              </tr>
+                            ) : null}
 
-                        <tr key={`saint-line-${itemIdx}`}>
-                          <td style={{ ...contentBdSides, ...descGridTdWrap, padding: `${itemRowPadY} 10px` }}>
-                              {quotationScalarFieldPresent(row.remarks) ? (
-                                <div
-                                  style={{
-                                    ...descGrid,
-                                    fontSize: '11px',
-                                    gridTemplateRows: 'auto auto',
-                                    rowGap: '4px',
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      ...descGridCell,
-                                      gridColumn: 1,
-                                      gridRow: 1,
-                                      textAlign: 'center',
-                                      fontWeight: 'bold',
-                                    }}
-                                  >
-                                    {row.item}
-                                  </span>
-                                  <span
-                                    style={{
-                                      ...descGridCell,
-                                      gridColumn: 2,
-                                      gridRow: 1,
-                                      fontWeight: 'bold',
-                                    }}
-                                  >
-                                    {row.mesh || '\u00A0'}
-                                  </span>
-                                  <span
-                                    style={{
-                                      ...descGridCell,
-                                      gridColumn: 3,
-                                      gridRow: 1,
-                                      fontWeight: 'bold',
-                                      fontSize: '10px',
-                                    }}
-                                  >
-                                    {row.brand || '\u00A0'}
-                                  </span>
-                                  <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, gridColumn: 4, gridRow: 1 }}>
-                                    {row.size || '\u00A0'}
-                                  </span>
-                                  <span
-                                    style={{
-                                      ...descGridCell,
-                                      gridColumn: 5,
-                                      gridRow: 1,
-                                      textAlign: 'right',
-                                    }}
-                                  >
-                                    {row.sqmArea || '\u00A0'}
-                                  </span>
+                            <tr key={`saint-line-${itemIdx}`}>
+                              <td style={{ ...contentBdSides, ...descGridTdWrap, padding: `${itemRowPadY} 10px` }}>
+                                {quotationScalarFieldPresent(row.remarks) ? (
                                   <div
                                     style={{
-                                      gridColumn: '2 / 5',
-                                      gridRow: 2,
-                                      minWidth: 0,
-                                      fontSize: '10px',
-                                      fontWeight: 'normal',
-                                      lineHeight: 1.45,
-                                      textAlign: 'left',
-                                      whiteSpace: 'pre-wrap',
-                                      overflowWrap: 'break-word',
-                                      wordBreak: 'break-word',
+                                      ...descGrid,
+                                      fontSize: '11px',
+                                      gridTemplateRows: 'auto auto',
+                                      rowGap: '4px',
                                     }}
                                   >
-                                    {String(row.remarks).trim()}
+                                    <span
+                                      style={{
+                                        ...descGridCell,
+                                        gridColumn: 1,
+                                        gridRow: 1,
+                                        textAlign: 'center',
+                                        fontWeight: 'bold',
+                                      }}
+                                    >
+                                      {row.item}
+                                    </span>
+                                    <span
+                                      style={{
+                                        ...descGridCell,
+                                        gridColumn: 2,
+                                        gridRow: 1,
+                                        fontWeight: 'bold',
+                                      }}
+                                    >
+                                      {row.mesh || '\u00A0'}
+                                    </span>
+                                    <span
+                                      style={{
+                                        ...descGridCell,
+                                        gridColumn: 3,
+                                        gridRow: 1,
+                                        fontWeight: 'bold',
+                                        fontSize: '10px',
+                                      }}
+                                    >
+                                      {row.brand || '\u00A0'}
+                                    </span>
+                                    <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine, gridColumn: 4, gridRow: 1 }}>
+                                      {row.size || '\u00A0'}
+                                    </span>
+                                    <span
+                                      style={{
+                                        ...descGridCell,
+                                        gridColumn: 5,
+                                        gridRow: 1,
+                                        textAlign: 'right',
+                                      }}
+                                    >
+                                      {row.sqmArea || '\u00A0'}
+                                    </span>
+                                    <div
+                                      style={{
+                                        gridColumn: '2 / 5',
+                                        gridRow: 2,
+                                        minWidth: 0,
+                                        fontSize: '10px',
+                                        fontWeight: 'normal',
+                                        lineHeight: 1.45,
+                                        textAlign: 'left',
+                                        whiteSpace: 'pre-wrap',
+                                        overflowWrap: 'break-word',
+                                        wordBreak: 'break-word',
+                                      }}
+                                    >
+                                      {String(row.remarks).trim()}
+                                    </div>
                                   </div>
-                                </div>
-                              ) : (
-                                <div style={{ ...descGrid, fontSize: '11px' }}>
-                                  <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
-                                  <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
-                                  <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '10px' }}>{row.brand || '\u00A0'}</span>
-                                  <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine }}>{row.size || '\u00A0'}</span>
-                                  <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
-                                </div>
-                              )}
-                            </td>
-                            <td
-                              style={{
-                                ...contentBdSides,
-                                padding: `${itemRowPadY} 8px`,
-                                textAlign: 'center',
-                                verticalAlign: 'top',
-                                fontWeight: 'bold',
-                                fontSize: '11px',
-                                lineHeight: 1.35,
-                                wordBreak: 'break-word',
-                              }}
-                            >
-                              {row.hsnCode || ''}
-                            </td>
-                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 8px`, textAlign: 'center', verticalAlign: 'top' }}>
-                              {renderQtyUomCell(row.quantity || '', row.uom)}
-                              {row.remarks1 ? (
-                                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px', textAlign: 'center' }}>{row.remarks1}</div>
-                              ) : null}
-                            </td>
-                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
-                              <div>{Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}</div>
-                              {row.remarks2 ? (
-                                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px' }}>{row.remarks2}</div>
-                              ) : null}
-                            </td>
-                            <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
-                              {formatCurrency(row.amount, currency)}
-                            </td>
-                        </tr>
-                      </Fragment>
-                    )
-                  })
-                })()
-              )}
+                                ) : (
+                                  <div style={{ ...descGrid, fontSize: '11px' }}>
+                                    <span style={{ ...descGridCell, textAlign: 'center', fontWeight: 'bold' }}>{row.item}</span>
+                                    <span style={{ ...descGridCell, fontWeight: 'bold' }}>{row.mesh || '\u00A0'}</span>
+                                    <span style={{ ...descGridCell, fontWeight: 'bold', fontSize: '10px' }}>{row.brand || '\u00A0'}</span>
+                                    <span style={{ ...descGridCell, ...goodsDescGridSizeSpanOneLine }}>{row.size || '\u00A0'}</span>
+                                    <span style={{ ...descGridCell, textAlign: 'right' }}>{row.sqmArea || '\u00A0'}</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td
+                                style={{
+                                  ...contentBdSides,
+                                  padding: `${itemRowPadY} 8px`,
+                                  textAlign: 'center',
+                                  verticalAlign: 'top',
+                                  fontWeight: 'bold',
+                                  fontSize: '11px',
+                                  lineHeight: 1.35,
+                                  wordBreak: 'break-word',
+                                }}
+                              >
+                                {row.hsnCode || ''}
+                              </td>
+                              <td style={{ ...contentBdSides, padding: `${itemRowPadY} 8px`, textAlign: 'center', verticalAlign: 'top' }}>
+                                {renderQtyUomCell(row.quantity || '', row.uom)}
+                                {row.remarks1 ? (
+                                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px', textAlign: 'center' }}>{row.remarks1}</div>
+                                ) : null}
+                              </td>
+                              <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
+                                <div>{Number.isFinite(row.rate) ? formatCurrency(row.rate, currency) : ''}</div>
+                                {row.remarks2 ? (
+                                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '9px', marginTop: '2px' }}>{row.remarks2}</div>
+                                ) : null}
+                              </td>
+                              <td style={{ ...contentBdSides, padding: `${itemRowPadY} 10px`, textAlign: 'center', verticalAlign: 'top' }}>
+                                {formatCurrency(row.amount, currency)}
+                              </td>
+                            </tr>
+                          </Fragment>
+                        )
+                      })
+                    })()
+                  )}
 
-              {/* Non-last chunk: emit a tall "fill" spacer row so the
+                  {/* Non-last chunk: emit a tall "fill" spacer row so the
                * vertical column borders keep going to the bottom of
                * the printable area, and the page reads as fully
                * framed instead of cutting off mid-page. Empty <td>s
@@ -890,195 +890,195 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                * bottom on A4 with the current header/footer sizes
                * but stays below the page-break threshold so the
                * segment's `page-break-inside: avoid` still fits. */}
-              {!isLastChunk && (
-                <tr className="saint-goods-fill-row">
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                </tr>
-              )}
+                  {!isLastChunk && (
+                    <tr className="saint-goods-fill-row">
+                      <td style={contentBdSides} />
+                      <td style={contentBdSides} />
+                      <td style={contentBdSides} />
+                      <td style={contentBdSides} />
+                      <td style={contentBdSides} />
+                    </tr>
+                  )}
 
-              {isLastChunk && (
-              <>
-              {/* Export Remarks (Zoho `Export_Remarks`) — printed
+                  {isLastChunk && (
+                    <>
+                      {/* Export Remarks (Zoho `Export_Remarks`) — printed
                * directly BELOW the item rows (before the pre-tail
                * filler / tail block). Text lives in the first
                * (Description) column; the remaining 4 cells stay as
                * empty <td>s with contentBdSides so the vertical
                * column dividers keep running through this row. Row
                * hides when field is empty. */}
-              {showExportRemarks ? (
-                <tr>
-                  <td style={{ ...contentBdSides, padding: '6px 10px', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
-                    {exportRemarks}
-                  </td>
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                  <td style={contentBdSides} />
-                </tr>
-              ) : null}
+                      {showExportRemarks ? (
+                        <tr>
+                          <td style={{ ...contentBdSides, padding: '6px 10px', fontSize: '11px', whiteSpace: 'pre-wrap' }}>
+                            {exportRemarks}
+                          </td>
+                          <td style={contentBdSides} />
+                          <td style={contentBdSides} />
+                          <td style={contentBdSides} />
+                          <td style={contentBdSides} />
+                        </tr>
+                      ) : null}
 
-              {/* Dynamic pre-tail filler — grows via a
+                      {/* Dynamic pre-tail filler — grows via a
                * `height: 100%` chain (see .saint-tail-fill-row in
                * globals.css). Outer wrap table's height is set to
                * `calc(100vh - 27mm)` (100vh minus 15mm top padding
                * minus 12mm @page bottom margin) so Chrome allocates
                * exactly the printable area to the table and
                * correctly reserves the tfoot at the bottom. */}
-              <tr className="saint-tail-fill-row">
-                <td style={{ ...contentBdSides }}>&nbsp;</td>
-                <td style={contentBdSides} />
-                <td style={contentBdSides} />
-                <td style={contentBdSides} />
-                <td style={contentBdSides} />
-              </tr>
+                      <tr className="saint-tail-fill-row">
+                        <td style={{ ...contentBdSides }}>&nbsp;</td>
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                        <td style={contentBdSides} />
+                      </tr>
 
-              <tr>
-                <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
-                  Subtotal
-                </td>
-                <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                  {formatCurrency(baseAmount, currency)}
-                </td>
-              </tr>
+                      <tr>
+                        <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                          Subtotal
+                        </td>
+                        <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                          {formatCurrency(baseAmount, currency)}
+                        </td>
+                      </tr>
 
-              {/* Export Discount (red) — % of line-item total, subtracts from grand total. */}
-              {exportDiscountEnabled ? (
-                <tr>
-                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
-                    {exportDiscountLabel}
-                  </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold', color: '#c00000' }}>
-                    {formatCurrency(exportDiscountAmt, currency)}
-                  </td>
-                </tr>
-              ) : null}
+                      {/* Export Discount (red) — % of line-item total, subtracts from grand total. */}
+                      {exportDiscountEnabled ? (
+                        <tr>
+                          <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold', color: '#c00000' }}>
+                            {exportDiscountLabel}
+                          </td>
+                          <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold', color: '#c00000' }}>
+                            {formatCurrency(exportDiscountAmt, currency)}
+                          </td>
+                        </tr>
+                      ) : null}
 
-              {/* Transaction / Miscellaneous / Export Packing — flat-amount
+                      {/* Transaction / Miscellaneous / Export Packing — flat-amount
                * charges, each toggle-gated. Added to the grand total via
                * `finalGrandTotal` above. */}
-              {transactionChargeEnabled ? (
-                <tr>
-                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
-                    {transactionChargeLabel}
-                  </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                    {formatCurrency(transactionChargeAmt, currency)}
-                  </td>
-                </tr>
-              ) : null}
+                      {transactionChargeEnabled ? (
+                        <tr>
+                          <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                            {transactionChargeLabel}
+                          </td>
+                          <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                            {formatCurrency(transactionChargeAmt, currency)}
+                          </td>
+                        </tr>
+                      ) : null}
 
-              {miscChargeEnabled ? (
-                <tr>
-                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
-                    {miscChargeLabel}
-                  </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                    {formatCurrency(miscChargeAmt, currency)}
-                  </td>
-                </tr>
-              ) : null}
+                      {miscChargeEnabled ? (
+                        <tr>
+                          <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                            {miscChargeLabel}
+                          </td>
+                          <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                            {formatCurrency(miscChargeAmt, currency)}
+                          </td>
+                        </tr>
+                      ) : null}
 
-              {exportPackingEnabled ? (
-                <tr>
-                  <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
-                    {exportPackingLabel}
-                  </td>
-                  <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
-                    {formatCurrency(exportPackingAmt, currency)}
-                  </td>
-                </tr>
-              ) : null}
+                      {exportPackingEnabled ? (
+                        <tr>
+                          <td colSpan={4} style={{ ...bd, padding: '4px 10px', textAlign: 'right', fontWeight: 'bold' }}>
+                            {exportPackingLabel}
+                          </td>
+                          <td style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                            {formatCurrency(exportPackingAmt, currency)}
+                          </td>
+                        </tr>
+                      ) : null}
 
-              <tr>
-                <td colSpan={4} style={{ ...bd, borderBottom: 'none', padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
-                <td style={{ ...bd, borderBottom: 'none' }} />
-              </tr>
+                      <tr>
+                        <td colSpan={4} style={{ ...bd, borderBottom: 'none', padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
+                        <td style={{ ...bd, borderBottom: 'none' }} />
+                      </tr>
 
-              <tr>
-                <td colSpan={4} style={{ ...bd, borderTop: 'none', padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
-                  <div>{saintTransportSummaryLine}</div>
-                  {String(rawQuotationData?.Transport_Under_section ?? '').trim() ? (
-                    <div style={{ marginTop: '6px', fontSize: '9px' }}>
-                      ( {String(rawQuotationData?.Transport_Under_section ?? '').trim()} )
-                    </div>
-                  ) : null}
-                </td>
-                {/* <td style={{ ...bd, borderTop: 'none' }} /> */}
-              </tr>
+                      <tr>
+                        <td colSpan={4} style={{ ...bd, borderTop: 'none', padding: '16px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                          <div>{saintTransportSummaryLine}</div>
+                          {String(rawQuotationData?.Transport_Under_section ?? '').trim() ? (
+                            <div style={{ marginTop: '6px', fontSize: '9px' }}>
+                              ( {String(rawQuotationData?.Transport_Under_section ?? '').trim()} )
+                            </div>
+                          ) : null}
+                        </td>
+                        {/* <td style={{ ...bd, borderTop: 'none' }} /> */}
+                      </tr>
 
-              <tr>
-                <td colSpan={3} style={{ ...bd, padding: '6px 10px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
-                  {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
-                  {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
-                </td>
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
-                  {currencySymbol}
-                </td>
-                {/* Grand total figure — same number as the "Total:-" row
+                      <tr>
+                        <td colSpan={3} style={{ ...bd, padding: '6px 10px', fontSize: '10px', whiteSpace: 'pre-wrap' }}>
+                          {/* Notes: value comes from Zoho `Inside_Quotation_Text` verbatim, no fallback. */}
+                          {String(rawQuotationData?.Inside_Quotation_Text ?? '').trim()}
+                        </td>
+                        <td style={{ ...bd, padding: '6px 10px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
+                          {currencySymbol}
+                        </td>
+                        {/* Grand total figure — same number as the "Total:-" row
                  * below (finalGrandTotal). Was empty before, so USD had no
                  * value next to it. */}
-                <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
-                  <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
-                </td>
-              </tr>
+                        <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
+                        </td>
+                      </tr>
 
-              <tr>
-                <td colSpan={4} style={{ border: '1px solid #000', padding: 0 }}>
-                  <div style={{ display: 'flex', width: '100%', minHeight: '44px' }}>
-                    <div
-                      style={{
-                        width: '150px',
-                        borderRight: '1px solid #000',
-                        padding: '6px 10px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <span style={{ fontWeight: 'bold', fontSize: '10px', lineHeight: 1.2 }}>Amount Chargeable</span>
-                      <span style={{ fontWeight: 'bold', fontSize: '10px', lineHeight: 1.2 }}>(In words) :</span>
-                    </div>
-                    <div
-                      style={{
-                        flex: 1,
-                        padding: '6px 10px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <span style={{ fontWeight: 'bold', fontSize: '12px' }}>
-                        {amountChargeableInWords}
-                      </span>
-                      <span style={{ fontWeight: 'bold', fontSize: '13px' }}>Total:-</span>
-                    </div>
-                  </div>
-                </td>
-                <td
-                  style={{
-                    ...bd,
-                    padding: '8px 10px',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    fontSize: '14px',
-                    verticalAlign: 'middle',
-                  }}
-                >
-                  <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, currency)}</span>
-                </td>
-              </tr>
-              </>
-              )}
-            </tbody>
-          </table>
+                      <tr>
+                        <td colSpan={4} style={{ border: '1px solid #000', padding: 0 }}>
+                          <div style={{ display: 'flex', width: '100%', minHeight: '44px' }}>
+                            <div
+                              style={{
+                                width: '150px',
+                                borderRight: '1px solid #000',
+                                padding: '6px 10px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <span style={{ fontWeight: 'bold', fontSize: '10px', lineHeight: 1.2 }}>Amount Chargeable</span>
+                              <span style={{ fontWeight: 'bold', fontSize: '10px', lineHeight: 1.2 }}>(In words) :</span>
+                            </div>
+                            <div
+                              style={{
+                                flex: 1,
+                                padding: '6px 10px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <span style={{ fontWeight: 'bold', fontSize: '12px' }}>
+                                {amountChargeableInWords}
+                              </span>
+                              <span style={{ fontWeight: 'bold', fontSize: '13px' }}>Total:-</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td
+                          style={{
+                            ...bd,
+                            padding: '8px 10px',
+                            textAlign: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, currency)}</span>
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
 
-          {isLastChunk && footerNode}
-        </div>
-      </div>
+              {isLastChunk && footerNode}
+            </div>
+          </div>
         )
       })}
     </div>
