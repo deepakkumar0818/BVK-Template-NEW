@@ -143,12 +143,13 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     totalBeforeTax: bvkTotalBeforeTax,
     totalAfterTax: bvkTotalAfterTax,
   } = parseQuotationTaxForSummary(rawQuotationData, bvkLineItemsTotalFallback)
-  // Packing gate — moved above `bvkGrandTotal` so the grand-total math
-  // can subtract packing when the toggle is off (matches SLS behaviour).
-  const bvkPackingChargeChecked = (() => {
-    const v = rawQuotationData?.Packing_Charge
-    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
-  })()
+  // Packing Charges row + its contribution to the grand total are gated on
+  // an actual packing VALUE being present — independent of the "Packing:"
+  // narrative line's own toggle check below. When there's no value, the
+  // row is hidden AND nothing is subtracted (Zoho's rolled-up total has
+  // nothing to subtract in that case anyway). Declared above `bvkGrandTotal`
+  // so the total math can react to it too.
+  const bvkPackingValuePresent = Number.isFinite(bvkPackingTotal) && bvkPackingTotal !== 0
   const bvkGrandTotal = (() => {
     const fromZoho = parseOverallGrandTotalInclAccessories(
       rawQuotationData as Record<string, unknown> | null | undefined
@@ -157,8 +158,8 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
       ? fromZoho
       : (Number.isFinite(bvkTotalAfterTax) ? bvkTotalAfterTax : bvkLineItemsTotalFallback)
     // Zoho's rolled-up total already includes packing. Subtract it back
-    // out when the packing toggle is off so summary row + total agree.
-    return bvkPackingChargeChecked
+    // out when there's no packing value so summary row + total agree.
+    return bvkPackingValuePresent
       ? base
       : base - (Number.isFinite(bvkPackingTotal) ? bvkPackingTotal : 0)
   })()
@@ -209,14 +210,16 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const bvkGstNoticeText = bvkGstIncluded
     ? `${bvkGstIncludedRate}% GST Included`
     : '18% GST will be applicable extra.'
+  // "Total <currency>" row — direct 1:1 map to Zoho `Total_Net_Sale_Value_Before_Tax`. No fallback.
+  const bvkTotalInrValue = (() => {
+    const n = parseFloat(String(rawQuotationData?.Total_Net_Sale_Value_Before_Tax ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  })()
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
-  // Packing Charges row is shown only when `bvkPackingChargeChecked` is
-  // true (declared above, above `bvkGrandTotal` so the total math can
-  // also react to the toggle).
   const bvkSummaryRows: BvkSummaryRow[] = [
-    { label: `Total ${displayCurrency}`, value: formatCurrency(bvkGrandTotal, displayCurrency), bold: true },
+    { label: `Total ${displayCurrency}`, value: formatCurrency(bvkTotalInrValue, displayCurrency), bold: true },
   ]
-  if (bvkPackingChargeChecked) {
+  if (bvkPackingValuePresent) {
     bvkSummaryRows.push({
       label: 'Packing Charges',
       value: formatCurrency(bvkSafe(bvkPackingTotal), displayCurrency),
@@ -629,12 +632,12 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
 
                 {/* Terms and Conditions Section */}
                 <div style={{ marginBottom: '20px' }}>
-                  <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
-                  
                   {/* All items not mentioned */}
                   <div style={{ marginBottom: '12px', marginLeft: '20px' }}>
                     All items not mentioned, insurance, Taxes & Duties, Freight, Demurrage, Detention charges.
                   </div>
+
+                  <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
 
                   {/* Transit Insurance — from Zoho `Transit_Insurance`; skip when empty.
                    * `whiteSpace: pre-wrap` preserves line breaks + spacing exactly as typed. */}
