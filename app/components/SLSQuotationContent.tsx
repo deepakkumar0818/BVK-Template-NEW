@@ -169,12 +169,6 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     String((rawQuotationData as Record<string, unknown> | undefined)?.Type_Of_Quotation ?? '')
       .trim()
       .toLowerCase() === 'export'
-  // "Normal Box packing included/excluded..." narrative line stays tied to
-  // Zoho's `Packing_Charge` toggle (true/"true").
-  const slsPackingChargeEnabled = (() => {
-    const v = (rawQuotationData as Record<string, unknown> | undefined)?.Packing_Charge
-    return v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
-  })()
   // Packing Charges row + its contribution to the grand total are gated on
   // an actual packing VALUE being present — independent of the toggle above.
   // When there's no value, the row is hidden AND nothing is subtracted (Zoho's
