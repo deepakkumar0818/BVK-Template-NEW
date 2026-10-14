@@ -2,6 +2,16 @@
  * Consignee / shipped-to display from Zoho shipping master + quotation record.
  * Order: shippingData first, then rawQuotationData. No Parent_Account line.
  */
+/** Splits a comma-separated address string into lines of 2 comma-segments each. */
+export function streetLinesEveryTwoCommas(street: string): string[] {
+  const parts = street.split(',').map((x) => x.trim()).filter(Boolean)
+  const lines: string[] = []
+  for (let i = 0; i < parts.length; i += 2) {
+    lines.push(parts.slice(i, i + 2).join(', '))
+  }
+  return lines
+}
+
 export interface ConsigneeDisplay {
   name: string
   country: string
@@ -33,7 +43,11 @@ export function resolveConsigneeDisplay(
 
   const cityStatePostalLine = [[city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' ')
 
-  const addressBlock = [street, cityStatePostalLine]
+  // Street — one line per 2 comma-segments (e.g. "Plot No. T113, T114 & T115"
+  // then "Tumkuru Machine Tool Park, 3rd Phase" ...).
+  const streetLines = streetLinesEveryTwoCommas(street)
+
+  const addressBlock = [...streetLines, cityStatePostalLine]
     .map((x) => x.trim())
     .filter(Boolean)
     .join('\n')

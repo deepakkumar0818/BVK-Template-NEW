@@ -24,8 +24,17 @@ const LOGO = {
 }
 
 export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
+  // Length/Width columns are dropped entirely when no line has a value for
+  // either (e.g. Invoice_Dimension_1/2 both empty on every line) — a single
+  // SQM column (mapped to `SQM`) takes their place instead.
+  const showDimensions = data.lines.some((line) => line.length || line.width)
+  const productColCount = showDimensions ? 16 : 15
+  const productFootLabelSpan = showDimensions ? 14 : 13
   return (
-    <div className="sales-order-print-sheet sales-order-doc--sls-ods-no-44">
+    <div
+      className="sales-order-print-sheet sales-order-doc--sls-ods-no-44"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 2mm)' }}
+    >
       {/* ── Header block ───────────────────────────────────────────── */}
       <div className="ods-section-outline">
         <table className="ods-table ods-header-table" role="presentation">
@@ -123,11 +132,11 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
       </div>
 
       {/* ── Product details ────────────────────────────────────────── */}
-      <div className="ods-section-outline">
-        <table className="ods-table ods-product-table" role="presentation">
+      <div className="ods-section-outline" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <table className="ods-table ods-product-table" role="presentation" style={{ flex: 1, height: '100%' }}>
           <thead>
             <tr>
-              <th colSpan={16} className="ods-section-label ods-section-label--center">
+              <th colSpan={productColCount} className="ods-section-label ods-section-label--center">
                 PRODUCT DETAILS
               </th>
             </tr>
@@ -139,13 +148,18 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <th>SAP No.</th>
               <th>Client PO No.</th>
               <th>PO Date</th>
+              <th>Customer Desired Date</th>
               <th>QCT No. / QH</th>
               <th>QCT Date</th>
               <th>PPC Date</th>
-              <th>Length (Meter)</th>
-              <th>Width (Meter)</th>
-              <th>Total SQM</th>
+              {showDimensions ? (
+                <>
+                  <th>Length (Meter)</th>
+                  <th>Width (Meter)</th>
+                </>
+              ) : null}
               <th>Qty / UOM</th>
+              {showDimensions ? null : <th>SQM</th>}
               <th>Price / UOM</th>
               <th>Total Value in INR</th>
             </tr>
@@ -160,19 +174,34 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
                 <td className="ods-num">{line.sapNo || ' '}</td>
                 <td className="ods-num">{line.clientPoNo || ' '}</td>
                 <td className="ods-num">{line.poDate || ' '}</td>
+                <td className="ods-num">{line.customerDesiredDate || ' '}</td>
                 <td className="ods-num">{line.qctNo || ' '}</td>
                 <td className="ods-num">{line.qctDate || ' '}</td>
                 <td className="ods-num">{line.ppcDate || ' '}</td>
-                <td className="ods-num">{line.length || ' '}</td>
-                <td className="ods-num">{line.width || ' '}</td>
-                <td className="ods-num">{line.totalSqm || ' '}</td>
+                {showDimensions ? (
+                  <>
+                    <td className="ods-num">{line.length || ' '}</td>
+                    <td className="ods-num">{line.width || ' '}</td>
+                  </>
+                ) : null}
                 <td className="ods-num">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
+                {showDimensions ? null : <td className="ods-num">{line.totalSqm || ' '}</td>}
                 <td className="ods-amount">{line.price || ' '}</td>
                 <td className="ods-amount">{line.totalValue || ' '}</td>
               </tr>
             ))}
+            {/* Fills whatever vertical space is left on the page so the
+             * IGST/Total Value rows below (and the Terms section after
+             * this whole box) always sit flush at the bottom — only works
+             * reliably when everything fits on one printed page (see
+             * discussion: multi-page overflow would need a per-page
+             * chunking system to guarantee the same bottom alignment on
+             * the last page). */}
+            <tr style={{ height: '100%' }}>
+              <td colSpan={productColCount} style={{ height: '100%', border: 'none', padding: 0 }} />
+            </tr>
             <tr>
-              <td colSpan={14} className="ods-product-foot-label">
+              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
                 {data.gstLabel}
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -180,7 +209,7 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               </td>
             </tr>
             <tr>
-              <td colSpan={14} className="ods-product-foot-label">
+              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
                 Total Value
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -222,6 +251,14 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
             <tr>
               <td className="ods-terms-label">ROAD PERMIT</td>
               <td className="ods-terms-value">{data.roadPermit || ' '}</td>
+            </tr>
+            <tr>
+              <td className="ods-terms-label">TERM OF PAYMENT</td>
+              <td className="ods-terms-value">{data.termOfPayment || ' '}</td>
+            </tr>
+            <tr>
+              <td className="ods-terms-label">METHOD OF PAYMENT</td>
+              <td className="ods-terms-value">{data.methodOfPayment || ' '}</td>
             </tr>
             <tr>
               <td className="ods-terms-label">FREIGHT : TO PAY / PAID</td>
