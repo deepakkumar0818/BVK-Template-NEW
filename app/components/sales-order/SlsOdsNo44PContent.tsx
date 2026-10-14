@@ -22,8 +22,17 @@ const LOGO = {
 }
 
 export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
+  // Length/Width columns are dropped entirely when no line has a value for
+  // either (e.g. Invoice_Dimension_1/2 both empty on every line) — a single
+  // SQM column (mapped to `SQM`) takes their place instead.
+  const showDimensions = data.lines.some((line) => line.length || line.width)
+  const productColCount = showDimensions ? 15 : 14
+  const productFootLabelSpan = showDimensions ? 13 : 12
   return (
-    <div className="sales-order-print-sheet sales-order-doc--sls-ods-no-44-p">
+    <div
+      className="sales-order-print-sheet sales-order-doc--sls-ods-no-44-p"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 2mm)' }}
+    >
       {/* ── Header block ───────────────────────────────────────────── */}
       <div className="ods-section-outline">
         <table className="ods-table ods-header-table" role="presentation">
@@ -119,11 +128,11 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
       </div>
 
       {/* ── Product details — Price / UOM and Total Value in INR columns removed ── */}
-      <div className="ods-section-outline">
-        <table className="ods-table ods-product-table" role="presentation">
+      <div className="ods-section-outline" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <table className="ods-table ods-product-table" role="presentation" style={{ flex: 1, height: '100%' }}>
           <thead>
             <tr>
-              <th colSpan={14} className="ods-section-label ods-section-label--center">
+              <th colSpan={productColCount} className="ods-section-label ods-section-label--center">
                 PRODUCT DETAILS
               </th>
             </tr>
@@ -135,13 +144,19 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
               <th>SAP No.</th>
               <th>Client PO No.</th>
               <th>PO Date</th>
+              <th>Customer Desired Date</th>
               <th>QCT No. / QH</th>
               <th>QCT Date</th>
               <th>PPC Date</th>
-              <th>Length (Meter)</th>
-              <th>Width (Meter)</th>
-              <th>Total SQM</th>
-              <th>Qty / UOM</th>
+              {showDimensions ? (
+                <>
+                  <th>{data.lengthColumnLabel}</th>
+                  <th>{data.widthColumnLabel}</th>
+                </>
+              ) : null}
+              <th>UOM</th>
+              <th>Qty</th>
+              {showDimensions ? null : <th>SQM</th>}
             </tr>
           </thead>
           <tbody>
@@ -154,17 +169,33 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
                 <td className="ods-num">{line.sapNo || ' '}</td>
                 <td className="ods-num">{line.clientPoNo || ' '}</td>
                 <td className="ods-num">{line.poDate || ' '}</td>
+                <td className="ods-num">{line.customerDesiredDate || ' '}</td>
                 <td className="ods-num">{line.qctNo || ' '}</td>
                 <td className="ods-num">{line.qctDate || ' '}</td>
                 <td className="ods-num">{line.ppcDate || ' '}</td>
-                <td className="ods-num">{line.length || ' '}</td>
-                <td className="ods-num">{line.width || ' '}</td>
-                <td className="ods-num">{line.totalSqm || ' '}</td>
-                <td className="ods-num">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
+                {showDimensions ? (
+                  <>
+                    <td className="ods-num">{line.length || ' '}</td>
+                    <td className="ods-num">{line.width || ' '}</td>
+                  </>
+                ) : null}
+                <td className="ods-num">{line.uom || ' '}</td>
+                <td className="ods-num">{line.qty || ' '}</td>
+                {showDimensions ? null : <td className="ods-num">{line.totalSqm || ' '}</td>}
               </tr>
             ))}
+            {/* Fills whatever vertical space is left on the page so the
+             * IGST/Total Value rows below (and the Terms section after
+             * this whole box) always sit flush at the bottom — only works
+             * reliably when everything fits on one printed page (see
+             * discussion: multi-page overflow would need a per-page
+             * chunking system to guarantee the same bottom alignment on
+             * the last page). */}
+            <tr style={{ height: '100%' }}>
+              <td colSpan={productColCount} style={{ height: '100%', border: 'none', padding: 0 }} />
+            </tr>
             <tr>
-              <td colSpan={12} className="ods-product-foot-label">
+              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
                 {data.gstLabel}
               </td>
               <td colSpan={2} className="ods-product-foot-value">
@@ -172,7 +203,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
               </td>
             </tr>
             <tr>
-              <td colSpan={12} className="ods-product-foot-label">
+              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
                 Total Value
               </td>
               <td colSpan={2} className="ods-product-foot-value">

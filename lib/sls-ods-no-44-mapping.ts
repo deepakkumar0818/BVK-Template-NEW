@@ -118,9 +118,13 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   ppcDate: 'PPC_Committed_Date',
   invoiceDimension1AsLength: 'Invoice_Dimension_1',
   invoiceDimension2AsWidth: 'Invoice_Dimension_2',
+  /** Drives the "Length"/"Width" column header text (split on "x") — e.g. "Length x Width". Lives on the main product row. */
+  invoiceDimensionType: 'Invoice_Dimension_Type',
   sqm: 'SQM',
   qty: 'Qty',
   uomBilling: 'UOM_Billing',
+  /** Per-line, on the `_2_0` row. */
+  customerDesiredDate: 'Customer_Desired_Date',
   sellingPrice: 'Selling_Price',
   totalSaleValue: 'Total_Sale_Value',
   grossAmount: 'Gross_Amount',
@@ -140,8 +144,10 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   insurance: 'Insurance',
   incoterms: 'Delivery_Terms',
   dispatchMode: 'Mode_of_Delivery',
-  // ROAD PERMIT and FREIGHT : TO PAY / PAID have no Zoho field given yet —
-  // rows render with a blank value until a field name is confirmed.
+  termOfPayment: 'Term_of_Payment',
+  methodOfPayment: 'Method_of_Payment',
+  roadPermit: 'Road_Permit',
+  freight: 'Freight_To_Pay_Paid',
 } as const
 
 const F = SLS_ODS_NO_44_ZOHO_FIELDS
@@ -162,6 +168,7 @@ export interface SlsOdsNo44Line {
   totalSqm: string
   qty: string
   uom: string
+  customerDesiredDate: string
   price: string
   totalValue: string
   clientPoNo: string
@@ -182,6 +189,9 @@ export interface SlsOdsNo44Data {
   odsDate: string
   customerName: string
   productGroup: string
+  /** "Length"/"Width" column header text — derived from the first line's `Invoice_Dimension_Type` (split on "x"). Falls back to "Length"/"Width" when absent/unparsable. */
+  lengthColumnLabel: string
+  widthColumnLabel: string
   billingAddressLines: string[]
   shippingAddressLines: string[]
   lines: SlsOdsNo44Line[]
@@ -194,9 +204,9 @@ export interface SlsOdsNo44Data {
   insurance: string
   incoterms: string
   dispatchMode: string
-  /** No Zoho field given yet — always blank until one is confirmed. */
+  termOfPayment: string
+  methodOfPayment: string
   roadPermit: string
-  /** No Zoho field given yet — always blank until one is confirmed. */
   freight: string
   remarks: string
   signerName: string
@@ -281,13 +291,14 @@ function dateOnly(v: string): string {
   return v.split(' ')[0] ?? v
 }
 
-function joinAddressLines(name: string, street: string, city: string, state: string, postal: string, country: string): string[] {
+function joinAddressLines(name: string, street: string, city: string, state: string, postal: string, country: string, gst: string): string[] {
   const lines: string[] = []
   if (name) lines.push(name)
   if (street) lines.push(street)
   const cityStatePostal = [city, state, postal].filter(Boolean).join(', ')
   if (cityStatePostal) lines.push(cityStatePostal)
   if (country) lines.push(country)
+  if (gst) lines.push(`GSTIN: ${gst}`)
   return lines
 }
 
@@ -329,6 +340,8 @@ export function mapSlsOdsNo44(
       odsDate: '',
       customerName: '',
       productGroup: '',
+      lengthColumnLabel: 'Length',
+      widthColumnLabel: 'Width',
       billingAddressLines: [],
       shippingAddressLines: [],
       lines: [],
@@ -341,6 +354,8 @@ export function mapSlsOdsNo44(
       insurance: '',
       incoterms: '',
       dispatchMode: '',
+      termOfPayment: '',
+      methodOfPayment: '',
       roadPermit: '',
       freight: '',
       remarks: '',
@@ -358,6 +373,18 @@ export function mapSlsOdsNo44(
   const productRows = subformRows(raw, bundle.product)
 
   const productGroup = strVal(productRows[0]?.[F.productGroup])
+
+  // "Length"/"Width" column headers — derived from the first product row's
+  // `Invoice_Dimension_Type` (e.g. "Length x Width"), split on "x". Falls
+  // back to the literal words "Length"/"Width" when absent/unparsable.
+  const { lengthColumnLabel, widthColumnLabel } = (() => {
+    const raw_ = productRows.map((r) => strVal(r[F.invoiceDimensionType])).find(Boolean) ?? ''
+    const parts = raw_.split(/x/i).map((p) => p.trim()).filter(Boolean)
+    return {
+      lengthColumnLabel: parts[0] || 'Length',
+      widthColumnLabel: parts[1] || 'Width',
+    }
+  })()
 
   // Billing Description = Brand Selling Name + Remarks, computed ONCE for the
   // whole document (both source fields — Workflow[0].Remarks and the first
@@ -380,11 +407,15 @@ export function mapSlsOdsNo44(
       sapNo: strVal(merged[F.sapNo]) || strVal(productRow[F.sapNo]),
       hsnCode: strVal(merged[F.hsnCode]) || strVal(productRow[F.hsnCode]),
       ppcDate: strVal(merged[F.ppcDate]),
-      length: strVal(merged[F.invoiceDimension1AsLength]),
-      width: strVal(merged[F.invoiceDimension2AsWidth]),
+      // Invoice_Dimension_1/2 and UOM_Billing live on the main product row
+      // for some families (e.g. Category 2 WI) and on the `_2_0`/`_3_0`
+      // rows for others — check the product row first, merged as fallback.
+      length: strVal(productRow[F.invoiceDimension1AsLength]) || strVal(merged[F.invoiceDimension1AsLength]),
+      width: strVal(productRow[F.invoiceDimension2AsWidth]) || strVal(merged[F.invoiceDimension2AsWidth]),
       totalSqm: strVal(merged[F.sqm]),
       qty: strVal(merged[F.qty]),
-      uom: strVal(merged[F.uomBilling]),
+      uom: strVal(productRow[F.uomBilling]) || strVal(merged[F.uomBilling]),
+      customerDesiredDate: strVal(merged[F.customerDesiredDate]),
       price: strVal(merged[F.sellingPrice]),
       totalValue: formatMoney(lineTotalFromRow(merged)),
       // Client_PO_No / PO_Date / QCT_No are per-line fields on the `_3_0`
@@ -403,7 +434,8 @@ export function mapSlsOdsNo44(
     strVal(raw[F.billingCity]),
     strVal(raw[F.billingState]),
     strVal(raw[F.billingPostalCode]),
-    strVal(raw[F.billingCountry])
+    strVal(raw[F.billingCountry]),
+    strVal(raw[F.billingGst])
   )
   const shippingAddressLines = joinAddressLines(
     strVal(raw[F.shippingAddressName]),
@@ -411,7 +443,8 @@ export function mapSlsOdsNo44(
     strVal(raw[F.shippingCity]),
     strVal(raw[F.shippingState]),
     strVal(raw[F.shippingPostalCode]),
-    strVal(raw[F.shippingCountry])
+    strVal(raw[F.shippingCountry]),
+    strVal(raw[F.shippingGst])
   )
 
   const igst = numFromString(raw[F.totalIgst])
@@ -430,6 +463,8 @@ export function mapSlsOdsNo44(
     odsDate: dateOnly(strVal(raw[F.odsDate])),
     customerName,
     productGroup,
+    lengthColumnLabel,
+    widthColumnLabel,
     billingAddressLines,
     shippingAddressLines,
     lines,
@@ -442,8 +477,10 @@ export function mapSlsOdsNo44(
     insurance: strVal(raw[F.insurance]),
     incoterms: strVal(raw[F.incoterms]),
     dispatchMode: strVal(raw[F.dispatchMode]),
-    roadPermit: '',
-    freight: '',
+    termOfPayment: strVal(raw[F.termOfPayment]),
+    methodOfPayment: strVal(raw[F.methodOfPayment]),
+    roadPermit: strVal(raw[F.roadPermit]),
+    freight: strVal(raw[F.freight]),
     remarks: strVal(raw[F.rootRemarks]),
     signerName: '',
   }

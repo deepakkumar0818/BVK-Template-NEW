@@ -1,7 +1,7 @@
 'use client'
 
 import type { QuotationData, ZohoQuotation } from '@/lib/types'
-import { resolveConsigneeDisplay } from '@/lib/consignee-display'
+import { resolveConsigneeDisplay, streetLinesEveryTwoCommas } from '@/lib/consignee-display'
 import {
   formatCurrency,
   formatPiecesInteger,
@@ -95,11 +95,22 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     return crmFullName ? `${crmSalutation} ${crmFullName}`.trim() : ''
   })()
   const recipientAddressShipping = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
+  // Billing fallback — same shape as the shipping path above: Street gets
+  // one line per 2 comma-segments.
   const recipientAddressBilling = billingData?.Billing_Street
-    ? `${billingData.Billing_Street || rawQuotationData?.Billing_Street || ''}, ${billingData.Billing_City || rawQuotationData?.Billing_City || ''}, ${billingData.Billing_State || rawQuotationData?.Billing_State || ''} ${billingData.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || ''}`
+    ? (() => {
+        const street = String(billingData.Billing_Street || rawQuotationData?.Billing_Street || '').trim()
+        const city = String(billingData.Billing_City || rawQuotationData?.Billing_City || '').trim()
+        const state = String(billingData.Billing_State || rawQuotationData?.Billing_State || '').trim()
+        const postal = String(billingData.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || '').trim()
+        const country = String(billingData.Billing_Country || rawQuotationData?.Billing_Country || '').trim()
+        const cityStatePostalLine = [[city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' ')
+        const streetLines = streetLinesEveryTwoCommas(street)
+        return [...streetLines, cityStatePostalLine, country].filter(Boolean).join('\n')
+      })()
     : ''
   const recipientAddress = recipientAddressShipping || recipientAddressBilling
-  const recipientAddressPreWrap = Boolean(recipientAddressShipping)
+  const recipientAddressPreWrap = Boolean(recipientAddress)
 
   const displayCurrency = data.currency || rawQuotationData?.Currency || 'INR'
   const bvkTableRows = buildBvkQuotationTableRows(
@@ -216,9 +227,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
     return Number.isFinite(n) ? n : 0
   })()
   type BvkSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
-  const bvkSummaryRows: BvkSummaryRow[] = [
-    { label: `Total ${displayCurrency}`, value: formatCurrency(bvkTotalInrValue, displayCurrency), bold: true },
-  ]
+  // "Total <currency>" row is skipped entirely when there's no packing
+  // charges value — "Total Amount Before Tax" below still always shows.
+  const bvkSummaryRows: BvkSummaryRow[] = bvkPackingValuePresent
+    ? [{ label: `Total ${displayCurrency}`, value: formatCurrency(bvkTotalInrValue, displayCurrency), bold: true }]
+    : []
   if (bvkPackingValuePresent) {
     bvkSummaryRows.push({
       label: 'Packing Charges',
@@ -634,7 +647,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                 <div style={{ marginBottom: '20px' }}>
                   {/* All items not mentioned */}
                   <div style={{ marginBottom: '12px', marginLeft: '20px' }}>
-                    All items not mentioned, insurance, Taxes & Duties, Freight, Demurrage, Detention charges.
+                    {/* All items not mentioned, insurance, Taxes & Duties, Freight, Demurrage, Detention charges. */}
                   </div>
 
                   <div style={{ borderTop: '1px solid #000', marginBottom: '15px' }}></div>
@@ -869,7 +882,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
               <span style={{ color: '#00a651' }}>CIN:</span> U46103WB2024PTC269415 | <span style={{ color: '#00a651' }}>GSTIN:</span> 08AAMCB4592K1Z3
             </div>
             <div>
-              <span style={{ color: '#00a651' }}>Correspondence Address:</span> 54-B.1, Industrial Area, Jhotwara, Jaipur - 302012, Rajasthan, India
+              <span style={{ color: '#00a651' }}>Correspondence Address:</span> 52-B (Part), Industrial Area, Jhotwara, Jaipur - 302012, Rajasthan, India
             </div>
           </div>
 
