@@ -117,6 +117,11 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
   // Zoho (matches Bashundhara). Whole row hides when the field is empty.
   const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
 
+  // Product_Description — shown INLINE next to the Product value in each
+  // chunk's Product row (matches Saint). Zoho `Product_Description` is a
+  // top-level field. Blank field → nothing appended.
+  const productDescription = String(rawQuotationData?.Product_Description ?? '').trim()
+
   const toRowArray = (v: unknown): any[] => {
     if (v == null) return []
     if (Array.isArray(v)) return v
@@ -693,7 +698,11 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                                 <tr className="adhunik-product-row">
                                   <td colSpan={2} style={{ ...bdProductMeta, padding: '8px 10px 4px 10px', verticalAlign: 'top' }}>
                                     <div style={{ ...metaRowLine, marginBottom: 0 }}>
-                                      <span>Product</span><span>:</span><span style={metaRowValue}>{productLabel}</span>
+                                      <span>Product</span><span>:</span>
+                                      <span style={metaRowValue}>
+                                        {productLabel}
+                                        {productDescription ? ` ${productDescription}` : ''}
+                                      </span>
                                     </div>
                                   </td>
                                   <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
