@@ -275,7 +275,6 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
 
     // Adhunik: Product must come from Category_1_MM_Database_WMW_2_0 (2.0) Blend_Category only.
     const blendCategory = firstField([item], 'Blend_Category')
-    const endType = firstField([ext3, item, productDetail], 'End_Type')
     /** Zoho `Material_Code` only — WMW 2_0 → 3_0 → Cat1 main → Cat2 main. */
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
@@ -308,7 +307,9 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
       width: productDetail.Width,
       sizeDisplay: size,
     })
-    const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    // Quantity — direct 1:1 map to Zoho `Category_1_MM_Database_WMW[i].Pieces`
+    // (`productDetail` is already the correct row). No fallback.
+    const quantity = parseFloat(String(productDetail.Pieces ?? '').replace(/,/g, '').trim()) || 0
     // Rate — direct 1:1 map to Zoho
     // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
     // `ext3` is already the correct row (joined by last_item_ref).
@@ -331,24 +332,23 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     const wiLine = data.lineItems?.[index]
     /** Product row: Adhunik requires Blend_Category only; if missing, keep it blank. */
     const product = blendCategory || ''
-    /** Form row: Zoho `End_Type` only (WMW 3_0 → 2_0 line → main). */
-    const form = endType
-    /** Quality: keep "AISI" constant; append Material code when present. */
-    const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
-
-    // Net Weight (Kg.) Per Pc. mapping:
-    // Net Weight (Kg.) Per Pc. — direct 1:1 map to Zoho
-    // `Category_1_MM_Database_WMW_4_0[i].Per_Pc`, joined via `Line_ref`
-    // (which is the 1-based line index). No fallback to Net_Weight from
-    // any other subform. Blank / non-numeric → 0.
-    const perPc = (() => {
+    // Form row — direct 1:1 map to Zoho `Category_1_MM_Database_WMW_4_0[i].Form1`,
+    // joined via `Line_ref` (1-based line index). No fallback.
+    const form = (() => {
       const rows4 = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_4_0)
       const lineRef = String(index + 1)
       const row = rows4.find(
         (x: any) => String(x?.Line_ref ?? x?.line_ref ?? '').trim() === lineRef
       ) || rows4[index]
-      return parseNumber(row?.Per_Pc)
+      return String(row?.Form1 ?? '').trim()
     })()
+    /** Quality: keep "AISI" constant; append Material code when present. */
+    const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
+
+    // Net Weight (Kg.) Per Pc. — direct 1:1 map to Zoho
+    // `Category_1_MM_Database_WMW_3_0[i].Net_Weight`. `ext3` is already the
+    // correct row (joined by last_item_ref). No fallback.
+    const perPc = parseNumber(ext3?.Net_Weight)
     const totalWeight = perPc * quantity
 
     return {
