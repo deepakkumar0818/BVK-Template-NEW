@@ -710,6 +710,18 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
               </div>
             )
           })()}
+          {/* Other Reference — reads Zoho `Other_Reference` directly (no
+           * fallback). Sits just above General Remarks; skip when empty. */}
+          {(() => {
+            const v = String(rawQuotationData?.Other_Reference ?? '').trim()
+            if (!v) return null
+            return (
+              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Other Reference:</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{v}</div>
+              </div>
+            )
+          })()}
           {/* General Remarks — same mapping as BVK: reads Zoho `General_Remarks`,
            * skip when empty, preserve format via `whiteSpace: pre-wrap`. Sits
            * directly below the Payment row and matches its styling. */}
@@ -717,8 +729,9 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
             const v = String(rawQuotationData?.General_Remarks ?? '').trim()
             if (!v) return null
             return (
-              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px', whiteSpace: 'pre-wrap' }}>
-                <strong>General Remarks:</strong> {v}
+              <div style={{ marginBottom: '10px', borderTop: '1px solid #000', paddingTop: '10px', marginTop: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>General Remarks:</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{v}</div>
               </div>
             )
           })()}
