@@ -530,11 +530,11 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                  * with `white-space: normal` so the browser breaks the line at
                  * the space before the currency — same look as Process Febric. */}
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
-                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '39%' }}>Product</th>
+                <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '35%' }}>Product</th>
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '12%', whiteSpace: 'nowrap' }}>HSN Code</th>
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '11%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
                 <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
-                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '19%' }}>{`Total Price / ${displayCurrency}`}</th>
               </tr>
             </thead>
             <tbody>
