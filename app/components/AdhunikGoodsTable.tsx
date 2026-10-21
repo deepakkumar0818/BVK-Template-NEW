@@ -700,8 +700,9 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                                     <div style={{ ...metaRowLine, marginBottom: 0 }}>
                                       <span>Product</span><span>:</span>
                                       <span style={metaRowValue}>
-                                        {productLabel}
-                                        {productDescription ? ` ${productDescription}` : ''}
+                                        {productDescription ? ` ${productDescription}` : `${productLabel}` }
+                                        {/* {productLabel}
+                                        {productDescription ? ` ${productDescription}` : ''} */}
                                       </span>
                                     </div>
                                   </td>
@@ -974,7 +975,7 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
                         <td colSpan={5} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
                           {amountChargeableInWords}
                         </td>
-                        <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
+                        <td style={{ ...bd, padding: '4px 15px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>
                           Total:-
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '14%' }}>

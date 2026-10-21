@@ -64,15 +64,13 @@ const metaGrid: CSSProperties = {
   fontWeight: 'bold',
 }
 
-/** Same mesh rule as Bashundhara / Seamp */
-function meshInchFromProductCode(productCode: string): string {
-  const s = String(productCode ?? '').trim()
+/** Mesh column: numeric part of `Brand_Selling_Name` (e.g. `FormX-10` → `10/Inch`). */
+function meshInchFromBrandSellingName(brandSellingName: string): string {
+  const s = String(brandSellingName ?? '').trim()
   if (!s) return ''
-  const parts = s.split('.')
-  if (parts.length < 5) return ''
-  const tail = parts.slice(4).join('.')
-  const m = tail.match(/\d+(?:\.\d+)?/)
-  return m ? `${m[0]}/Inch` : ''
+  const m = s.match(/-\s*(\d+(?:\.\d+)?)/) || s.match(/\d+(?:\.\d+)?/)
+  if (!m) return ''
+  return `${m[1] ?? m[0]}/Inch`
 }
 
 export default function SaintGoodsTable({ data, rawQuotationData, headerNode, footerNode }: SaintGoodsTableProps) {
@@ -324,9 +322,9 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     const fitmentRow =
       fitmentRows.find((x: any) => String(x?.S_No ?? '').trim() === String(index + 1)) || fitmentRows[index]
 
-    const productCodeForMesh = firstField([productDetail, cat2ProductDetail, fitmentRow], 'Product_Code')
-    const mesh = meshInchFromProductCode(productCodeForMesh)
     const brand = productDetail.Brand_Selling_Name?.trim() || ''
+    const brandSellingNameForMesh = firstField([productDetail, cat2ProductDetail, fitmentRow], 'Brand_Selling_Name')
+    const mesh = meshInchFromBrandSellingName(brandSellingNameForMesh)
 
     /** Line-level Remarks from WMW subforms (2_0 → 3_0 → main WMW → Cat2 WMW). */
     const lineRemarks =
@@ -709,8 +707,9 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                                     <span>Product</span>
                                     <span>:</span>
                                     <span>
-                                      {productLabel || ' '}
-                                      {productDescription ? ` ${productDescription}` : ''}
+                                      {productDescription ? ` ${productDescription}` : `${productLabel}` }
+                                      {/* {productLabel || ' '}
+                                      {productDescription ? ` ${productDescription}` : ''} */}
                                     </span>
                                   </div>
                                 </td>
@@ -1022,7 +1021,7 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                  * below (finalGrandTotal). Was empty before, so USD had no
                  * value next to it. */}
                         <td style={{ ...bd, padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', fontSize: '13px' }}>
-                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, '')}</span>
+                          <span className="quotation-grand-total-amount" style={{ fontSize: '13px' }}>{formatCurrency(finalGrandTotal, '')}</span>
                         </td>
                       </tr>
 
@@ -1064,11 +1063,11 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
                             padding: '8px 10px',
                             textAlign: 'center',
                             fontWeight: 'bold',
-                            fontSize: '14px',
+                            fontSize: '16px',
                             verticalAlign: 'middle',
                           }}
                         >
-                          <span className="quotation-grand-total-amount">{formatCurrency(finalGrandTotal, currency)}</span>
+                          <span className="quotation-grand-total-amount" style={{ fontSize: '13px' }}>{formatCurrency(finalGrandTotal, currency)}</span>
                         </td>
                       </tr>
                     </>
