@@ -97,19 +97,18 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const recipientAddressShipping = [consignee.addressBlock, consignee.country].filter(Boolean).join('\n')
   // Billing fallback — same shape as the shipping path above: Street gets
   // one line per 2 comma-segments.
-  const recipientAddressBilling = billingData?.Billing_Street
-    ? (() => {
-        const street = String(billingData.Billing_Street || rawQuotationData?.Billing_Street || '').trim()
-        const city = String(billingData.Billing_City || rawQuotationData?.Billing_City || '').trim()
-        const state = String(billingData.Billing_State || rawQuotationData?.Billing_State || '').trim()
-        const postal = String(billingData.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || '').trim()
-        const country = String(billingData.Billing_Country || rawQuotationData?.Billing_Country || '').trim()
-        const cityStatePostalLine = [[city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' ')
-        const streetLines = streetLinesEveryTwoCommas(street)
-        return [...streetLines, cityStatePostalLine, country].filter(Boolean).join('\n')
-      })()
-    : ''
-  const recipientAddress = recipientAddressShipping || recipientAddressBilling
+  const recipientAddressBilling = (() => {
+    const street = String(billingData?.Billing_Street || rawQuotationData?.Billing_Street || '').trim()
+    const city = String(billingData?.Billing_City || rawQuotationData?.Billing_City || '').trim()
+    const state = String(billingData?.Billing_State || rawQuotationData?.Billing_State || '').trim()
+    const postal = String(billingData?.Billing_Postal_Code || rawQuotationData?.Billing_Postal_Code || '').trim()
+    const country = String(billingData?.Billing_Country || rawQuotationData?.Billing_Country || '').trim()
+    const cityStatePostalLine = [[city, state].filter(Boolean).join(', '), postal].filter(Boolean).join(' ')
+    const streetLines = streetLinesEveryTwoCommas(street)
+    return [...streetLines, cityStatePostalLine, country].filter(Boolean).join('\n')
+  })()
+  // Billing address is primary; shipping is only a fallback when billing is empty.
+  const recipientAddress = recipientAddressBilling || recipientAddressShipping
   const recipientAddressPreWrap = Boolean(recipientAddress)
 
   const displayCurrency = data.currency || rawQuotationData?.Currency || 'INR'
@@ -174,6 +173,12 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
       ? base
       : base - (Number.isFinite(bvkPackingTotal) ? bvkPackingTotal : 0)
   })()
+  // No GST at all on Export quotations (client directive) — gate the whole
+  // GST display (summary rows + GST notice) on root `Type_Of_Quotation`.
+  const bvkIsExportQuotation =
+    String((rawQuotationData as Record<string, unknown> | undefined)?.Type_Of_Quotation ?? '')
+      .trim()
+      .toLowerCase() === 'export'
   const bvkSafe = (n: number) => (Number.isFinite(n) ? n : 0)
   /** A tax row renders only when its amount is non-zero. */
   const bvkTaxHasValue = (n: number) => Number.isFinite(n) && n !== 0
@@ -250,35 +255,46 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
       value: formatCurrency(bvkOtherChargesAmt, displayCurrency),
     })
   }
-  bvkSummaryRows.push({
-    label: 'Total Amount Before Tax',
-    value: formatCurrency(bvkSafe(bvkTotalBeforeTax), displayCurrency),
-    bold: true,
-  })
-  if (bvkTaxHasValue(bvkCgstAmount)) {
+  if (bvkIsExportQuotation) {
+    // Export quotations carry no GST — show the grand total once, not
+    // split into Before Tax / Add GST / After GST.
     bvkSummaryRows.push({
-      label: `Add CGST @ ${bvkCgstLabelRate}%`,
-      value: formatCurrency(bvkCgstAmount, displayCurrency),
+      label: 'Total',
+      value: formatCurrency(bvkGrandTotal, displayCurrency),
+      bold: true,
+      big: true,
+    })
+  } else {
+    bvkSummaryRows.push({
+      label: 'Total Amount Before Tax',
+      value: formatCurrency(bvkSafe(bvkTotalBeforeTax), displayCurrency),
+      bold: true,
+    })
+    if (bvkTaxHasValue(bvkCgstAmount)) {
+      bvkSummaryRows.push({
+        label: `Add CGST @ ${bvkCgstLabelRate}%`,
+        value: formatCurrency(bvkCgstAmount, displayCurrency),
+      })
+    }
+    if (bvkTaxHasValue(bvkSgstAmount)) {
+      bvkSummaryRows.push({
+        label: `Add SGST @ ${bvkSgstLabelRate}%`,
+        value: formatCurrency(bvkSgstAmount, displayCurrency),
+      })
+    }
+    if (bvkTaxHasValue(bvkIgstAmount)) {
+      bvkSummaryRows.push({
+        label: `Add IGST @ ${bvkIgstLabelRate}%`,
+        value: formatCurrency(bvkIgstAmount, displayCurrency),
+      })
+    }
+    bvkSummaryRows.push({
+      label: 'Total Amount After GST',
+      value: formatCurrency(bvkGrandTotal, displayCurrency),
+      bold: true,
+      big: true,
     })
   }
-  if (bvkTaxHasValue(bvkSgstAmount)) {
-    bvkSummaryRows.push({
-      label: `Add SGST @ ${bvkSgstLabelRate}%`,
-      value: formatCurrency(bvkSgstAmount, displayCurrency),
-    })
-  }
-  if (bvkTaxHasValue(bvkIgstAmount)) {
-    bvkSummaryRows.push({
-      label: `Add IGST @ ${bvkIgstLabelRate}%`,
-      value: formatCurrency(bvkIgstAmount, displayCurrency),
-    })
-  }
-  bvkSummaryRows.push({
-    label: 'Total Amount After GST',
-    value: formatCurrency(bvkGrandTotal, displayCurrency),
-    bold: true,
-    big: true,
-  })
 
   // Delivery Schedule — same mapping rules as SLS (see SLSQuotationContent).
   // Resolver is inline so BVK owns its own copy — no new shared helper.
@@ -482,11 +498,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                          * 4px 2px padding + `whiteSpace: nowrap` so labels
                          * don't wrap into overlapping lines. */}
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '8%', whiteSpace: 'nowrap' }}>Item</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '39%' }}>Product</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', width: '36%' }}>Product</th>
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '12%', whiteSpace: 'nowrap' }}>HSN Code</th>
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '11%', whiteSpace: 'nowrap' }}>Qty/UOM</th>
                         <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Unit Price / ${displayCurrency}`}</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '15%' }}>{`Total Price / ${displayCurrency}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', width: '18%' }}>{`Total Price / ${displayCurrency}`}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -779,7 +795,7 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
                     <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Taxes and Duties**:</div>
                     <ul style={{ marginLeft: '20px', paddingLeft: '20px' }}>
                       <li style={{ marginBottom: '4px' }}>Will be Extra as applicable over and above the Ex-factory prices quoted.</li>
-                      <li style={{ marginBottom: '4px' }}>{bvkGstNoticeText}</li>
+                      {!bvkIsExportQuotation && <li style={{ marginBottom: '4px' }}>{bvkGstNoticeText}</li>}
                       <li style={{ marginBottom: '4px' }}>However, if there is any change in Tax and any New Statutory Levies is introduced by Government at the time of delivery of the same will be billed as per actual.</li>
                       <li style={{ marginBottom: '4px' }}>Octroi, Entry Tax and any other taxes/ duties, if any, have to be borne by the Buyer as per the actual.</li>
                     </ul>
