@@ -126,6 +126,7 @@ export default function ForcedTemplatePageContent({
               `/api/zoho-shipping-masters?account_id=${encodeURIComponent(accountId)}`
             )
             const shippingJson: ShippingMasterResponse = await shippingResponse.json()
+            console.log('[Address] Shipping master response:', shippingJson)
             if (shippingResponse.ok && shippingJson.code === 3000 && shippingJson.data && shippingJson.data.length > 0) {
               const primaryShipping = shippingJson.data.find((item: any) => item.Address_Type === 'Primary')
               setShippingData(primaryShipping || shippingJson.data[0])
@@ -139,6 +140,7 @@ export default function ForcedTemplatePageContent({
               `/api/zoho-billing-masters?account_id=${encodeURIComponent(accountId)}`
             )
             const billingJson: BillingMasterResponse = await billingResponse.json()
+            console.log('[Address] Billing master response:', billingJson)
             if (billingResponse.ok && billingJson.code === 3000 && billingJson.data && billingJson.data.length > 0) {
               const primaryBilling = billingJson.data.find((item: any) => item.Address_Type === 'Primary')
               setBillingData(primaryBilling || billingJson.data[0])
