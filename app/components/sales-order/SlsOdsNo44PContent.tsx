@@ -27,7 +27,6 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
   // SQM column (mapped to `SQM`) takes their place instead.
   const showDimensions = data.lines.some((line) => line.length || line.width)
   const productColCount = showDimensions ? 15 : 14
-  const productFootLabelSpan = showDimensions ? 13 : 12
   return (
     <div
       className="sales-order-print-sheet sales-order-doc--sls-ods-no-44-p"
@@ -193,22 +192,6 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
              * the last page). */}
             <tr style={{ height: '100%' }}>
               <td colSpan={productColCount} style={{ height: '100%', border: 'none', padding: 0 }} />
-            </tr>
-            <tr>
-              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
-                {data.gstLabel}
-              </td>
-              <td colSpan={2} className="ods-product-foot-value">
-                {data.gstAmount}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
-                Total Value
-              </td>
-              <td colSpan={2} className="ods-product-foot-value">
-                {data.totalValue}
-              </td>
             </tr>
           </tbody>
         </table>
