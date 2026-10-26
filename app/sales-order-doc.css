@@ -24,7 +24,8 @@
 }
 
 /* Variant-specific typography tweaks: WMW-44 has more columns/rows, needs to shrink */
-.sales-order-doc--sls-ods-no-44 {
+.sales-order-doc--sls-ods-no-44,
+.sales-order-doc--sls-ods-44-hydrotech {
   --ods-font-size: 8px;
   --ods-font-size-sm: 7px;
   --ods-font-size-title: 10px;
