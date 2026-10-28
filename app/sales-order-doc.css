@@ -96,6 +96,14 @@
   border-top: var(--ods-border-outline);
 }
 
+/* sls-ods-no-44 Delivery Schedule — starts a fresh page, so its box is its
+ * own :first-child and gets a top border; give the heading breathing room
+ * instead of touching it. */
+.sales-order-doc .ods-delivery-schedule-page .ods-section-outline {
+  padding-top: 10px;
+  padding-left: 10px;
+}
+
 .sales-order-doc .ods-section-outline .ods-table {
   margin-top: 0;
 }
@@ -1836,6 +1844,23 @@
   margin: 0;
 }
 
+/* sls-ods-no-44 ONLY — same page number pattern as the WMW quotation route
+ * (app/globals.css `@page wmw-numbered-page`): bottom margin widened to
+ * 14mm so the @bottom-center page-margin box has room to render. */
+@page sales-order-ods-numbered {
+  size: A4 portrait;
+  margin: 8mm 8mm 14mm 8mm;
+
+  @bottom-center {
+    content: counter(page);
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    color: #000;
+    vertical-align: top;
+    padding-top: 2mm;
+  }
+}
+
 @media print {
   .sales-order-screen-only {
     display: none !important;
@@ -1849,6 +1874,12 @@
 
   .sales-order-print-sheet {
     page: sales-order-ods;
+  }
+
+  /* sls-ods-no-44 ONLY — higher specificity overrides the rule above so
+   * this variant alone gets the bottom-center page number. */
+  .sales-order-doc--sls-ods-no-44.sales-order-print-sheet {
+    page: sales-order-ods-numbered;
   }
 
   .sales-order-doc--wacker-ao.ao-sheet {
@@ -1912,6 +1943,12 @@
   .sales-order-doc .ods-product-table tr {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  /* sls-ods-no-44 Delivery Schedule — always starts on a new printed page. */
+  .ods-delivery-schedule-page {
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
   .sales-order-doc--wacker-ao .ao-table tr {
