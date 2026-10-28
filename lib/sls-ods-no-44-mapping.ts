@@ -37,6 +37,13 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
    * sls-ods-no-44-p (same mapSlsOdsNo44 pipeline), and argo-multi-ao's "Date:" row.
    */
   odsDate: 'ODS_DATE',
+  /**
+   * Created date/time — root `Created_Date_and_time`, e.g.
+   * "07-Oct-2026 11:49:57". Date-only (time stripped via `dateOnly`).
+   * ISOLATED to sls-ods-no-44's own "ODS DATE" row display — does NOT
+   * replace `odsDate` above, so sls-ods-no-44-p is unaffected.
+   */
+  createdDateAndTime: 'Created_Date_and_time',
   /** REMARKS section — root `Remarks` (distinct from `Workflow[0].Remarks`, which feeds Billing Description). */
   rootRemarks: 'Remarks',
 
@@ -85,6 +92,14 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   qctNo: 'QCT_No',
   /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
   qctDate: 'QCT_Date',
+  /**
+   * Customer Reference — per-line field on `Category_1_MM_Database_WI_3_0`
+   * (confirmed field name, capital C; NOT the lowercase `customer_Reference`
+   * sibling field, and NOT `Customer_Reference_Date`). ISOLATED to Category
+   * 1 WI records only — `Category_2_MM_Database_WI_3_0` has the same field
+   * name but is deliberately left unmapped, per spec.
+   */
+  customerReference: 'Customer_Reference',
 
   // Subform families (Category 1 / Category 2 WI triplet — same shape as quotations)
   cat1Product: 'Category_1_MM_Database_WI',
@@ -93,6 +108,14 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   cat2Product: 'Category_2_MM_Database_WI',
   cat2Line20: 'Category_2_MM_Database_WI_2_0',
   cat2Line30: 'Category_2_MM_Database_WI_3_0',
+  /**
+   * Delivery Schedule source — a SEPARATE subform from the line-item
+   * triplet above, one row per delivery batch (a line item can have
+   * several). Matched to a line item via its own `Line_Item_ref`. Same
+   * shape as the quotation templates' Delivery Schedule feature.
+   */
+  cat1DesiredDate: 'Category_1_MM_Database_WI_Desired_Date',
+  cat2DesiredDate: 'Category_2_MM_Database_WI_Desired_Date',
 
   lineItemRef: 'Line_Item_ref',
 
@@ -112,6 +135,14 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   /** Remarks for Billing Description — root `Workflow[0].Remarks`, NOT the per-line WI_2_0/_3_0 Remarks. */
   workflowSubform: 'Workflow',
   workflowRemarks: 'Remarks',
+  /**
+   * Per-line Remarks — `Category_1/2_MM_Database_WI_2_0[i].Remarks` (e.g.
+   * "PET/AISI 304L ... Q17-MESH"). Distinct from `workflowRemarks` above
+   * (document-level, feeds Billing Description itself). Shown stacked
+   * below the existing Billing Description value, ISOLATED to
+   * sls-ods-no-44's own product table.
+   */
+  lineRemarks: 'Remarks',
   /** SAP No — read-only from Zoho, no manual entry. */
   sapNo: 'SAP_No',
   hsnCode: 'HSN_Code',
@@ -159,6 +190,8 @@ export interface SlsOdsNo44Line {
   productCode: string
   application: string
   billingDescription: string
+  /** Per-line Remarks (`Category_1/2_MM_Database_WI_2_0[i].Remarks`) — shown stacked below Billing Description, not merged into it. */
+  lineRemarks: string
   /** Read-only from Zoho — no manual entry / editable control for this field. */
   sapNo: string
   hsnCode: string
@@ -175,6 +208,8 @@ export interface SlsOdsNo44Line {
   poDate: string
   qctNo: string
   qctDate: string
+  /** Category 1 WI only — blank for every other family (see field registry note). */
+  customerReference: string
 }
 
 export interface SlsOdsNo44Data {
@@ -187,6 +222,8 @@ export interface SlsOdsNo44Data {
   issueDate: string
   odsNo: string
   odsDate: string
+  /** Date-only `Created_Date_and_time` — used in place of `odsDate` for sls-ods-no-44's own ODS DATE row. */
+  createdDateAndTime: string
   customerName: string
   productGroup: string
   /** "Length"/"Width" column header text — derived from the first line's `Invoice_Dimension_Type` (split on "x"). Falls back to "Length"/"Width" when absent/unparsable. */
@@ -210,6 +247,27 @@ export interface SlsOdsNo44Data {
   freight: string
   remarks: string
   signerName: string
+  /** Delivery Schedule section — printed on its own page. One group per line item (not deduped by Product Code). */
+  deliverySchedule: SlsOdsNo44DeliveryGroup[]
+}
+
+/**
+ * Delivery Schedule — mirrors the quotation templates' feature, sourced
+ * from the `*_Desired_Date` subform (a line item can have several batches).
+ * Heading is the line's Product Code (NOT Brand Category/Brand Selling
+ * Name, unlike the quotation version) — ISOLATED to sls-ods-no-44.
+ */
+export interface SlsOdsNo44DeliveryEntry {
+  label: 'Date' | 'Week' | 'Month'
+  value: string
+  count: string
+  uom: string
+}
+
+export interface SlsOdsNo44DeliveryGroup {
+  ref: string
+  productCode: string
+  entries: SlsOdsNo44DeliveryEntry[]
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -254,12 +312,13 @@ function resolveCategoryBundle(raw: Record<string, unknown> | null | undefined):
   product: string
   line20: string
   line30: string
+  desiredDate: string
 } {
   const t = strVal(raw?.[F.template]).toLowerCase()
   if (t.includes('category 2')) {
-    return { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30 }
+    return { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30, desiredDate: F.cat2DesiredDate }
   }
-  return { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30 }
+  return { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30, desiredDate: F.cat1DesiredDate }
 }
 
 function mergedLineRow(row20: Record<string, unknown>, rows30: Record<string, unknown>[], index: number): Record<string, unknown> {
@@ -338,6 +397,7 @@ export function mapSlsOdsNo44(
       issueDate: ISSUE_DATE,
       odsNo: '',
       odsDate: '',
+      createdDateAndTime: '',
       customerName: '',
       productGroup: '',
       lengthColumnLabel: 'Length',
@@ -360,6 +420,7 @@ export function mapSlsOdsNo44(
       freight: '',
       remarks: '',
       signerName: '',
+      deliverySchedule: [],
     }
   }
 
@@ -404,6 +465,7 @@ export function mapSlsOdsNo44(
       productCode: strVal(productRow[F.productCode]),
       application,
       billingDescription,
+      lineRemarks: strVal(row20[F.lineRemarks]),
       sapNo: strVal(merged[F.sapNo]) || strVal(productRow[F.sapNo]),
       hsnCode: strVal(merged[F.hsnCode]) || strVal(productRow[F.hsnCode]),
       ppcDate: strVal(merged[F.ppcDate]),
@@ -425,8 +487,49 @@ export function mapSlsOdsNo44(
       poDate: strVal(merged[F.poDate]),
       qctNo: strVal(merged[F.qctNo]),
       qctDate: strVal(merged[F.qctDate]),
+      // Category 1 WI only — Category_2_MM_Database_WI_3_0 has the same
+      // field name but is deliberately left blank here, per spec.
+      customerReference: isCategory1Wi ? strVal(merged[F.customerReference]) : '',
     }
   })
+
+  // Delivery Schedule — same mechanism as the quotation templates' feature
+  // (a `*_Desired_Date` subform, one row per delivery batch, matched to a
+  // line item via `Line_Item_ref`), except the group heading is the line's
+  // Product Code, not Brand Category/Brand Selling Name. A line item with
+  // several batches gets several entries under its own group; lines are
+  // NOT deduped by Product Code.
+  const deliverySchedule: SlsOdsNo44DeliveryGroup[] = (() => {
+    const desiredRows = subformRows(raw, bundle.desiredDate)
+    const groups = new Map<string, SlsOdsNo44DeliveryGroup>()
+    for (const row of desiredRows) {
+      const ref = lineRef(row)
+      if (!ref) continue
+      const dateVal = strVal(row.Date_field)
+      const weekVal = strVal(row.Week)
+      const monthVal = strVal(row.Month_field ?? row.month_field)
+      const count = strVal(row.No_Of_Items ?? row.No_of_Items)
+      const row20Match = rows20.find((r) => lineRef(r) === ref)
+      const uom = strVal(row20Match?.[F.uomBilling])
+      let entry: SlsOdsNo44DeliveryEntry | null = null
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      if (!entry) continue
+      let group = groups.get(ref)
+      if (!group) {
+        const productRowMatch = productRows.find((r) => lineRef(r) === ref)
+        group = { ref, productCode: strVal(productRowMatch?.[F.productCode]), entries: [] }
+        groups.set(ref, group)
+      }
+      group.entries.push(entry)
+    }
+    return Array.from(groups.values()).sort((a, b) => {
+      const na = parseInt(a.ref, 10)
+      const nb = parseInt(b.ref, 10)
+      return (Number.isFinite(na) ? na : 0) - (Number.isFinite(nb) ? nb : 0)
+    })
+  })()
 
   const billingAddressLines = joinAddressLines(
     strVal(raw[F.billingAddressName]),
@@ -461,6 +564,7 @@ export function mapSlsOdsNo44(
     issueDate: ISSUE_DATE,
     odsNo: strVal(raw[F.name]),
     odsDate: dateOnly(strVal(raw[F.odsDate])),
+    createdDateAndTime: dateOnly(strVal(raw[F.createdDateAndTime])),
     customerName,
     productGroup,
     lengthColumnLabel,
@@ -483,5 +587,6 @@ export function mapSlsOdsNo44(
     freight: strVal(raw[F.freight]),
     remarks: strVal(raw[F.rootRemarks]),
     signerName: '',
+    deliverySchedule,
   }
 }
