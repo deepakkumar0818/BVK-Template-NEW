@@ -16,9 +16,14 @@
  * ─────────────────────────────────────────────────────────────────────────
  *  SCOPE — only what's been explicitly mapped so far. Everything else
  *  (Order Details box, RNA block, checklist, Credit Limit Exceeded box,
- *  Remarks, Total Amount, Qty Total, System Timestamp, "Wire" and "Unit"
- *  wire-detail columns) is intentionally left on the static fixture until
- *  mapped.
+ *  Remarks, Total Amount, Qty Total, System Timestamp, "Wire" wire-detail
+ *  column) is intentionally left on the static fixture until mapped.
+ *
+ *  Wire Details now covers BOTH the WI family (Category 1/2 WI) and the
+ *  WMW family (Category 1/2 WMW) — see the field registry's WMW section
+ *  for the confirmed field names. "Unit" and "Values (INR)" are mapped for
+ *  WMW only (blank for WI, no field confirmed yet there); Type/Len/Wid
+ *  have no confirmed WMW field yet and stay blank for WMW.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -35,6 +40,48 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
   cat2Line20: 'Category_2_MM_Database_WI_2_0',
   cat2Line30: 'Category_2_MM_Database_WI_3_0',
   lineItemRef: 'Line_Item_ref',
+
+  // WMW family — confirmed against real payload (record 238786000009134294,
+  // Template = "Category 2 WMW") on 2026-10-29. Ref field is `Last_item_ref`
+  // (NOT `Line_Item_ref`). Most per-line fields share the same literal API
+  // name as the WI family (Qty, List_Price, Selling_Price,
+  // Sales_Desired_Date, Material_Code, HSN_Code — all confirmed present on
+  // Category_2_MM_Database_WMW_2_0/_3_0 in that record), so no separate
+  // field constants are needed for those. Confirmed NOT present anywhere in
+  // that payload (left blank for WMW, same as "Wire"/"Unit"/"Values (INR)"
+  // are already left blank for WI): End_Type (Type), Invoice_Dimension_1/2
+  // (Len/Wid).
+  cat1ProductWmw: 'Category_1_MM_Database_WMW',
+  cat1Line20Wmw: 'Category_1_MM_Database_WMW_2_0',
+  cat1Line30Wmw: 'Category_1_MM_Database_WMW_3_0',
+  cat1Line40Wmw: 'Category_1_MM_Database_WMW_4_0',
+  cat2ProductWmw: 'Category_2_MM_Database_WMW',
+  cat2Line20Wmw: 'Category_2_MM_Database_WMW_2_0',
+  cat2Line30Wmw: 'Category_2_MM_Database_WMW_3_0',
+  cat2Line40Wmw: 'Category_2_MM_Database_WMW_4_0',
+  /** WMW subform ref field — distinct from `lineItemRef` (WI). */
+  wmwLineItemRef: 'Last_item_ref',
+  /**
+   * Product Description for the WMW family — `Blend_Category` on the
+   * `_3_0` subform (the main product row, Category_1/2_MM_Database_WMW, is
+   * often empty, so Product_Code is unreliable there; Blend_Category is
+   * the confirmed descriptive field, e.g. "Stainless Steel Wire Cloth").
+   * ISOLATED to WMW — does NOT replace `productCode` for the WI family.
+   */
+  blendCategory: 'Blend_Category',
+  /**
+   * WMW-only overrides, confirmed by the user directly — read from the
+   * MAIN PRODUCT ROW (Category_1/2_MM_Database_WMW[i]), not the `_2_0`
+   * subform like the WI family's `qty`/`listPrice`:
+   *   QTY   -> Pieces
+   *   Unit  -> UOM_Billing
+   *   Std   -> List_Price (same field name as WI's `listPrice`, but read
+   *            from the product row instead of `_2_0`)
+   */
+  wmwPieces: 'Pieces',
+  wmwUomBilling: 'UOM_Billing',
+  /** Values (INR) for WMW — `_4_0` subform, matched by `Last_item_ref` same as `_2_0`/`_3_0`. */
+  wmwSellingPriceUomBilling: 'Selling_Price_UOM_Billing',
 
   productCode: 'Product_Code', // Product Description (new column, replaces Item Name + Item Code)
   endType: 'End_Type', // Type
@@ -73,7 +120,7 @@ export interface Sls0254WireRow {
   len: string
   wid: string
   qty: string
-  /** Not mapped yet. */
+  /** WMW only — `UOM_Billing` on the main product row. Blank for WI (no field yet). */
   unit: string
   priceStd: string
   priceAgreed: string
@@ -81,7 +128,7 @@ export interface Sls0254WireRow {
   brand: string
   dDate: string
   quality: string
-  /** Not mapped yet. */
+  /** WMW only — `Selling_Price_UOM_Billing` on the `_4_0` subform. Blank for WI (no field yet). */
   valuesInr: string
   hsnCode: string
 }
@@ -111,20 +158,31 @@ function subformRows(raw: Record<string, unknown> | null | undefined, key: strin
   return []
 }
 
+/** Checks both WI (`Line_Item_ref`) and WMW (`Last_item_ref`) ref field names — a row only ever has one of the two. */
 function lineRef(row: Record<string, unknown>): string {
-  return strVal(row[F.lineItemRef])
+  return strVal(row[F.lineItemRef] ?? row[F.wmwLineItemRef])
 }
 
 function resolveCategoryBundle(raw: Record<string, unknown> | null | undefined): {
   product: string
   line20: string
   line30: string
+  /** Only populated for WMW (Values (INR) source) — empty string for WI. */
+  line40: string
+  isWmw: boolean
+  isCategory1: boolean
 } {
   const t = strVal(raw?.[F.template]).toLowerCase()
-  if (t.includes('category 2')) {
-    return { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30 }
+  const isWmw = t.includes('wmw')
+  const isCategory1 = !t.includes('category 2')
+  if (isWmw) {
+    return isCategory1
+      ? { product: F.cat1ProductWmw, line20: F.cat1Line20Wmw, line30: F.cat1Line30Wmw, line40: F.cat1Line40Wmw, isWmw: true, isCategory1: true }
+      : { product: F.cat2ProductWmw, line20: F.cat2Line20Wmw, line30: F.cat2Line30Wmw, line40: F.cat2Line40Wmw, isWmw: true, isCategory1: false }
   }
-  return { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30 }
+  return isCategory1
+    ? { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30, line40: '', isWmw: false, isCategory1: true }
+    : { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30, line40: '', isWmw: false, isCategory1: false }
 }
 
 function mergedLineRow(row20: Record<string, unknown>, rows30: Record<string, unknown>[], index: number): Record<string, unknown> {
@@ -161,32 +219,42 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
   const clientName = strVal(accountModule[F.customerName])
 
   const bundle = resolveCategoryBundle(raw)
-  const isCategory1Wi = bundle.product === F.cat1Product
   const rows20 = subformRows(raw, bundle.line20)
   const rows30 = subformRows(raw, bundle.line30)
+  const rows40 = bundle.line40 ? subformRows(raw, bundle.line40) : []
   const productRows = subformRows(raw, bundle.product)
-  const brandField = isCategory1Wi ? F.brandCategoryAsSellingName : F.brandSellingName
+  // Category 1 WI's Brand Selling Name is mislabeled `Brand_Category` in
+  // the API — that exception applies ONLY to Category 1 WI, not WMW.
+  const brandField = !bundle.isWmw && bundle.isCategory1 ? F.brandCategoryAsSellingName : F.brandSellingName
 
   const wireDetails: Sls0254WireRow[] = rows20.map((row20, index) => {
     const merged = mergedLineRow(row20, rows30, index)
     const productRow = matchProductRow(productRows, row20, index)
+    const ref = lineRef(row20)
+    const row40 = (ref ? rows40.find((r) => lineRef(r) === ref) : undefined) ?? rows40[index] ?? {}
 
     return {
       sno: String(index + 1),
-      productDescription: strVal(productRow[F.productCode]),
+      // Product_Code (WI) vs Blend_Category on `_3_0` (WMW — see field
+      // registry note; the WMW main product row is often empty).
+      productDescription: bundle.isWmw ? strVal(merged[F.blendCategory]) : strVal(productRow[F.productCode]),
       wire: '',
       type: strVal(merged[F.endType]) || strVal(productRow[F.endType]),
       len: strVal(merged[F.invoiceDimension1AsLength]),
       wid: strVal(merged[F.invoiceDimension2AsWidth]),
-      qty: strVal(merged[F.qty]),
-      unit: '',
-      priceStd: strVal(merged[F.listPrice]),
+      // QTY/Unit/Std — WMW reads these off the MAIN PRODUCT ROW
+      // (Pieces/UOM_Billing/List_Price), confirmed by spec; WI keeps its
+      // existing `_2_0`-based Qty/List_Price (Unit has no WI field yet).
+      qty: bundle.isWmw ? strVal(productRow[F.wmwPieces]) : strVal(merged[F.qty]),
+      unit: bundle.isWmw ? strVal(productRow[F.wmwUomBilling]) : '',
+      priceStd: bundle.isWmw ? strVal(productRow[F.listPrice]) : strVal(merged[F.listPrice]),
       priceAgreed: strVal(merged[F.sellingPrice]),
       priceBilled: strVal(merged[F.sellingPrice]),
       brand: strVal(productRow[brandField]) || strVal(merged[brandField]),
       dDate: strVal(merged[F.salesDesiredDate]),
       quality: strVal(merged[F.materialCode]),
-      valuesInr: '',
+      // Values (INR) — WMW only, from the `_4_0` subform.
+      valuesInr: bundle.isWmw ? strVal(row40[F.wmwSellingPriceUomBilling]) : '',
       hsnCode: strVal(merged[F.hsnCode]),
     }
   })

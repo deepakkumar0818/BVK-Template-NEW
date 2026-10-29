@@ -6,8 +6,13 @@
  * Only these pieces are live (mapSls0254, lib/sls-ods-0254-mapping.ts):
  *   - O.D.S / O.D.S Date / Client (header strip)
  *   - Wire Details table: Product Description (new, replaces Item Name +
- *     Item Code), Type, Len/Wid, QTY, Std/Agreed/Billed, Brand, D.Date,
- *     Quality, HSN Code. ("Wire" and "Unit" columns not mapped yet.)
+ *     Item Code), Type, Len/Wid, QTY, Unit, Std/Agreed/Billed, Brand,
+ *     D.Date, Quality, Values (INR), HSN Code. ("Wire" column not mapped
+ *     yet.) Covers both the WI family and the WMW family (Category 1/2
+ *     WMW). For WMW, QTY/Unit/Std come off the main product row
+ *     (Pieces/UOM_Billing/List_Price) and Values (INR) comes off the
+ *     `_4_0` subform (Selling_Price_UOM_Billing) — Type/Len/Wid have no
+ *     confirmed field for WMW yet, so they stay blank for WMW records.
  *   - Terms: Payment Terms, Payment Mode, Packing Chargs, Insurance, Destination
  *
  * Everything else — File No/Cust Code/Location/Credit Limit strip, the
