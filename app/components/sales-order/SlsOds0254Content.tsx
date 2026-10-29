@@ -6,26 +6,54 @@
  * Only these pieces are live (mapSls0254, lib/sls-ods-0254-mapping.ts):
  *   - O.D.S / O.D.S Date / Client (header strip)
  *   - Wire Details table: Product Description (new, replaces Item Name +
- *     Item Code), Type, Len/Wid, QTY, Unit, Std/Agreed/Billed, Brand,
- *     D.Date, Quality, Values (INR), HSN Code. ("Wire" column not mapped
- *     yet.) Covers both the WI family and the WMW family (Category 1/2
- *     WMW). For WMW, QTY/Unit/Std come off the main product row
- *     (Pieces/UOM_Billing/List_Price) and Values (INR) comes off the
- *     `_4_0` subform (Selling_Price_UOM_Billing) — Type/Len/Wid have no
- *     confirmed field for WMW yet, so they stay blank for WMW records.
- *   - Terms: Payment Terms, Payment Mode, Packing Chargs, Insurance, Destination
+ *     Item Code), Type, Len/Wid, QTY, Unit, Total SQM, Std/Billed (Agreed
+ *     column removed), Brand, D.Date, Quality, Values (INR), HSN Code.
+ *     Std/Billed/Values (INR) are shown up to 2 decimals, trailing zeros
+ *     stripped. ("Wire" column not mapped yet.) Covers both the WI family
+ *     and the WMW family (Category 1/2 WMW). For WMW, QTY/Unit/Std/Total
+ *     SQM come off the main product row
+ *     (Pieces/UOM_Billing/List_Price/Total_SQM), D.Date comes off `_3_0`'s
+ *     PPC_Committed_Date (not Sales_Desired_Date, which is WI-only), and
+ *     Values (INR) comes off `_3_0`'s Cost_After_Tax — Type/Len/Wid have
+ *     no confirmed field for WMW yet, so they stay blank for WMW records.
+ *     Total SQM has no confirmed field for WI, so it stays blank for WI
+ *     records.
+ *   - Terms: Payment Terms, Payment Mode, Packing Chargs, Insurance,
+ *     Destination, Transporter, Freight- To Pay / Paid, Freight Charges
+ *   - Total Amount (root `Total_Cost_After_Tax_Grand_Total`)
+ *   - Qty Total — computed, not read from Zoho: sum of every line's Total
+ *     SQM (effectively WMW-only, since WI lines contribute 0 there).
+ *   - Remarks (under Total Amount, root `Remarks`)
+ *   - GST No (top info strip, root `Billing_GST_No`)
  *
- * Everything else — File No/Cust Code/Location/Credit Limit strip, the
- * entire "Order Details" box (per spec: do not touch), Qty Total, Total
- * Amount, Remarks, Quality Harmonisation Number/Date, RNA block, checklist,
- * Credit Limit Exceeded box, System Timestamp — stays on the static
- * fixture, unchanged.
+ * Transporter reads `Transporter_Names.zc_display_value` — UNCONFIRMED
+ * against a populated sample (empty `{}` on every record checked so far).
+ * Freight- To Pay / Paid reads `Delivery_Terms`, keeping only the short
+ * code before the first "-" (uppercased) — e.g. "EXW - Ex Works (insert
+ * place of delivery)" -> "EXW"; no "-" present -> shown as-is.
+ *
+ * Cust Code and Tin No fields were removed entirely (per spec) — their
+ * table cells are now empty placeholders so File No/Location (row 1) and
+ * GST No (row 2) keep their column alignment.
+ *
+ * Everything else — File No/Location/Credit Limit strip, the entire
+ * "Order Details" box (per spec: do not touch), Banker Name, Direct
+ * Truck/Small, Transaction Charges, Quality Harmonisation Number/Date, RNA
+ * block, checklist, Credit Limit Exceeded box, System Timestamp — stays on
+ * the static fixture, unchanged.
  *
  * Does NOT import from or modify `SecondarySalesOdsContent.tsx` / `types.ts`.
  */
 
 import type { SecondarySalesOdsData } from './types'
 import type { Sls0254WireRow } from '@/lib/sls-ods-0254-mapping'
+
+/** Std / Billed / Values INR — up to 2 decimals, no trailing zeros (e.g. "482.5", not "482.50"). */
+function formatUpToTwoDecimals(v: string): string {
+  const n = parseFloat(v.replace(/,/g, '').trim())
+  if (!Number.isFinite(n)) return v
+  return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+}
 
 export default function SlsOds0254Content({
   fixture,
@@ -38,6 +66,15 @@ export default function SlsOds0254Content({
   packingCharges,
   insurance,
   destination,
+  totalAmount,
+  qtyTotal,
+  transporter,
+  freightCharges,
+  remarks,
+  freightToPayPaid,
+  gstNo,
+  creditLimit,
+  currentOrder,
 }: {
   fixture: SecondarySalesOdsData
   odsNo: string
@@ -49,6 +86,15 @@ export default function SlsOds0254Content({
   packingCharges: string
   insurance: string
   destination: string
+  totalAmount: string
+  qtyTotal: string
+  transporter: string
+  freightCharges: string
+  remarks: string
+  freightToPayPaid: string
+  gstNo: string
+  creditLimit: string
+  currentOrder: string
 }) {
   return (
     <div className={`sales-order-print-sheet sales-order-doc--${fixture.variant} sos-sheet`}>
@@ -105,25 +151,17 @@ export default function SlsOds0254Content({
           <tr>
             <td className="sos-label">File No :.</td>
             <td>{fixture.header.fileNo}</td>
-            <td className="sos-label">Cust Code :.</td>
-            <td>{fixture.header.custCode}</td>
+            <td></td>
+            <td></td>
             <td className="sos-label">Location :.</td>
             <td>{fixture.header.location}</td>
           </tr>
           <tr>
             <td className="sos-label">Credit Limit :</td>
-            <td>{fixture.header.creditLimit}</td>
+            <td>{creditLimit || ' '}</td>
             <td className="sos-label" colSpan={2}>{fixture.header.noOfCd}</td>
             <td className="sos-label">GST No :.</td>
-            <td>{fixture.header.gstNo}</td>
-          </tr>
-          <tr>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td></td>
-            <td className="sos-label">Tin No :.</td>
-            <td>{fixture.header.tinNo}</td>
+            <td>{gstNo || ' '}</td>
           </tr>
         </tbody>
       </table>
@@ -191,6 +229,24 @@ export default function SlsOds0254Content({
       <div className="sos-section-heading">Wire Details</div>
 
       <table className="sos-wire-details">
+        <colgroup>
+          <col style={{ width: '3%' }} />
+          <col style={{ width: '14%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '7%' }} />
+          <col style={{ width: '8%' }} />
+        </colgroup>
         <thead>
           <tr className="sos-wire-head-1">
             <th rowSpan={2}>SNo.</th>
@@ -200,7 +256,8 @@ export default function SlsOds0254Content({
             <th colSpan={2}>Invoice Size</th>
             <th rowSpan={2}>QTY</th>
             <th rowSpan={2}>Unit</th>
-            <th colSpan={3}>Price Per SQM</th>
+            <th rowSpan={2}>Total SQM</th>
+            <th colSpan={2}>Price Per SQM</th>
             <th rowSpan={2}>Brand</th>
             <th rowSpan={2}>D.Date</th>
             <th rowSpan={2}>Quality</th>
@@ -211,7 +268,6 @@ export default function SlsOds0254Content({
             <th>Len</th>
             <th>Wid</th>
             <th>Std</th>
-            <th>Agreed</th>
             <th>Billed</th>
           </tr>
         </thead>
@@ -226,13 +282,13 @@ export default function SlsOds0254Content({
               <td className="sos-num">{row.wid || ' '}</td>
               <td className="sos-num">{row.qty || ' '}</td>
               <td>{row.unit || ' '}</td>
-              <td className="sos-num">{row.priceStd || ' '}</td>
-              <td className="sos-num">{row.priceAgreed || ' '}</td>
-              <td className="sos-num">{row.priceBilled || ' '}</td>
+              <td className="sos-num">{row.totalSqm || ' '}</td>
+              <td className="sos-num">{row.priceStd ? formatUpToTwoDecimals(row.priceStd) : ' '}</td>
+              <td className="sos-num">{row.priceBilled ? formatUpToTwoDecimals(row.priceBilled) : ' '}</td>
               <td>{row.brand || ' '}</td>
               <td>{row.dDate || ' '}</td>
               <td>{row.quality || ' '}</td>
-              <td className="sos-num">{row.valuesInr || ' '}</td>
+              <td className="sos-num">{row.valuesInr ? formatUpToTwoDecimals(row.valuesInr) : ' '}</td>
               <td>{row.hsnCode || ' '}</td>
             </tr>
           ))}
@@ -240,7 +296,7 @@ export default function SlsOds0254Content({
       </table>
 
       <div className="sos-qty-total">
-        <span className="sos-qty-total-underline">{fixture.qtyTotal}</span>
+        <span className="sos-qty-total-underline">{qtyTotal || ' '}</span>
       </div>
 
       {/* ── Terms + Total Amount / Remarks — 5 fields LIVE, rest fixture ── */}
@@ -262,12 +318,12 @@ export default function SlsOds0254Content({
             <td className="sos-total-remarks-cell" colSpan={2} rowSpan={12}>
               <div className="sos-total-amount-strip">
                 <span className="sos-label">Total Amount:</span>
-                <span className="sos-total-value">{fixture.totalAmount}</span>
+                <span className="sos-total-value">{totalAmount || ' '}</span>
               </div>
               <div className="sos-remarks-strip">
                 <span className="sos-label">Remarks</span>
               </div>
-              <div className="sos-remarks-fill">{fixture.remarks || ' '}</div>
+              <div className="sos-remarks-fill">{remarks || ' '}</div>
             </td>
           </tr>
           <tr>
@@ -296,7 +352,7 @@ export default function SlsOds0254Content({
           </tr>
           <tr>
             <td className="sos-label">Transporter :.</td>
-            <td>{fixture.terms.transporter}</td>
+            <td>{transporter || ' '}</td>
           </tr>
           <tr>
             <td className="sos-label">Direct Truck / Small :.</td>
@@ -304,11 +360,11 @@ export default function SlsOds0254Content({
           </tr>
           <tr>
             <td className="sos-label">Freight- To Pay / Paid :.</td>
-            <td>{fixture.terms.freightToPayPaid}</td>
+            <td>{freightToPayPaid || ' '}</td>
           </tr>
           <tr>
             <td className="sos-label">Freight Charges :.</td>
-            <td>{fixture.terms.freightCharges}</td>
+            <td>{freightCharges || ' '}</td>
           </tr>
           <tr>
             <td className="sos-label">Transaction Charges</td>
@@ -381,7 +437,7 @@ export default function SlsOds0254Content({
             </tr>
             <tr>
               <td className="sos-label">Current Order</td>
-              <td className="sos-num">{fixture.creditLimitExceeded.currentOrder}</td>
+              <td className="sos-num">{currentOrder || ' '}</td>
             </tr>
             <tr>
               <td className="sos-label">Other Pending Order</td>
