@@ -16,8 +16,8 @@
  * ─────────────────────────────────────────────────────────────────────────
  *  SCOPE — only what's been explicitly mapped so far. Everything else
  *  (Order Details box, RNA block, checklist, Credit Limit Exceeded box,
- *  Remarks, Total Amount, Qty Total, System Timestamp, "Wire" wire-detail
- *  column) is intentionally left on the static fixture until mapped.
+ *  Remarks, Qty Total, System Timestamp, "Wire" wire-detail column) is
+ *  intentionally left on the static fixture until mapped.
  *
  *  Wire Details now covers BOTH the WI family (Category 1/2 WI) and the
  *  WMW family (Category 1/2 WMW) — see the field registry's WMW section
@@ -54,21 +54,11 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
   cat1ProductWmw: 'Category_1_MM_Database_WMW',
   cat1Line20Wmw: 'Category_1_MM_Database_WMW_2_0',
   cat1Line30Wmw: 'Category_1_MM_Database_WMW_3_0',
-  cat1Line40Wmw: 'Category_1_MM_Database_WMW_4_0',
   cat2ProductWmw: 'Category_2_MM_Database_WMW',
   cat2Line20Wmw: 'Category_2_MM_Database_WMW_2_0',
   cat2Line30Wmw: 'Category_2_MM_Database_WMW_3_0',
-  cat2Line40Wmw: 'Category_2_MM_Database_WMW_4_0',
   /** WMW subform ref field — distinct from `lineItemRef` (WI). */
   wmwLineItemRef: 'Last_item_ref',
-  /**
-   * Product Description for the WMW family — `Blend_Category` on the
-   * `_3_0` subform (the main product row, Category_1/2_MM_Database_WMW, is
-   * often empty, so Product_Code is unreliable there; Blend_Category is
-   * the confirmed descriptive field, e.g. "Stainless Steel Wire Cloth").
-   * ISOLATED to WMW — does NOT replace `productCode` for the WI family.
-   */
-  blendCategory: 'Blend_Category',
   /**
    * WMW-only overrides, confirmed by the user directly — read from the
    * MAIN PRODUCT ROW (Category_1/2_MM_Database_WMW[i]), not the `_2_0`
@@ -80,8 +70,10 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
    */
   wmwPieces: 'Pieces',
   wmwUomBilling: 'UOM_Billing',
-  /** Values (INR) for WMW — `_4_0` subform, matched by `Last_item_ref` same as `_2_0`/`_3_0`. */
-  wmwSellingPriceUomBilling: 'Selling_Price_UOM_Billing',
+  /** Total SQM column — WMW only, `Total_SQM` on the main product row (confirmed against record 238786000009134334, Template "Category 1 WMW"). */
+  wmwTotalSqm: 'Total_SQM',
+  /** Values (INR) for WMW — `Cost_After_Tax` on the `_3_0` subform. */
+  wmwCostAfterTax: 'Cost_After_Tax',
 
   productCode: 'Product_Code', // Product Description (new column, replaces Item Name + Item Code)
   endType: 'End_Type', // Type
@@ -97,7 +89,9 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
    */
   brandCategoryAsSellingName: 'Brand_Category',
   brandSellingName: 'Brand_Selling_Name',
-  salesDesiredDate: 'Sales_Desired_Date', // D.Date
+  salesDesiredDate: 'Sales_Desired_Date', // D.Date (WI)
+  /** D.Date for WMW — `PPC_Committed_Date` on the `_3_0` subform. ISOLATED to WMW — does NOT replace `salesDesiredDate` for WI. */
+  wmwPpcCommittedDate: 'PPC_Committed_Date',
   materialCode: 'Material_Code', // Quality
   hsnCode: 'HSN_Code', // HSN Code
 
@@ -106,6 +100,34 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
   packingCharges: 'Total_Packing_Charges',
   insurance: 'Insurance',
   destination: 'Destination',
+  /** Total Amount — root field, same regardless of WI/WMW family. */
+  totalAmount: 'Total_Cost_After_Tax_Grand_Total',
+  /**
+   * Transporter — root `Transporter_Names`, a Zoho lookup field (object),
+   * not a plain string. Read via `zc_display_value`, the generic
+   * human-readable field every lookup object in this report exposes (same
+   * shape as `Account_Module`) — UNCONFIRMED against a populated sample
+   * (empty `{}` on every record checked so far); verify once a record
+   * actually has a transporter set.
+   */
+  transporterNames: 'Transporter_Names',
+  /** Freight Charges — root field. */
+  freightCharges: 'Total_Freight_Charges',
+  /** Remarks (under Total Amount) — root field. */
+  rootRemarks: 'Remarks',
+  /**
+   * Freight : To Pay / Paid — root `Delivery_Terms`. Value is a long
+   * descriptive string (e.g. "EXW - Ex Works (insert place of delivery)");
+   * only the short code before the first "-" is wanted, uppercased. No
+   * "-" present → show the value as-is.
+   */
+  deliveryTerms: 'Delivery_Terms',
+  /** GST No (top info strip) — root field, same regardless of WI/WMW family. */
+  billingGstNo: 'Billing_GST_No',
+  /** Credit Limit (top info strip) — root field, same regardless of WI/WMW family. */
+  creditLimit: 'Credit_Limit',
+  /** "Current Order" in the Credit Limit Exceeded box — root field, same regardless of WI/WMW family. */
+  currentOrder: 'Total_Cost_After_Tax_Grand_Total',
 } as const
 
 const F = SLS_ODS_0254_ZOHO_FIELDS
@@ -128,9 +150,11 @@ export interface Sls0254WireRow {
   brand: string
   dDate: string
   quality: string
-  /** WMW only — `Selling_Price_UOM_Billing` on the `_4_0` subform. Blank for WI (no field yet). */
+  /** WMW only — `Cost_After_Tax` on the `_3_0` subform. Blank for WI (no field yet). */
   valuesInr: string
   hsnCode: string
+  /** WMW only — `Total_SQM` on the main product row. Blank for WI (no field yet). */
+  totalSqm: string
 }
 
 export interface Sls0254Data {
@@ -143,6 +167,21 @@ export interface Sls0254Data {
   packingCharges: string
   insurance: string
   destination: string
+  totalAmount: string
+  /** Sum of every line's Total SQM (WMW only — WI lines contribute 0, since Total SQM has no WI field yet). */
+  qtyTotal: string
+  transporter: string
+  freightCharges: string
+  /** Remarks shown under Total Amount — root `Remarks`. */
+  remarks: string
+  /** "Freight : To Pay / Paid" — short code before the first "-" in `Delivery_Terms`, uppercased. */
+  freightToPayPaid: string
+  /** GST No (top info strip) — root `Billing_GST_No`. */
+  gstNo: string
+  /** Credit Limit (top info strip) — root `Credit_Limit`. */
+  creditLimit: string
+  /** "Current Order" in the Credit Limit Exceeded box — root `Total_Cost_Before_Tax`. */
+  currentOrder: string
 }
 
 function strVal(v: unknown): string {
@@ -167,8 +206,6 @@ function resolveCategoryBundle(raw: Record<string, unknown> | null | undefined):
   product: string
   line20: string
   line30: string
-  /** Only populated for WMW (Values (INR) source) — empty string for WI. */
-  line40: string
   isWmw: boolean
   isCategory1: boolean
 } {
@@ -177,12 +214,12 @@ function resolveCategoryBundle(raw: Record<string, unknown> | null | undefined):
   const isCategory1 = !t.includes('category 2')
   if (isWmw) {
     return isCategory1
-      ? { product: F.cat1ProductWmw, line20: F.cat1Line20Wmw, line30: F.cat1Line30Wmw, line40: F.cat1Line40Wmw, isWmw: true, isCategory1: true }
-      : { product: F.cat2ProductWmw, line20: F.cat2Line20Wmw, line30: F.cat2Line30Wmw, line40: F.cat2Line40Wmw, isWmw: true, isCategory1: false }
+      ? { product: F.cat1ProductWmw, line20: F.cat1Line20Wmw, line30: F.cat1Line30Wmw, isWmw: true, isCategory1: true }
+      : { product: F.cat2ProductWmw, line20: F.cat2Line20Wmw, line30: F.cat2Line30Wmw, isWmw: true, isCategory1: false }
   }
   return isCategory1
-    ? { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30, line40: '', isWmw: false, isCategory1: true }
-    : { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30, line40: '', isWmw: false, isCategory1: false }
+    ? { product: F.cat1Product, line20: F.cat1Line20, line30: F.cat1Line30, isWmw: false, isCategory1: true }
+    : { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30, isWmw: false, isCategory1: false }
 }
 
 function mergedLineRow(row20: Record<string, unknown>, rows30: Record<string, unknown>[], index: number): Record<string, unknown> {
@@ -212,16 +249,33 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
       packingCharges: '',
       insurance: '',
       destination: '',
+      totalAmount: '',
+      qtyTotal: '',
+      transporter: '',
+      freightCharges: '',
+      remarks: '',
+      freightToPayPaid: '',
+      gstNo: '',
+      creditLimit: '',
+      currentOrder: '',
     }
   }
 
   const accountModule = (raw.Account_Module ?? {}) as Record<string, unknown>
   const clientName = strVal(accountModule[F.customerName])
+  const transporterNames = (raw[F.transporterNames] ?? {}) as Record<string, unknown>
+  const transporter = strVal(transporterNames.zc_display_value)
+
+  const deliveryTermsRaw = strVal(raw[F.deliveryTerms])
+  const deliveryTermsDashIdx = deliveryTermsRaw.indexOf('-')
+  const freightToPayPaid = (
+    deliveryTermsDashIdx >= 0 ? deliveryTermsRaw.slice(0, deliveryTermsDashIdx) : deliveryTermsRaw
+  ).trim()
+  const freightToPayPaidFinal = deliveryTermsDashIdx >= 0 ? freightToPayPaid.toUpperCase() : freightToPayPaid
 
   const bundle = resolveCategoryBundle(raw)
   const rows20 = subformRows(raw, bundle.line20)
   const rows30 = subformRows(raw, bundle.line30)
-  const rows40 = bundle.line40 ? subformRows(raw, bundle.line40) : []
   const productRows = subformRows(raw, bundle.product)
   // Category 1 WI's Brand Selling Name is mislabeled `Brand_Category` in
   // the API — that exception applies ONLY to Category 1 WI, not WMW.
@@ -230,14 +284,12 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
   const wireDetails: Sls0254WireRow[] = rows20.map((row20, index) => {
     const merged = mergedLineRow(row20, rows30, index)
     const productRow = matchProductRow(productRows, row20, index)
-    const ref = lineRef(row20)
-    const row40 = (ref ? rows40.find((r) => lineRef(r) === ref) : undefined) ?? rows40[index] ?? {}
 
     return {
       sno: String(index + 1),
-      // Product_Code (WI) vs Blend_Category on `_3_0` (WMW — see field
-      // registry note; the WMW main product row is often empty).
-      productDescription: bundle.isWmw ? strVal(merged[F.blendCategory]) : strVal(productRow[F.productCode]),
+      // Product_Code on the main product row — same field/source for both
+      // WI and WMW (WMW confirmed against record 238786000009134334).
+      productDescription: strVal(productRow[F.productCode]),
       wire: '',
       type: strVal(merged[F.endType]) || strVal(productRow[F.endType]),
       len: strVal(merged[F.invoiceDimension1AsLength]),
@@ -251,13 +303,24 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
       priceAgreed: strVal(merged[F.sellingPrice]),
       priceBilled: strVal(merged[F.sellingPrice]),
       brand: strVal(productRow[brandField]) || strVal(merged[brandField]),
-      dDate: strVal(merged[F.salesDesiredDate]),
+      dDate: bundle.isWmw ? strVal(merged[F.wmwPpcCommittedDate]) : strVal(merged[F.salesDesiredDate]),
       quality: strVal(merged[F.materialCode]),
-      // Values (INR) — WMW only, from the `_4_0` subform.
-      valuesInr: bundle.isWmw ? strVal(row40[F.wmwSellingPriceUomBilling]) : '',
+      // Values (INR) — WMW only, from the `_3_0` subform.
+      valuesInr: bundle.isWmw ? strVal(merged[F.wmwCostAfterTax]) : '',
       hsnCode: strVal(merged[F.hsnCode]),
+      // Total SQM — WMW only, from the main product row.
+      totalSqm: bundle.isWmw ? strVal(productRow[F.wmwTotalSqm]) : '',
     }
   })
+
+  // Qty Total — sum of every line's Total SQM (WI lines contribute 0, since
+  // Total SQM has no confirmed WI field yet). Rounded to 4 decimals to
+  // avoid floating-point artifacts, trailing zeros stripped.
+  const qtyTotalSum = wireDetails.reduce((sum, row) => {
+    const n = parseFloat(row.totalSqm)
+    return sum + (Number.isFinite(n) ? n : 0)
+  }, 0)
+  const qtyTotal = qtyTotalSum ? String(Number(qtyTotalSum.toFixed(4))) : ''
 
   return {
     odsNo: strVal(raw[F.name]),
@@ -269,5 +332,14 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
     packingCharges: strVal(raw[F.packingCharges]),
     insurance: strVal(raw[F.insurance]),
     destination: strVal(raw[F.destination]),
+    qtyTotal,
+    totalAmount: strVal(raw[F.totalAmount]),
+    transporter,
+    freightCharges: strVal(raw[F.freightCharges]),
+    remarks: strVal(raw[F.rootRemarks]),
+    freightToPayPaid: freightToPayPaidFinal,
+    gstNo: strVal(raw[F.billingGstNo]),
+    creditLimit: strVal(raw[F.creditLimit]),
+    currentOrder: strVal(raw[F.currentOrder]),
   }
 }

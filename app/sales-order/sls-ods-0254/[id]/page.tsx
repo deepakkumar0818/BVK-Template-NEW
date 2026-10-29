@@ -9,10 +9,12 @@ import { mapSls0254, type Sls0254Data } from '@/lib/sls-ods-0254-mapping'
 
 /**
  * ISOLATED to sls-ods-0254 only. Only O.D.S/O.D.S Date/Client, the Wire
- * Details table, and 5 terms fields (Payment Terms/Payment Mode/Packing
- * Chargs/Insurance/Destination) are live — everything else stays on the
- * static fixture (Order Details box explicitly untouched per spec). Other
- * sales-order variants are unaffected.
+ * Details table, 8 terms fields (Payment Terms/Payment Mode/Packing
+ * Chargs/Insurance/Destination/Transporter/Freight- To Pay-Paid/Freight
+ * Charges), Total Amount, Qty Total (computed), Remarks, and GST No are
+ * live — everything else stays on the static fixture (Order Details box
+ * explicitly untouched per spec; Cust Code and Tin No removed entirely).
+ * Other sales-order variants are unaffected.
  */
 export default function SlsOds0254Page() {
   const params = useParams()
@@ -86,6 +88,15 @@ export default function SlsOds0254Page() {
           packingCharges={data.packingCharges}
           insurance={data.insurance}
           destination={data.destination}
+          totalAmount={data.totalAmount}
+          qtyTotal={data.qtyTotal}
+          transporter={data.transporter}
+          freightCharges={data.freightCharges}
+          remarks={data.remarks}
+          freightToPayPaid={data.freightToPayPaid}
+          gstNo={data.gstNo}
+          creditLimit={data.creditLimit}
+          currentOrder={data.currentOrder}
         />
       )}
     </>
