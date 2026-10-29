@@ -1876,9 +1876,13 @@
     page: sales-order-ods;
   }
 
-  /* sls-ods-no-44 ONLY — higher specificity overrides the rule above so
-   * this variant alone gets the bottom-center page number. */
-  .sales-order-doc--sls-ods-no-44.sales-order-print-sheet {
+  /* sls-ods-no-44 / sls-ods-no-44-p / sls-ods-44-hydrotech /
+   * sls-ods-44-p-hydrotech ONLY — higher specificity overrides the rule
+   * above so these variants alone get the bottom-center page number. */
+  .sales-order-doc--sls-ods-no-44.sales-order-print-sheet,
+  .sales-order-doc--sls-ods-no-44-p.sales-order-print-sheet,
+  .sales-order-doc--sls-ods-44-hydrotech.sales-order-print-sheet,
+  .sales-order-doc--sls-ods-44-p-hydrotech.sales-order-print-sheet {
     page: sales-order-ods-numbered;
   }
 

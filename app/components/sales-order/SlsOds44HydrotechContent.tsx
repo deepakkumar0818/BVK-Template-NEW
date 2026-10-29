@@ -14,6 +14,32 @@
 
 import type { SlsOdsNo44Data } from '@/lib/sls-ods-no-44-mapping'
 
+/** Strips thousands separators and parses a number from a mapped string value. */
+function parseMappedNumber(v: string): number {
+  const s = v.replace(/,/g, '').trim()
+  return s ? parseFloat(s) : NaN
+}
+
+/** Price / Total Value in INR — up to 2 decimals, no trailing zeros (e.g. "482.5", not "482.50"). */
+function formatUpToTwoDecimals(v: string): string {
+  const n = parseMappedNumber(v)
+  if (!Number.isFinite(n)) return v
+  return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+}
+
+/** Qty — full decimal precision, no rounding; no trailing ".00" for whole numbers. */
+function formatFullPrecision(v: string): string {
+  const n = parseMappedNumber(v)
+  if (!Number.isFinite(n)) return v
+  return String(n)
+}
+
+/** Capitalizes only the first character (e.g. "road" -> "Road") — rest of the string untouched. */
+function capitalizeFirst(v: string): string {
+  if (!v) return v
+  return v.charAt(0).toUpperCase() + v.slice(1)
+}
+
 const LOGO = {
   src: '/hydrotech-logo.png',
   alt: 'BVK HYDROTECH',
@@ -25,8 +51,24 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
   // either (e.g. Invoice_Dimension_1/2 both empty on every line) — a single
   // SQM column (mapped to `SQM`) takes their place instead.
   const showDimensions = data.lines.some((line) => line.length || line.width)
-  const productColCount = showDimensions ? 16 : 15
-  const productFootLabelSpan = showDimensions ? 14 : 13
+  const productColCount = showDimensions ? 13 : 12
+  const productFootLabelSpan = showDimensions ? 11 : 10
+
+  // QCT No. / Date row (below FREIGHT) — one entry per unique Product Code,
+  // in the order first encountered: "<code> - <qctNo>, <qctDate>", joined
+  // across products with ", ".
+  const qctSummary = (() => {
+    const seen = new Set<string>()
+    const parts: string[] = []
+    for (const line of data.lines) {
+      const code = line.productCode.trim()
+      if (!code || seen.has(code)) continue
+      seen.add(code)
+      parts.push(`${code} - ${line.qctNo || ''}, ${line.qctDate || ''}`)
+    }
+    return parts.join(', ')
+  })()
+
   return (
     <div
       className="sales-order-print-sheet sales-order-doc--sls-ods-44-hydrotech"
@@ -79,7 +121,7 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
               <td className="ods-label" rowSpan={2}>
                 ODS DATE
               </td>
-              <td rowSpan={2}>{data.odsDate}</td>
+              <td rowSpan={2}>{data.createdDateAndTime}</td>
               <td className="ods-label">Page No.</td>
               <td>{data.pageNo}</td>
             </tr>
@@ -127,6 +169,38 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
       {/* ── Product details ────────────────────────────────────────── */}
       <div className="ods-section-outline" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <table className="ods-table ods-product-table" role="presentation" style={{ flex: 1, height: '100%' }}>
+          {showDimensions ? (
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+          ) : (
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
+          )}
           <thead>
             <tr>
               <th colSpan={productColCount} className="ods-section-label ods-section-label--center">
@@ -135,16 +209,13 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
             </tr>
             <tr>
               <th>Product Code</th>
-              <th>Application</th>
               <th>Billing Description</th>
               <th>HSN Code</th>
               <th>SAP No.</th>
               <th>Client PO No.</th>
               <th>PO Date</th>
               <th>Customer Desired Date</th>
-              <th>QCT No. / QH</th>
-              <th>QCT Date</th>
-              <th>PPC Date</th>
+              <th>Customer Reference</th>
               {showDimensions ? (
                 <>
                   <th>Length (Meter)</th>
@@ -161,26 +232,28 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
             {data.lines.map((line, idx) => (
               <tr key={idx}>
                 <td className="ods-desc">{line.productCode || ' '}</td>
-                <td>{line.application || ' '}</td>
-                <td className="ods-desc">{line.billingDescription || ' '}</td>
+                <td className="ods-desc">
+                  {line.billingDescription || ' '}
+                  {line.lineRemarks ? <div>{line.lineRemarks}</div> : null}
+                </td>
                 <td className="ods-num">{line.hsnCode || ' '}</td>
                 <td className="ods-num">{line.sapNo || ' '}</td>
                 <td className="ods-num">{line.clientPoNo || ' '}</td>
                 <td className="ods-num">{line.poDate || ' '}</td>
                 <td className="ods-num">{line.customerDesiredDate || ' '}</td>
-                <td className="ods-num">{line.qctNo || ' '}</td>
-                <td className="ods-num">{line.qctDate || ' '}</td>
-                <td className="ods-num">{line.ppcDate || ' '}</td>
+                <td className="ods-num">{line.customerReference || ' '}</td>
                 {showDimensions ? (
                   <>
                     <td className="ods-num">{line.length || ' '}</td>
                     <td className="ods-num">{line.width || ' '}</td>
                   </>
                 ) : null}
-                <td className="ods-num">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
+                <td className="ods-num">
+                  {line.qty ? `${formatFullPrecision(line.qty)}${line.uom ? ` ${line.uom}` : ''}` : ' '}
+                </td>
                 {showDimensions ? null : <td className="ods-num">{line.totalSqm || ' '}</td>}
-                <td className="ods-amount">{line.price || ' '}</td>
-                <td className="ods-amount">{line.totalValue || ' '}</td>
+                <td className="ods-amount">{line.price ? formatUpToTwoDecimals(line.price) : ' '}</td>
+                <td className="ods-amount">{line.totalValue ? formatUpToTwoDecimals(line.totalValue) : ' '}</td>
               </tr>
             ))}
             {/* Fills whatever vertical space is left on the page so the
@@ -236,7 +309,7 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
             </tr>
             <tr>
               <td className="ods-terms-label">DISPATCH MODE</td>
-              <td className="ods-terms-value">{data.dispatchMode || ' '}</td>
+              <td className="ods-terms-value">{data.dispatchMode ? capitalizeFirst(data.dispatchMode) : ' '}</td>
             </tr>
             <tr>
               <td className="ods-terms-label">ROAD PERMIT</td>
@@ -253,6 +326,10 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
             <tr>
               <td className="ods-terms-label">FREIGHT : TO PAY / PAID</td>
               <td className="ods-terms-value">{data.freight || ' '}</td>
+            </tr>
+            <tr>
+              <td className="ods-terms-label">QCT No. / Date</td>
+              <td className="ods-terms-value">{qctSummary || ' '}</td>
             </tr>
           </tbody>
         </table>
@@ -287,6 +364,36 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
           </tbody>
         </table>
       </div>
+
+      {/* ── Delivery Schedule — forced onto its own new printed page. One
+       * group per line item (heading = that line's Product Code, not
+       * deduped), each listing its delivery batches. Hidden entirely when
+       * there's nothing to show. */}
+      {data.deliverySchedule.length > 0 ? (
+        <div className="ods-delivery-schedule-page">
+          <div className="ods-section-outline">
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              Order No. : {data.odsNo}&nbsp;&nbsp;&nbsp;Order Date : {data.createdDateAndTime}&nbsp;&nbsp;&nbsp;Delivery Schedule:
+            </div>
+            {data.deliverySchedule.map((group) => (
+              <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                  {group.ref}. {group.productCode || ' '}
+                </div>
+                <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                  {group.entries.map((entry, i) => (
+                    <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                      <strong>{entry.label}</strong> : {entry.value}
+                      {entry.count ? `, ${entry.count} items` : ''}
+                      {entry.uom ? `, ${entry.uom}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

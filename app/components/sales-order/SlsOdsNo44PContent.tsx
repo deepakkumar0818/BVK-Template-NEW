@@ -13,6 +13,25 @@
 
 import type { SlsOdsNo44Data } from '@/lib/sls-ods-no-44-mapping'
 
+/** Strips thousands separators and parses a number from a mapped string value. */
+function parseMappedNumber(v: string): number {
+  const s = v.replace(/,/g, '').trim()
+  return s ? parseFloat(s) : NaN
+}
+
+/** Qty — full decimal precision, no rounding; no trailing ".00" for whole numbers. */
+function formatFullPrecision(v: string): string {
+  const n = parseMappedNumber(v)
+  if (!Number.isFinite(n)) return v
+  return String(n)
+}
+
+/** Capitalizes only the first character (e.g. "road" -> "Road") — rest of the string untouched. */
+function capitalizeFirst(v: string): string {
+  if (!v) return v
+  return v.charAt(0).toUpperCase() + v.slice(1)
+}
+
 const LOGO = {
   src: '/wmw-logo.png',
   alt: 'WMW INDUSTRIES LTD',
@@ -26,7 +45,23 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
   // either (e.g. Invoice_Dimension_1/2 both empty on every line) — a single
   // SQM column (mapped to `SQM`) takes their place instead.
   const showDimensions = data.lines.some((line) => line.length || line.width)
-  const productColCount = showDimensions ? 15 : 14
+  const productColCount = showDimensions ? 12 : 11
+
+  // QCT No. / Date row (below FREIGHT) — one entry per unique Product Code,
+  // in the order first encountered: "<code> - <qctNo>, <qctDate>", joined
+  // across products with ", ".
+  const qctSummary = (() => {
+    const seen = new Set<string>()
+    const parts: string[] = []
+    for (const line of data.lines) {
+      const code = line.productCode.trim()
+      if (!code || seen.has(code)) continue
+      seen.add(code)
+      parts.push(`${code} - ${line.qctNo || ''}, ${line.qctDate || ''}`)
+    }
+    return parts.join(', ')
+  })()
+
   return (
     <div
       className="sales-order-print-sheet sales-order-doc--sls-ods-no-44-p"
@@ -83,7 +118,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
               <td className="ods-label" rowSpan={2}>
                 ODS DATE
               </td>
-              <td rowSpan={2}>{data.odsDate}</td>
+              <td rowSpan={2}>{data.createdDateAndTime}</td>
               <td className="ods-label">Page No.</td>
               <td>{data.pageNo}</td>
             </tr>
@@ -129,6 +164,36 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
       {/* ── Product details — Price / UOM and Total Value in INR columns removed ── */}
       <div className="ods-section-outline" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <table className="ods-table ods-product-table" role="presentation" style={{ flex: 1, height: '100%' }}>
+          {showDimensions ? (
+            <colgroup>
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '4%' }} />
+            </colgroup>
+          ) : (
+            <colgroup>
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '4%' }} />
+            </colgroup>
+          )}
           <thead>
             <tr>
               <th colSpan={productColCount} className="ods-section-label ods-section-label--center">
@@ -137,16 +202,13 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
             </tr>
             <tr>
               <th>Product Code</th>
-              <th>Application</th>
               <th>Billing Description</th>
               <th>HSN Code</th>
               <th>SAP No.</th>
               <th>Client PO No.</th>
               <th>PO Date</th>
               <th>Customer Desired Date</th>
-              <th>QCT No. / QH</th>
-              <th>QCT Date</th>
-              <th>PPC Date</th>
+              <th>Customer Reference</th>
               {showDimensions ? (
                 <>
                   <th>{data.lengthColumnLabel}</th>
@@ -162,16 +224,16 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
             {data.lines.map((line, idx) => (
               <tr key={idx}>
                 <td className="ods-desc">{line.productCode || ' '}</td>
-                <td>{line.application || ' '}</td>
-                <td className="ods-desc">{line.billingDescription || ' '}</td>
+                <td className="ods-desc">
+                  {line.billingDescription || ' '}
+                  {line.lineRemarks ? <div>{line.lineRemarks}</div> : null}
+                </td>
                 <td className="ods-num">{line.hsnCode || ' '}</td>
                 <td className="ods-num">{line.sapNo || ' '}</td>
                 <td className="ods-num">{line.clientPoNo || ' '}</td>
                 <td className="ods-num">{line.poDate || ' '}</td>
                 <td className="ods-num">{line.customerDesiredDate || ' '}</td>
-                <td className="ods-num">{line.qctNo || ' '}</td>
-                <td className="ods-num">{line.qctDate || ' '}</td>
-                <td className="ods-num">{line.ppcDate || ' '}</td>
+                <td className="ods-num">{line.customerReference || ' '}</td>
                 {showDimensions ? (
                   <>
                     <td className="ods-num">{line.length || ' '}</td>
@@ -179,7 +241,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
                   </>
                 ) : null}
                 <td className="ods-num">{line.uom || ' '}</td>
-                <td className="ods-num">{line.qty || ' '}</td>
+                <td className="ods-num">{line.qty ? formatFullPrecision(line.qty) : ' '}</td>
                 {showDimensions ? null : <td className="ods-num">{line.totalSqm || ' '}</td>}
               </tr>
             ))}
@@ -223,7 +285,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
             </tr>
             <tr>
               <td className="ods-terms-label">DISPATCH MODE</td>
-              <td className="ods-terms-value">{data.dispatchMode || ' '}</td>
+              <td className="ods-terms-value">{data.dispatchMode ? capitalizeFirst(data.dispatchMode) : ' '}</td>
             </tr>
             <tr>
               <td className="ods-terms-label">ROAD PERMIT</td>
@@ -232,6 +294,10 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
             <tr>
               <td className="ods-terms-label">FREIGHT : TO PAY / PAID</td>
               <td className="ods-terms-value">{data.freight || ' '}</td>
+            </tr>
+            <tr>
+              <td className="ods-terms-label">QCT No. / Date</td>
+              <td className="ods-terms-value">{qctSummary || ' '}</td>
             </tr>
           </tbody>
         </table>
@@ -266,6 +332,36 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
           </tbody>
         </table>
       </div>
+
+      {/* ── Delivery Schedule — forced onto its own new printed page. One
+       * group per line item (heading = that line's Product Code, not
+       * deduped), each listing its delivery batches. Hidden entirely when
+       * there's nothing to show. */}
+      {data.deliverySchedule.length > 0 ? (
+        <div className="ods-delivery-schedule-page">
+          <div className="ods-section-outline">
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              Order No. : {data.odsNo}&nbsp;&nbsp;&nbsp;Order Date : {data.createdDateAndTime}&nbsp;&nbsp;&nbsp;Delivery Schedule:
+            </div>
+            {data.deliverySchedule.map((group) => (
+              <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                  {group.ref}. {group.productCode || ' '}
+                </div>
+                <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                  {group.entries.map((entry, i) => (
+                    <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                      <strong>{entry.label}</strong> : {entry.value}
+                      {entry.count ? `, ${entry.count} items` : ''}
+                      {entry.uom ? `, ${entry.uom}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
