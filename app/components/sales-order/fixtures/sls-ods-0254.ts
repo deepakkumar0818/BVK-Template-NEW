@@ -117,7 +117,6 @@ export const slsOds0254Fixture: SecondarySalesOdsData = {
     { label: 'Commitment Of Collection As Per AR', checked: false },
     { label: 'Current Ageing Of OS', checked: false },
     { label: 'Any Credit Note Pending', checked: false },
-    { label: 'C-Form Pending', checked: false },
     { label: 'Copy Of Last Visit Report From ERP', checked: false },
     { label: 'Any Sales Return', checked: false },
     { label: 'Status Of PAP Or Claims If Any', checked: false },

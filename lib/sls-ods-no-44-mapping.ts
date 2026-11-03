@@ -93,13 +93,12 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
   qctDate: 'QCT_Date',
   /**
-   * Customer Reference — per-line field on `Category_1_MM_Database_WI_3_0`
-   * (confirmed field name, capital C; NOT the lowercase `customer_Reference`
-   * sibling field, and NOT `Customer_Reference_Date`). ISOLATED to Category
-   * 1 WI records only — `Category_2_MM_Database_WI_3_0` has the same field
-   * name but is deliberately left unmapped, per spec.
+   * Customer Reference — root `customer_Reference` (lowercase c; NOT the
+   * capital-C `Customer_Reference` per-line field on `_3_0`, and NOT
+   * `Customer_Reference_Date`). Document-level — same value applied to
+   * every line, regardless of Category 1/2 WI.
    */
-  customerReference: 'Customer_Reference',
+  customerReference: 'customer_Reference',
 
   // Subform families (Category 1 / Category 2 WI triplet — same shape as quotations)
   cat1Product: 'Category_1_MM_Database_WI',
@@ -208,7 +207,7 @@ export interface SlsOdsNo44Line {
   poDate: string
   qctNo: string
   qctDate: string
-  /** Category 1 WI only — blank for every other family (see field registry note). */
+  /** Root `customer_Reference` — same value for every line, regardless of category. */
   customerReference: string
 }
 
@@ -487,9 +486,8 @@ export function mapSlsOdsNo44(
       poDate: strVal(merged[F.poDate]),
       qctNo: strVal(merged[F.qctNo]),
       qctDate: strVal(merged[F.qctDate]),
-      // Category 1 WI only — Category_2_MM_Database_WI_3_0 has the same
-      // field name but is deliberately left blank here, per spec.
-      customerReference: isCategory1Wi ? strVal(merged[F.customerReference]) : '',
+      // Root `customer_Reference` — same value applied to every line.
+      customerReference: strVal(raw[F.customerReference]),
     }
   })
 
