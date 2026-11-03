@@ -10,27 +10,28 @@ export default function MultiOrderAcceptanceOfOrderContent({
   return (
     <div className={`sales-order-print-sheet sales-order-doc--${data.variant} mao-sheet`}>
       <div className="mao-content">
-        {/* ── Brand header ─────────────────────────────────────── */}
-        <div className="mao-header">
+        {/* ── Brand header — same "BVK top left/right" letterhead images as
+            BVKQuotationContent.tsx's latest header (replaces the old
+            single-logo + brand-text layout driven by `data.logo`). Fixed
+            assets, not per-record data, so hardcoded here rather than
+            read from the fixture. */}
+        <div className="mao-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <img
-            src={data.logo.src}
-            alt={data.logo.alt}
-            className="mao-header-logo"
+            src="/bvk top left.png"
+            alt="BVK header (left)"
+            style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
             onError={(e) => {
               e.currentTarget.style.display = 'none'
-              const fallback = e.currentTarget.nextElementSibling
-              if (fallback instanceof HTMLElement) fallback.style.display = 'block'
             }}
           />
-          <div className="mao-header-fallback" style={{ display: 'none', whiteSpace: 'pre-line' }}>
-            {data.logo.fallbackText}
-          </div>
-          <div className="mao-header-text">
-            <div className="mao-header-brand" style={{ whiteSpace: 'pre-line' }}>
-              {data.logo.brandName}
-            </div>
-            <div className="mao-header-tagline">{data.logo.tagline}</div>
-          </div>
+          <img
+            src="/bvk top right.png"
+            alt="BVK header (right)"
+            style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
         </div>
 
         {/* ── Title ────────────────────────────────────────────── */}

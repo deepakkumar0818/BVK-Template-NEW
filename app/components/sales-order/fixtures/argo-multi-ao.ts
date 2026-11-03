@@ -6,8 +6,10 @@ export const argoMultiAoFixture: MultiOrderAcceptanceOfOrderData = {
     src: '/wmw-logo.png',
     alt: 'WMW INDUSTRIES LTD',
     fallbackText: 'WMW\nINDUSTRIES LTD',
-    brandName: 'WMW\nINDUSTRIES LTD',
-    tagline: '…weaving solutions together',
+    // Same letterhead text as sls-ods-no-44's LOGO constant
+    // (SlsOdsNo44Content.tsx): tagline = brand line, taglineSub = subtitle.
+    brandName: 'WMW INDUSTRIES LTD',
+    tagline: 'A BVK Group Company\nWeaving Technical Mesh Solutions',
   },
   title: 'Acceptance of Order',
   date: '07-04-2026',

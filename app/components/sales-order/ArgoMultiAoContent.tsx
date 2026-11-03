@@ -3,16 +3,35 @@
 /**
  * argo-multi-ao — ISOLATED sibling of MultiOrderAcceptanceOfOrderContent.tsx.
  *
- * Same letter layout as the original argo-multi-ao (header, recipient,
- * subject, greeting, closing paragraphs, signature lines, footer) — all of
- * that stays static, from `argoMultiAoFixture`, exactly as before.
+ * Same letter layout as the original argo-multi-ao (recipient, subject,
+ * greeting, closing paragraphs, signature lines) — stays static, from
+ * `argoMultiAoFixture`, exactly as before. Header and footer now use the
+ * same letterhead IMAGES as SLSQuotationContent.tsx (`/wi.png` header;
+ * `/wi bottom left side.png` + `/wi_bottom_rightside.png` footer) instead
+ * of the fixture's old logo/footerLeft/footerRight text fields, which are
+ * no longer read here.
  *
  * ONLY the order table is replaced: instead of the fixture's static
  * PO/SAP/Quality/Dispatch/Qty/Rate/Total rows, it renders live line items
- * built by `mapSlsOdsNo44` (lib/sls-ods-no-44-mapping.ts) — same columns as
- * sls-ods-no-44's product table, minus Product Code and Application. The
- * "Quality Harmonisation Number" + "Date" block that used to sit between
- * the closing paragraphs and the sign-off lines is removed.
+ * built by `mapSlsOdsNo44` (lib/sls-ods-no-44-mapping.ts) — trimmed down to
+ * PO No. (clientPoNo), SAP No. (sapNo — Category_1/2_MM_Database_WI_3_0[i].
+ * SAP_No, with product-row fallback; column hidden entirely when no line
+ * has a value), Client Reference (customerReference — same fallback chain
+ * as sls-ods-no-44's Customer Reference column; column hidden entirely
+ * when no line has a value), Product Description (Brand Selling Name
+ * [Category_2_MM_Database_WI[0].Brand_Selling_Name] with per-line Remarks
+ * [Category_2_MM_Database_WI_2_0[0].Remarks] stacked below it — Product
+ * Code is NOT shown here, unlike sls-ods-no-44), Qty (value only, no UOM
+ * suffix), Billing UOM (same `line.uom` —
+ * Category_2_MM_Database_WI[0].UOM_Billing — as its own column), Price
+ * (header reads the same `line.uom` value, e.g. "Price / Kgs", not a
+ * hardcoded "Price / UOM"), Total Value (header reads live `Currency`,
+ * e.g. "Total Value in INR", not a hardcoded "INR"). Every other
+ * sls-ods-no-44 column (HSN Code, PO
+ * Date, QCT No./Date, PPC Date, Length, Width, Total SQM, Billing
+ * Description) is not shown here. The "Quality Harmonisation Number" +
+ * "Date" block that used to sit
+ * between the closing paragraphs and the sign-off lines is removed.
  *
  * Does NOT import from or modify `MultiOrderAcceptanceOfOrderContent.tsx` /
  * `types.ts`, so argo-multi-ao-hydrotech is unaffected.
@@ -21,12 +40,20 @@
 import type { MultiOrderAcceptanceOfOrderData } from './types'
 import type { SlsOdsNo44Line } from '@/lib/sls-ods-no-44-mapping'
 
+/** Price / Total Value — up to 2 decimals, no trailing zeros (e.g. "482.5", not "482.50"). */
+function formatUpToTwoDecimals(v: string): string {
+  const n = parseFloat(v.replace(/,/g, '').trim())
+  if (!Number.isFinite(n)) return v
+  return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+}
+
 export default function ArgoMultiAoContent({
   fixture,
   lines,
   shippingAddressLines,
   subject,
   date,
+  currency,
 }: {
   fixture: MultiOrderAcceptanceOfOrderData
   lines: SlsOdsNo44Line[]
@@ -36,33 +63,54 @@ export default function ArgoMultiAoContent({
   subject: string
   /** Header "Date:" — live `Created_Date_and_time` (same field/value as sls-ods-no-44's ODS DATE), not the fixture's static date. */
   date: string
+  /** Root `Currency` (e.g. "INR") — replaces the old hardcoded "INR" in the Total Value column header. */
+  currency: string
 }) {
+  // SAP No. column — only shown when at least one line has a value.
+  const showSapNo = lines.some((line) => line.sapNo)
+  // Client Reference column — only shown when at least one line has a
+  // value. Reuses `line.customerReference` (Category_2_MM_Database_WI_3_0
+  // Customer_Reference, same fallback chain already used for this field).
+  const showClientReference = lines.some((line) => line.customerReference)
+  // "Price / UOM" header — the literal "UOM" is replaced by the actual
+  // Billing UOM value (first line that has one), same field as the
+  // Billing UOM column.
+  const priceUomLabel = lines.find((line) => line.uom)?.uom ?? ''
+
   return (
     <div className={`sales-order-print-sheet sales-order-doc--${fixture.variant} mao-sheet`}>
-      <div className="mao-content">
-        {/* ── Brand header ─────────────────────────────────────── */}
-        <div className="mao-header">
-          <img
-            src={fixture.logo.src}
-            alt={fixture.logo.alt}
-            className="mao-header-logo"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-              const fallback = e.currentTarget.nextElementSibling
-              if (fallback instanceof HTMLElement) fallback.style.display = 'block'
-            }}
-          />
-          <div className="mao-header-fallback" style={{ display: 'none', whiteSpace: 'pre-line' }}>
-            {fixture.logo.fallbackText}
-          </div>
-          <div className="mao-header-text">
-            <div className="mao-header-brand" style={{ whiteSpace: 'pre-line' }}>
-              {fixture.logo.brandName}
-            </div>
-            <div className="mao-header-tagline">{fixture.logo.tagline}</div>
-          </div>
-        </div>
-
+      {/* ── Whole page wrapped in a <table> so the browser repeats the
+          header on every printed page (same trick SLSQuotationContent.tsx
+          uses) — thead = header, tfoot = empty 32mm spacer reserving room
+          for the fixed-position footer below. ISOLATED to argo-multi-ao
+          via the `.sales-order-doc--argo-multi-ao` CSS selector, so
+          argo-multi-ao-hydrotech (still single-page) is unaffected. */}
+      <table className="mao-print-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead className="mao-print-header-row">
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
+              {/* ── Brand header — same single combined-logo image as
+                  SLSQuotationContent.tsx's header (`/wi.png` already has the
+                  WMW mark + "WMW INDUSTRIES LTD" + tagline baked in as one
+                  graphic, so no separate brand-text/tagline elements are
+                  needed here). */}
+              <div className="mao-header">
+                <img
+                  src="/wi.png"
+                  alt="WMW Industries Ltd"
+                  style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+              <div className="mao-content">
         {/* ── Title ────────────────────────────────────────────── */}
         <div className="mao-title">
           <span>{fixture.title}</span>
@@ -95,60 +143,81 @@ export default function ArgoMultiAoContent({
             duplicated what this dynamic field already says). */}
         {subject ? <div className="mao-body-para">{subject}</div> : null}
 
-        {/* ── Order table — LIVE data, sls-ods-no-44 columns minus
-            Product Code / Application ─────────────────────────── */}
+        {/* ── Order table — LIVE data. Only PO No. / Product Description /
+            Qty / Price / Total Value columns kept; everything else removed. ── */}
         <table className="mao-table">
-          <colgroup>
-            <col style={{ width: '11%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '6%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '7%' }} />
-            <col style={{ width: '9%' }} />
-          </colgroup>
+          {(() => {
+            const extraCount = (showSapNo ? 1 : 0) + (showClientReference ? 1 : 0)
+            if (extraCount === 2) {
+              return (
+                <colgroup>
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '31%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '6%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '13%' }} />
+                </colgroup>
+              )
+            }
+            if (extraCount === 1) {
+              return (
+                <colgroup>
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '35%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '15%' }} />
+                </colgroup>
+              )
+            }
+            return (
+              <colgroup>
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '39%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '15%' }} />
+              </colgroup>
+            )
+          })()}
           <thead>
             <tr>
-              <th>Billing Description</th>
-              <th>HSN Code</th>
-              <th>SAP No.</th>
-              <th>Client PO No.</th>
-              <th>PO Date</th>
-              <th>QCT No. / QH</th>
-              <th>QCT Date</th>
-              <th>PPC Date</th>
-              <th>Length (Meter)</th>
-              <th>Width (Meter)</th>
-              <th>Total SQM</th>
-              <th>Qty / UOM</th>
-              <th>Price / UOM</th>
-              <th>Total Value in INR</th>
+              <th>PO No.</th>
+              <th>Product Description</th>
+              {showSapNo ? <th>SAP No.</th> : null}
+              {showClientReference ? <th>Client Reference</th> : null}
+              <th>Qty</th>
+              <th>
+                Billing
+                <br />
+                UOM
+              </th>
+              <th>Price{priceUomLabel ? ` / ${priceUomLabel}` : ''}</th>
+              <th>Total Value {currency ? `in ${currency}` : ''}</th>
             </tr>
           </thead>
           <tbody>
             {lines.map((line, i) => (
               <tr key={i}>
-                <td className="mao-cell-left">{line.billingDescription || ' '}</td>
-                <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>{line.hsnCode || ' '}</td>
-                <td className="mao-cell-center">{line.sapNo || ' '}</td>
                 <td className="mao-cell-center">{line.clientPoNo || ' '}</td>
-                <td className="mao-cell-center">{line.poDate || ' '}</td>
-                <td className="mao-cell-center">{line.qctNo || ' '}</td>
-                <td className="mao-cell-center">{line.qctDate || ' '}</td>
-                <td className="mao-cell-center">{line.ppcDate || ' '}</td>
-                <td className="mao-cell-center">{line.length || ' '}</td>
-                <td className="mao-cell-center">{line.width || ' '}</td>
-                <td className="mao-cell-center">{line.totalSqm || ' '}</td>
-                <td className="mao-cell-center">{line.qty ? `${line.qty}${line.uom ? ` ${line.uom}` : ''}` : ' '}</td>
-                <td className="mao-cell-center">{line.price || ' '}</td>
-                <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>{line.totalValue || ' '}</td>
+                <td className="mao-cell-left">
+                  {line.brandSellingName || ' '}
+                  {line.lineRemarks ? <div>{line.lineRemarks}</div> : null}
+                </td>
+                {showSapNo ? <td className="mao-cell-center">{line.sapNo || ' '}</td> : null}
+                {showClientReference ? <td className="mao-cell-center">{line.customerReference || ' '}</td> : null}
+                <td className="mao-cell-center">{line.qty || ' '}</td>
+                <td className="mao-cell-center">{line.uom || ' '}</td>
+                <td className="mao-cell-center">{line.price ? formatUpToTwoDecimals(line.price) : ' '}</td>
+                <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>
+                  {line.totalValue ? formatUpToTwoDecimals(line.totalValue) : ' '}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -169,36 +238,50 @@ export default function ArgoMultiAoContent({
             {line}
           </div>
         ))}
-      </div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+        {/* Empty tfoot spacer — reserves 32mm at the bottom of every printed
+            page so body content never flows under the fixed footer below
+            (same height as that footer, same trick SLS uses). Not painted
+            here — the visible footer is the separate fixed div after this
+            table. */}
+        <tfoot className="mao-print-footer-row">
+          <tr>
+            <td style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
+          </tr>
+        </tfoot>
+      </table>
 
-      {/* ── Footer ─────────────────────────────────────────────── */}
-      <div className="mao-footer">
-        <div className="mao-footer-col mao-footer-left">
-          <div className="mao-footer-company-name">{fixture.footerLeft.companyName}</div>
-          <div className="mao-footer-former">{fixture.footerLeft.formerName}</div>
-          <div className="mao-footer-spacer">&nbsp;</div>
-          <div className="mao-footer-plain">{fixture.footerLeft.address}</div>
-          <div className="mao-footer-plain">{fixture.footerLeft.contactLine}</div>
-          <div className="mao-footer-legal">
-            <span>
-              <em>CIN:</em> {fixture.footerLeft.cin}
-            </span>
-            {'   '}
-            <span>
-              <em>GST:</em> {fixture.footerLeft.gst}
-            </span>
-          </div>
-        </div>
-        <div className="mao-footer-col mao-footer-right">
-          <div className="mao-footer-group">{fixture.footerRight.groupLine}</div>
-          <div className="mao-footer-spacer">&nbsp;</div>
-          <div className="mao-footer-reg-label">{fixture.footerRight.registeredOfficeLabel}</div>
-          {fixture.footerRight.registeredOfficeLines.map((line, i) => (
-            <div key={i} className="mao-footer-plain">
-              {line}
-            </div>
-          ))}
-        </div>
+      {/* ── Actual footer — lives OUTSIDE the table. In print media it gets
+          `position: fixed; bottom: 0` (see sales-order-doc.css) so the two
+          images pin to the paper bottom on EVERY generated page, including
+          the last. On screen it flows normally at the end of the container.
+          Same two combined-text images as SLSQuotationContent.tsx's footer
+          (left = company details, right = CIN/GST/BVK Group/Registered
+          Office), replacing the old text-driven footerLeft/footerRight
+          fixture fields. ──────────────────────────────────────────────── */}
+      <div
+        className="mao-footer mao-page-footer"
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px' }}
+      >
+        <img
+          src="/wi bottom left side.png"
+          alt="WMW Industries Ltd — company details"
+          style={{ maxWidth: '60%', height: 'auto', display: 'block' }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+        <img
+          src="/wi_bottom_rightside.png"
+          alt="WMW Industries Ltd — CIN / GST / BVK Group"
+          style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
       </div>
     </div>
   )

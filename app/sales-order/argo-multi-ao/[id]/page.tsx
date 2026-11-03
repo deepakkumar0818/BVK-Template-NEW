@@ -93,6 +93,7 @@ export default function ArgoMultiAoPage() {
           shippingAddressLines={data.shippingAddressLines}
           subject={subject}
           date={date}
+          currency={data.currency}
         />
       )}
     </>

@@ -950,6 +950,21 @@
   box-sizing: border-box;
 }
 
+/* argo-multi-ao ONLY — side inset matches SLSQuotationContent.tsx's 20mm
+ * left/right container padding exactly. A CSS custom-property override,
+ * not a change to the shared .mao-sheet definition above, so
+ * argo-multi-ao-hydrotech keeps its original 14mm inset. */
+.sales-order-doc--argo-multi-ao.mao-sheet {
+  --mao-side-inset: 20mm;
+}
+
+/* argo-multi-ao-hydrotech ONLY — same 20mm side-inset treatment as
+ * argo-multi-ao above, kept as its own selector so the two stay
+ * independently tunable. */
+.sales-order-doc--argo-multi-ao-hydrotech.mao-sheet {
+  --mao-side-inset: 20mm;
+}
+
 .mao-sheet .mao-content {
   flex: 1 1 auto;
 }
@@ -1835,6 +1850,23 @@
   margin: 10mm;
 }
 
+/* argo-multi-ao ONLY — margin: 0, matching SLSQuotationContent.tsx's global
+ * `@page { margin: 0 }` exactly (inset comes from the content's own
+ * padding instead). Kept separate from sales-order-mao above so
+ * argo-multi-ao-hydrotech is unaffected. */
+@page sales-order-mao-wi {
+  size: A4 portrait;
+  margin: 0;
+}
+
+/* argo-multi-ao-hydrotech ONLY — same margin: 0 treatment as
+ * sales-order-mao-wi above, kept as its own named page so argo-multi-ao
+ * and argo-multi-ao-hydrotech can each be repaginated independently. */
+@page sales-order-mao-hydrotech {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @page sales-order-sos {
   size: A4 portrait;
   /* Named @page — kept at margin: 0 because the container itself now
@@ -1934,6 +1966,141 @@
   .mao-sheet .mao-table tr {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  /* argo-multi-ao ONLY — same repeating-header / fixed-bottom-footer print
+   * technique as SLSQuotationContent.tsx (.sls-print-table /
+   * .sls-page-footer above). argo-multi-ao-hydrotech (still a single
+   * static page via MultiOrderAcceptanceOfOrderContent.tsx) never uses
+   * these classes, so it is unaffected. */
+  .sales-order-doc--argo-multi-ao .mao-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-print-table > tbody > tr > td {
+    vertical-align: top;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-print-table thead.mao-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-print-header-row td {
+    display: table-cell !important;
+  }
+
+  /* Footer (two-image company block) repeats at the bottom of every
+   * printed page, mirroring the thead trick above. */
+  .sales-order-doc--argo-multi-ao .mao-print-table tfoot.mao-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  /* Footer — full-bleed to the physical page edges, exact same technique
+   * as SLS's `.sls-company-footer`: zero LEFT/RIGHT padding on the div
+   * itself, `margin-left/right: calc(50% - 50vw)` escapes any parent
+   * padding/max-width, and only the FIRST (left) image gets an 8mm inset
+   * — the right image stays flush to the paper edge. A small top gap
+   * (margin-top + padding-top, same values as SLS) keeps it from touching
+   * the content directly above it. Paired with the `sales-order-mao-wi`
+   * @page's `margin: 0` below (same as SLS's global `@page { margin: 0 }`). */
+  .sales-order-doc--argo-multi-ao .mao-page-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    margin: 0 !important;
+    margin-top: 10px !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding: 8px 0 0 !important;
+    box-sizing: border-box !important;
+    height: 32mm;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-page-footer > img:first-child {
+    margin-left: 8mm !important;
+  }
+
+  /* Page margin/width — same as SLS: @page margin 0 (not the shared
+   * sales-order-mao's 10mm), with the content's own inset instead. Own
+   * named @page so argo-multi-ao-hydrotech (its own separate rules below)
+   * can be repaginated independently. */
+  .sales-order-doc--argo-multi-ao.mao-sheet {
+    page: sales-order-mao-wi;
+    padding: 10mm 0 0 !important;
+  }
+
+  .sales-order-doc--argo-multi-ao .mao-header {
+    padding: 0 var(--mao-side-inset);
+  }
+
+  /* argo-multi-ao-hydrotech ONLY — same repeating-header /
+   * fixed-bottom-footer print technique as argo-multi-ao above. The
+   * footer here stays TEXT (footerLeft/footerRight), not images, so it
+   * uses ordinary side-inset padding instead of the full-bleed +
+   * per-image-margin trick argo-multi-ao's image footer needs. */
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-table > tbody > tr > td {
+    vertical-align: top;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-table thead.mao-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-header-row td {
+    display: table-cell !important;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-table tfoot.mao-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  /* Footer margin/width — exact same technique as BVKQuotationContent.tsx's
+   * `.bvk-page-footer`: fixed to the viewport edges, with a simple
+   * symmetric 8mm left/right inset (not the 20mm --mao-side-inset the rest
+   * of this page uses, and not the full-bleed trick argo-multi-ao's image
+   * footer needs) so the company text doesn't hug the paper edges. */
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-page-footer {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding-left: 8mm !important;
+    padding-right: 8mm !important;
+    box-sizing: border-box !important;
+    height: 32mm;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech.mao-sheet {
+    page: sales-order-mao-hydrotech;
+    padding: 10mm 0 0 !important;
+  }
+
+  .sales-order-doc--argo-multi-ao-hydrotech .mao-header {
+    padding: 0 var(--mao-side-inset);
   }
 
   .sales-order-doc .ods-product-table thead {

@@ -193,6 +193,13 @@ export interface SlsOdsNo44Line {
   productCode: string
   application: string
   billingDescription: string
+  /**
+   * Brand Selling Name alone — the same document-level value that feeds
+   * `billingDescription` (Brand_Selling_Name, or Category 1 WI's mislabeled
+   * Brand_Category), exposed standalone for variants that want it without
+   * the Workflow Remarks also folded into billingDescription.
+   */
+  brandSellingName: string
   /** Per-line Remarks (`Category_1/2_MM_Database_WI_2_0[i].Remarks`) — shown stacked below Billing Description, not merged into it. */
   lineRemarks: string
   /** Read-only from Zoho — no manual entry / editable control for this field. */
@@ -228,6 +235,8 @@ export interface SlsOdsNo44Data {
   /** Date-only `Created_Date_and_time` — used in place of `odsDate` for sls-ods-no-44's own ODS DATE row. */
   createdDateAndTime: string
   customerName: string
+  /** Root `Currency` — e.g. "INR". Used in place of a hardcoded "INR" in column headers that want the live currency. */
+  currency: string
   productGroup: string
   /** "Length"/"Width" column header text — derived from the first line's `Invoice_Dimension_Type` (split on "x"). Falls back to "Length"/"Width" when absent/unparsable. */
   lengthColumnLabel: string
@@ -402,6 +411,7 @@ export function mapSlsOdsNo44(
       odsDate: '',
       createdDateAndTime: '',
       customerName: '',
+      currency: '',
       productGroup: '',
       lengthColumnLabel: 'Length',
       widthColumnLabel: 'Width',
@@ -474,6 +484,7 @@ export function mapSlsOdsNo44(
       productCode: strVal(productRow[F.productCode]),
       application,
       billingDescription,
+      brandSellingName,
       lineRemarks: strVal(row20[F.lineRemarks]),
       sapNo: strVal(merged[F.sapNo]) || strVal(productRow[F.sapNo]),
       hsnCode: strVal(merged[F.hsnCode]) || strVal(productRow[F.hsnCode]),
@@ -587,6 +598,7 @@ export function mapSlsOdsNo44(
     odsDate: dateOnly(strVal(raw[F.odsDate])),
     createdDateAndTime: dateOnly(strVal(raw[F.createdDateAndTime])),
     customerName,
+    currency: strVal(raw[F.currency]),
     productGroup,
     lengthColumnLabel,
     widthColumnLabel,
