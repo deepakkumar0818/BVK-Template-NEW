@@ -93,12 +93,16 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   /** Confirmed field name. Per-line, same `_3_0` subform as Client_PO_No. */
   qctDate: 'QCT_Date',
   /**
-   * Customer Reference — root `customer_Reference` (lowercase c; NOT the
-   * capital-C `Customer_Reference` per-line field on `_3_0`, and NOT
-   * `Customer_Reference_Date`). Document-level — same value applied to
-   * every line, regardless of Category 1/2 WI.
+   * Customer Reference — per-line `Customer_Reference` (capital C; NOT the
+   * lowercase `customer_Reference` root field, and NOT
+   * `Customer_Reference_Date`). Checked across THREE subforms in order —
+   * Category 2 WI `_3_0`, Category 1 WI `_3_0`, then `Product_Fitments3_0`
+   * — using whichever one actually has data for that line, regardless of
+   * which family the record's `Template` resolved to.
    */
-  customerReference: 'customer_Reference',
+  customerReferenceField: 'Customer_Reference',
+  /** Third fallback source for Customer Reference. */
+  productFitments30: 'Product_Fitments3_0',
 
   // Subform families (Category 1 / Category 2 WI triplet — same shape as quotations)
   cat1Product: 'Category_1_MM_Database_WI',
@@ -207,7 +211,7 @@ export interface SlsOdsNo44Line {
   poDate: string
   qctNo: string
   qctDate: string
-  /** Root `customer_Reference` — same value for every line, regardless of category. */
+  /** Per-line `Customer_Reference` — first non-empty of Cat 2 WI `_3_0` / Cat 1 WI `_3_0` / `Product_Fitments3_0`. */
   customerReference: string
 }
 
@@ -432,6 +436,12 @@ export function mapSlsOdsNo44(
   const rows30 = subformRows(raw, bundle.line30)
   const productRows = subformRows(raw, bundle.product)
 
+  // Customer Reference fallback sources — checked regardless of which
+  // family the record's Template actually resolved to.
+  const customerReferenceCat2Rows = subformRows(raw, F.cat2Line30)
+  const customerReferenceCat1Rows = subformRows(raw, F.cat1Line30)
+  const customerReferenceFitmentsRows = subformRows(raw, F.productFitments30)
+
   const productGroup = strVal(productRows[0]?.[F.productGroup])
 
   // "Length"/"Width" column headers — derived from the first product row's
@@ -486,8 +496,21 @@ export function mapSlsOdsNo44(
       poDate: strVal(merged[F.poDate]),
       qctNo: strVal(merged[F.qctNo]),
       qctDate: strVal(merged[F.qctDate]),
-      // Root `customer_Reference` — same value applied to every line.
-      customerReference: strVal(raw[F.customerReference]),
+      // Customer Reference — first non-empty of Cat 2 WI `_3_0`, Cat 1 WI
+      // `_3_0`, then Product_Fitments3_0 (checked regardless of which
+      // family the record's Template actually resolved to).
+      customerReference: (() => {
+        const ref = lineRef(row20)
+        const findIn = (rows: Record<string, unknown>[]) => {
+          const match = (ref ? rows.find((r) => lineRef(r) === ref) : undefined) ?? rows[index]
+          return strVal(match?.[F.customerReferenceField])
+        }
+        return (
+          findIn(customerReferenceCat2Rows) ||
+          findIn(customerReferenceCat1Rows) ||
+          findIn(customerReferenceFitmentsRows)
+        )
+      })(),
     }
   })
 
