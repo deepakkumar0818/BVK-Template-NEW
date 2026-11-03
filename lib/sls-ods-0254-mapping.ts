@@ -128,6 +128,14 @@ export const SLS_ODS_0254_ZOHO_FIELDS = {
   creditLimit: 'Credit_Limit',
   /** "Current Order" in the Credit Limit Exceeded box — root field, same regardless of WI/WMW family. */
   currentOrder: 'Total_Cost_After_Tax_Grand_Total',
+  /** Zone (Order Details box) — root field, same regardless of WI/WMW family. */
+  customerZone: 'Customer_Zone',
+  /** Location (top info strip) — root field, same regardless of WI/WMW family. */
+  shippingCity: 'Shipping_City',
+  /** Customer P.O. No (Order Details box) — root field, same regardless of WI/WMW family. */
+  poNumber: 'PO_Number',
+  /** P.O. Date (Order Details box) — root field, same regardless of WI/WMW family. */
+  poDate: 'PO_Date',
 } as const
 
 const F = SLS_ODS_0254_ZOHO_FIELDS
@@ -180,8 +188,16 @@ export interface Sls0254Data {
   gstNo: string
   /** Credit Limit (top info strip) — root `Credit_Limit`. */
   creditLimit: string
-  /** "Current Order" in the Credit Limit Exceeded box — root `Total_Cost_Before_Tax`. */
+  /** "Current Order" in the Credit Limit Exceeded box — root `Total_Cost_After_Tax_Grand_Total`. */
   currentOrder: string
+  /** Zone (Order Details box) — root `Customer_Zone`. */
+  zone: string
+  /** Location (top info strip) — root `Shipping_City`. */
+  location: string
+  /** Customer P.O. No (Order Details box) — root `PO_Number`. */
+  customerPoNo: string
+  /** P.O. Date (Order Details box) — root `PO_Date`. */
+  poDate: string
 }
 
 function strVal(v: unknown): string {
@@ -258,6 +274,10 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
       gstNo: '',
       creditLimit: '',
       currentOrder: '',
+      zone: '',
+      location: '',
+      customerPoNo: '',
+      poDate: '',
     }
   }
 
@@ -341,5 +361,9 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
     gstNo: strVal(raw[F.billingGstNo]),
     creditLimit: strVal(raw[F.creditLimit]),
     currentOrder: strVal(raw[F.currentOrder]),
+    zone: strVal(raw[F.customerZone]),
+    location: strVal(raw[F.shippingCity]),
+    customerPoNo: strVal(raw[F.poNumber]),
+    poDate: strVal(raw[F.poDate]),
   }
 }

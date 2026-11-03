@@ -75,6 +75,10 @@ export default function SlsOds0254Content({
   gstNo,
   creditLimit,
   currentOrder,
+  zone,
+  location,
+  customerPoNo,
+  poDate,
 }: {
   fixture: SecondarySalesOdsData
   odsNo: string
@@ -95,6 +99,10 @@ export default function SlsOds0254Content({
   gstNo: string
   creditLimit: string
   currentOrder: string
+  zone: string
+  location: string
+  customerPoNo: string
+  poDate: string
 }) {
   return (
     <div className={`sales-order-print-sheet sales-order-doc--${fixture.variant} sos-sheet`}>
@@ -154,7 +162,7 @@ export default function SlsOds0254Content({
             <td></td>
             <td></td>
             <td className="sos-label">Location :.</td>
-            <td>{fixture.header.location}</td>
+            <td>{location || ' '}</td>
           </tr>
           <tr>
             <td className="sos-label">Credit Limit :</td>
@@ -182,36 +190,36 @@ export default function SlsOds0254Content({
         <tbody>
           <tr>
             <td className="sos-label">Customer P.O. No :</td>
-            <td>{fixture.orderDetails.customerPoNo}</td>
+            <td>{customerPoNo || ' '}</td>
             <td className="sos-label">Cons Values :.</td>
             <td>{fixture.orderDetails.consValues}</td>
             <td className="sos-label">Zone :.</td>
-            <td>{fixture.orderDetails.zone}</td>
+            <td>{zone || ' '}</td>
           </tr>
           <tr>
             <td className="sos-label">P.O. Date :.</td>
-            <td>{fixture.orderDetails.poDate}</td>
+            <td>{poDate || ' '}</td>
             <td className="sos-label">Till Date Sold :.</td>
             <td>{fixture.orderDetails.tillDateSold}</td>
             <td className="sos-label">Industry Type:.</td>
             <td>{fixture.orderDetails.industryType}</td>
           </tr>
           <tr>
-            <td className="sos-label">Delivery Requested</td>
+            <td className="sos-label">Delivery Requested :.</td>
             <td>{fixture.orderDetails.deliveryRequested}</td>
             <td className="sos-label">Target Value :.</td>
             <td>{fixture.orderDetails.targetValue}</td>
             <td className="sos-label">O/S As On :.</td>
             <td>{fixture.orderDetails.osAsOn}</td>
           </tr>
-          <tr>
+          {/* <tr>
             <td className="sos-label">Delivery Commit :.</td>
             <td>{fixture.orderDetails.deliveryCommit || ' '}</td>
             <td></td>
             <td></td>
             <td className="sos-label">ODS In Hand :.</td>
             <td>{fixture.orderDetails.odsInHand}</td>
-          </tr>
+          </tr> */}
           <tr>
             <td></td>
             <td></td>
@@ -449,12 +457,12 @@ export default function SlsOds0254Content({
             </tr>
             <tr>
               <td className="sos-label">Credit Limit</td>
-              <td className="sos-num">{fixture.creditLimitExceeded.creditLimit}</td>
+              <td className="sos-num">{creditLimit || ''}</td>
             </tr>
-            <tr>
+            {/* <tr>
               <td className="sos-label">Processing Limit</td>
               <td className="sos-num">{fixture.creditLimitExceeded.processingLimit}</td>
-            </tr>
+            </tr> */}
             <tr>
               <td className="sos-label">Credit Excess</td>
               <td className="sos-num">{fixture.creditLimitExceeded.creditExcess}</td>

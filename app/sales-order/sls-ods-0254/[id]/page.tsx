@@ -97,6 +97,10 @@ export default function SlsOds0254Page() {
           gstNo={data.gstNo}
           creditLimit={data.creditLimit}
           currentOrder={data.currentOrder}
+          zone={data.zone}
+          location={data.location}
+          customerPoNo={data.customerPoNo}
+          poDate={data.poDate}
         />
       )}
     </>
