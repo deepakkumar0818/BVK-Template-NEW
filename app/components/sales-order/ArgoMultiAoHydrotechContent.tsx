@@ -22,13 +22,21 @@
  */
 
 import type { MultiOrderAcceptanceOfOrderData } from './types'
-import type { SlsOdsNo44Line } from '@/lib/sls-ods-no-44-mapping'
+import type { SlsOdsNo44DeliveryGroup, SlsOdsNo44Line } from '@/lib/sls-ods-no-44-mapping'
 
 /** Price / Total Value — up to 2 decimals, no trailing zeros (e.g. "482.5", not "482.50"). */
 function formatUpToTwoDecimals(v: string): string {
   const n = parseFloat(v.replace(/,/g, '').trim())
   if (!Number.isFinite(n)) return v
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+}
+
+/** Qty — full precision, no trailing zeros (e.g. "2500" not "2500.0000", "2500.5" not "2500.5000"). */
+function formatQty(v: string): string {
+  const s = v.trim()
+  if (!s) return s
+  const n = Number(s.replace(/,/g, ''))
+  return Number.isFinite(n) ? n.toString() : s
 }
 
 export default function ArgoMultiAoHydrotechContent({
@@ -38,6 +46,10 @@ export default function ArgoMultiAoHydrotechContent({
   subject,
   date,
   currency,
+  orderNo,
+  deliverySchedule,
+  orderOfAcceptanceHeader,
+  orderOfAcceptanceRemarks,
 }: {
   fixture: MultiOrderAcceptanceOfOrderData
   lines: SlsOdsNo44Line[]
@@ -49,6 +61,16 @@ export default function ArgoMultiAoHydrotechContent({
   date: string
   /** Root `Currency` (e.g. "INR") — replaces the old hardcoded "INR" in the Total Value column header. */
   currency: string
+  /** Order No. — same `data.odsNo` (root `Name`) sls-ods-no-44 uses for its
+   * own Delivery Schedule page heading. */
+  orderNo: string
+  /** Same `data.deliverySchedule` sls-ods-no-44 already computes (WI family
+   * only, via `*_Desired_Date` subforms) — reused as-is, not rebuilt here. */
+  deliverySchedule: SlsOdsNo44DeliveryGroup[]
+  /** Shown right after the Subject paragraph — live root `Order_of_Acceptance_Header`. */
+  orderOfAcceptanceHeader: string
+  /** Replaces the old static `fixture.bodyClosingParas` text — live root `Order_of_Acceptance_Remarks`. */
+  orderOfAcceptanceRemarks: string
 }) {
   // SAP No. column — only shown when at least one line has a value.
   const showSapNo = lines.some((line) => line.sapNo)
@@ -56,6 +78,9 @@ export default function ArgoMultiAoHydrotechContent({
   // value. Reuses `line.customerReference` (Category_2_MM_Database_WI_3_0
   // Customer_Reference, same fallback chain already used for this field).
   const showClientReference = lines.some((line) => line.customerReference)
+  // Delivery Date column — only shown when at least one line has a value.
+  // `line.salesDesiredDate` = active WI category's `_2_0.Sales_Desired_Date`.
+  const showDeliveryDate = lines.some((line) => line.salesDesiredDate)
   // "Price / UOM" header — the literal "UOM" is replaced by the actual
   // Billing UOM value (first line that has one), same field as the
   // Billing UOM column.
@@ -71,10 +96,21 @@ export default function ArgoMultiAoHydrotechContent({
           selector. */}
       <table className="mao-print-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead className="mao-print-header-row">
+          {/* Top spacer row — exact same mechanism as BVKQuotationContent.tsx's
+              `print-page-top-spacer` (globals.css): repeats inside the thead
+              on every printed page, giving the same top margin (default
+              `--quotation-print-top-inset: 25mm`) BVK uses. Replaces the old
+              10mm padding-top on the outer sheet, which only applied to page 1. */}
+          <tr className="print-page-top-spacer" aria-hidden="true">
+            <td />
+          </tr>
           <tr>
             <td style={{ border: 'none', padding: 0 }}>
-              {/* ── Brand header — same "BVK top left/right" letterhead
-                  images as MultiOrderAcceptanceOfOrderContent.tsx. */}
+              {/* ── Brand header — exact match of BVKQuotationContent.tsx's
+                  header block: top green line, then the BVK top-left/right
+                  letterhead images, both inset by the same `--mao-side-inset`
+                  the footer already uses, so header and footer line up. */}
+              <div style={{ borderTop: '2px solid #00a651', margin: '0 var(--mao-side-inset) 10px' }}></div>
               <div
                 className="mao-header"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
@@ -135,12 +171,67 @@ export default function ArgoMultiAoHydrotechContent({
             duplicated what this dynamic field already says). */}
         {subject ? <div className="mao-body-para">{subject}</div> : null}
 
+        {/* Live root `Order_of_Acceptance_Header` — shown right after the Subject paragraph. */}
+        {orderOfAcceptanceHeader ? (
+          <div className="mao-body-para" style={{ whiteSpace: 'pre-wrap' }}>
+            {orderOfAcceptanceHeader}
+          </div>
+        ) : null}
+
         {/* ── Order table — LIVE data. Only PO No. / Product Description /
             Qty / Price / Total Value columns kept; everything else removed. ── */}
         <table className="mao-table">
           {(() => {
-            const extraCount = (showSapNo ? 1 : 0) + (showClientReference ? 1 : 0)
-            if (extraCount === 2) {
+            const leftExtra = (showSapNo ? 1 : 0) + (showClientReference ? 1 : 0)
+            // showDeliveryDate inserts one more <col> after Billing UOM
+            // (between UOM and Price) — a separate "right extra" from
+            // SAP No. / Client Reference, which sit after Product
+            // Description. Columns always: PO No., Product Description,
+            // [SAP No.], [Client Reference], Qty, Billing UOM,
+            // [Delivery Date], Price, Total Value.
+            if (showDeliveryDate) {
+              if (leftExtra === 2) {
+                return (
+                  <colgroup>
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '26%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '15%' }} />
+                  </colgroup>
+                )
+              }
+              if (leftExtra === 1) {
+                return (
+                  <colgroup>
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '30%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '15%' }} />
+                  </colgroup>
+                )
+              }
+              return (
+                <colgroup>
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '34%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '14%' }} />
+                </colgroup>
+              )
+            }
+            if (leftExtra === 2) {
               return (
                 <colgroup>
                   <col style={{ width: '10%' }} />
@@ -154,7 +245,7 @@ export default function ArgoMultiAoHydrotechContent({
                 </colgroup>
               )
             }
-            if (extraCount === 1) {
+            if (leftExtra === 1) {
               return (
                 <colgroup>
                   <col style={{ width: '11%' }} />
@@ -190,6 +281,7 @@ export default function ArgoMultiAoHydrotechContent({
                 <br />
                 UOM
               </th>
+              {showDeliveryDate ? <th>Delivery Date</th> : null}
               <th>Price{priceUomLabel ? ` / ${priceUomLabel}` : ''}</th>
               <th>Total Value {currency ? `in ${currency}` : ''}</th>
             </tr>
@@ -204,8 +296,9 @@ export default function ArgoMultiAoHydrotechContent({
                 </td>
                 {showSapNo ? <td className="mao-cell-center">{line.sapNo || ' '}</td> : null}
                 {showClientReference ? <td className="mao-cell-center">{line.customerReference || ' '}</td> : null}
-                <td className="mao-cell-center">{line.qty || ' '}</td>
+                <td className="mao-cell-center">{line.qty ? formatQty(line.qty) : ' '}</td>
                 <td className="mao-cell-center">{line.uom || ' '}</td>
+                {showDeliveryDate ? <td className="mao-cell-center">{line.salesDesiredDate || ' '}</td> : null}
                 <td className="mao-cell-center">{line.price ? formatUpToTwoDecimals(line.price) : ' '}</td>
                 <td className="mao-cell-center" style={{ whiteSpace: 'nowrap' }}>
                   {line.totalValue ? formatUpToTwoDecimals(line.totalValue) : ' '}
@@ -215,12 +308,13 @@ export default function ArgoMultiAoHydrotechContent({
           </tbody>
         </table>
 
-        {/* ── Closing paragraphs ─────────────────────────────── */}
-        {fixture.bodyClosingParas.map((para, i) => (
-          <div key={i} className="mao-body-para">
-            {para}
+        {/* ── Closing paragraph — live root `Order_of_Acceptance_Remarks`,
+            replacing the old static `fixture.bodyClosingParas` text. ── */}
+        {orderOfAcceptanceRemarks ? (
+          <div className="mao-body-para" style={{ whiteSpace: 'pre-wrap' }}>
+            {orderOfAcceptanceRemarks}
           </div>
-        ))}
+        ) : null}
 
         {/* Quality Harmonisation Number + Date block REMOVED per spec. */}
 
@@ -233,6 +327,42 @@ export default function ArgoMultiAoHydrotechContent({
               </div>
             </td>
           </tr>
+          {/* ── Delivery Schedule — forced onto its own new printed page,
+              same as sls-ods-no-44's own Delivery Schedule page. Reuses
+              `data.deliverySchedule` (WI family only, already computed by
+              mapSlsOdsNo44) and the generic `.ods-delivery-schedule-page`
+              class directly (sales-order-doc.css) for the page-break — no
+              bordered outline box around the content (unlike sls-ods-no-44).
+              Since this row is still inside the same repeating-header
+              table, the BVK letterhead repeats onto this page too. Hidden
+              entirely when there's nothing to show. */}
+          {deliverySchedule.length > 0 ? (
+            <tr>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+                <div className="ods-delivery-schedule-page" style={{ padding: '0 var(--mao-side-inset)' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                    Order No. : {orderNo}&nbsp;&nbsp;&nbsp;Order Date : {date}&nbsp;&nbsp;&nbsp;Delivery Schedule:
+                  </div>
+                  {deliverySchedule.map((group) => (
+                    <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                        {group.ref}. {group.productCode || ' '}
+                      </div>
+                      <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                        {group.entries.map((entry, i) => (
+                          <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                            <strong>{entry.label}</strong> : {entry.value}
+                            {entry.count ? `, ${entry.count} items` : ''}
+                            {entry.uom ? `, ${entry.uom}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          ) : null}
         </tbody>
         {/* Empty tfoot spacer — reserves 32mm at the bottom of every printed
             page so body content never flows under the fixed footer below. */}

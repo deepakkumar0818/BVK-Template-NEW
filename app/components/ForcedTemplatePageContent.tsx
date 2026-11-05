@@ -85,7 +85,7 @@ export default function ForcedTemplatePageContent({
         // Recipient-name resolution via Deals → Contacts (only for the
         // four templates that consume it; the API calls are silent
         // no-ops on other templates because they don't read contactData).
-        const templatesUsingContact: TemplateType[] = ['SLS', 'BVK', 'WI_PROCESS_FEBRIC', 'WI_DECOMESH']
+        const templatesUsingContact: TemplateType[] = ['SLS', 'BVK', 'WI_PROCESS_FEBRIC', 'WI_DECOMESH', 'WI_PERFORMA_INVOICE', 'BVK_PERFORMA_INVOICE']
         if (templatesUsingContact.includes(templateType)) {
           const dealId = String(
             (quotation as unknown as Record<string, unknown>)?.Deal_Id_s ?? ''
