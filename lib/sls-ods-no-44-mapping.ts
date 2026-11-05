@@ -159,6 +159,8 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   uomBilling: 'UOM_Billing',
   /** Per-line, on the `_2_0` row. */
   customerDesiredDate: 'Customer_Desired_Date',
+  /** Per-line, on the `_2_0` row — "Delivery Date" column (argo-multi-ao / argo-multi-ao-hydrotech only). */
+  salesDesiredDate: 'Sales_Desired_Date',
   sellingPrice: 'Selling_Price',
   totalSaleValue: 'Total_Sale_Value',
   grossAmount: 'Gross_Amount',
@@ -212,6 +214,8 @@ export interface SlsOdsNo44Line {
   qty: string
   uom: string
   customerDesiredDate: string
+  /** Per-line `Sales_Desired_Date` on the active WI category's `_2_0` row — "Delivery Date" column (argo-multi-ao / argo-multi-ao-hydrotech only). */
+  salesDesiredDate: string
   price: string
   totalValue: string
   clientPoNo: string
@@ -498,6 +502,7 @@ export function mapSlsOdsNo44(
       qty: strVal(merged[F.qty]),
       uom: strVal(productRow[F.uomBilling]) || strVal(merged[F.uomBilling]),
       customerDesiredDate: strVal(merged[F.customerDesiredDate]),
+      salesDesiredDate: strVal(merged[F.salesDesiredDate]),
       price: strVal(merged[F.sellingPrice]),
       totalValue: formatMoney(lineTotalFromRow(merged)),
       // Client_PO_No / PO_Date / QCT_No are per-line fields on the `_3_0`

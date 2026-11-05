@@ -27,6 +27,10 @@ export default function ArgoMultiAoHydrotechPage() {
   // Date row — `Created_Date_and_time`, read directly here so this form can
   // diverge from sls-ods-no-44's ODS_DATE-based odsDate.
   const [date, setDate] = useState('')
+  // Shown right after the Subject paragraph — root `Order_of_Acceptance_Header`.
+  const [orderOfAcceptanceHeader, setOrderOfAcceptanceHeader] = useState('')
+  // Replaces the old static fixture.bodyClosingParas text — root `Order_of_Acceptance_Remarks`.
+  const [orderOfAcceptanceRemarks, setOrderOfAcceptanceRemarks] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,6 +58,8 @@ export default function ArgoMultiAoHydrotechPage() {
         setData(mapSlsOdsNo44(record))
         setSubject(String(record?.Acceptance_of_Order_Mention ?? '').trim())
         setDate(String(record?.Created_Date_and_time ?? '').trim().split(' ')[0] ?? '')
+        setOrderOfAcceptanceHeader(String(record?.Order_of_Acceptance_Header ?? '').trim())
+        setOrderOfAcceptanceRemarks(String(record?.Order_of_Acceptance_Remarks ?? '').trim())
       } catch (err) {
         console.error('Error fetching sales order:', err)
         setError(err instanceof Error ? err.message : 'Failed to load sales order')
@@ -92,6 +98,10 @@ export default function ArgoMultiAoHydrotechPage() {
           subject={subject}
           date={date}
           currency={data.currency}
+          orderNo={data.odsNo}
+          deliverySchedule={data.deliverySchedule}
+          orderOfAcceptanceHeader={orderOfAcceptanceHeader}
+          orderOfAcceptanceRemarks={orderOfAcceptanceRemarks}
         />
       )}
     </>

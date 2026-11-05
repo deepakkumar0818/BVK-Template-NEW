@@ -316,7 +316,7 @@ export interface ZohoQuotation {
   [key: string]: any
 }
 
-export type TemplateType = 'WI' | 'WMW' | 'WMW2' | 'EXPORT' | 'WMWE1' | 'SLS' | 'GKD' | 'BVK' | 'WI_PROCESS_FEBRIC' | 'WI_DECOMESH'
+export type TemplateType = 'WI' | 'WMW' | 'WMW2' | 'EXPORT' | 'WMWE1' | 'SLS' | 'GKD' | 'BVK' | 'WI_PROCESS_FEBRIC' | 'WI_DECOMESH' | 'WI_PERFORMA_INVOICE' | 'BVK_PERFORMA_INVOICE'
 
 export interface ShippingMaster {
   ID: string

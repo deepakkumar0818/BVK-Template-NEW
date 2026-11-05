@@ -29,6 +29,10 @@ export default function ArgoMultiAoPage() {
   // (sls-ods-no-44/-p's "ODS DATE" uses ODS_DATE via mapSlsOdsNo44). Read
   // directly here so the two forms can diverge.
   const [date, setDate] = useState('')
+  // Shown right after the Subject paragraph — root `Order_of_Acceptance_Header`.
+  const [orderOfAcceptanceHeader, setOrderOfAcceptanceHeader] = useState('')
+  // Replaces the old static fixture.bodyClosingParas text — root `Order_of_Acceptance_Remarks`.
+  const [orderOfAcceptanceRemarks, setOrderOfAcceptanceRemarks] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -56,6 +60,8 @@ export default function ArgoMultiAoPage() {
         setData(mapSlsOdsNo44(record))
         setSubject(String(record?.Acceptance_of_Order_Mention ?? '').trim())
         setDate(String(record?.Created_Date_and_time ?? '').trim().split(' ')[0] ?? '')
+        setOrderOfAcceptanceHeader(String(record?.Order_of_Acceptance_Header ?? '').trim())
+        setOrderOfAcceptanceRemarks(String(record?.Order_of_Acceptance_Remarks ?? '').trim())
       } catch (err) {
         console.error('Error fetching sales order:', err)
         setError(err instanceof Error ? err.message : 'Failed to load sales order')
@@ -94,6 +100,10 @@ export default function ArgoMultiAoPage() {
           subject={subject}
           date={date}
           currency={data.currency}
+          orderNo={data.odsNo}
+          deliverySchedule={data.deliverySchedule}
+          orderOfAcceptanceHeader={orderOfAcceptanceHeader}
+          orderOfAcceptanceRemarks={orderOfAcceptanceRemarks}
         />
       )}
     </>

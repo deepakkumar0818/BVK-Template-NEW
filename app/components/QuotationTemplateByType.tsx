@@ -10,6 +10,8 @@ import GKDQuotationContent from './GKDQuotationContent'
 import BVKQuotationContent from './BVKQuotationContent'
 import WIProcessFebricQuotationContent from './WIProcessFebricQuotationContent'
 import WIDecomeshQuotationContent from './WIDecomeshQuotationContent'
+import WiPerformaInvoiceContent from './WiPerformaInvoiceContent'
+import BvkPerformaInvoiceContent from './BvkPerformaInvoiceContent'
 
 const headerSupplierCell = (
   <td style={{ width: '55%', verticalAlign: 'top', border: '1px solid #000', padding: '12px' }}>
@@ -187,6 +189,24 @@ export default function QuotationTemplateByType({
       ) : templateType === 'WI_DECOMESH' ? (
         // Isolated template — see the isolation note in WIDecomeshQuotationContent.tsx.
         <WIDecomeshQuotationContent
+          data={quotationData}
+          shippingData={shippingData}
+          billingData={billingData}
+          rawQuotationData={rawQuotationData}
+          contactData={contactData}
+        />
+      ) : templateType === 'WI_PERFORMA_INVOICE' ? (
+        // Isolated template — see the isolation note in WiPerformaInvoiceContent.tsx.
+        <WiPerformaInvoiceContent
+          data={quotationData}
+          shippingData={shippingData}
+          billingData={billingData}
+          rawQuotationData={rawQuotationData}
+          contactData={contactData}
+        />
+      ) : templateType === 'BVK_PERFORMA_INVOICE' ? (
+        // Isolated template — see the isolation note in BvkPerformaInvoiceContent.tsx.
+        <BvkPerformaInvoiceContent
           data={quotationData}
           shippingData={shippingData}
           billingData={billingData}

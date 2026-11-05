@@ -110,7 +110,8 @@
   .sls-page-footer,
   .wi-process-febric-page-footer,
   .wi-decomesh-page-footer,
-  .bvk-page-footer {
+  .bvk-page-footer,
+  .wi-pi-page-footer {
     position: fixed !important;
     left: 0 !important;
     right: 0 !important;
@@ -313,6 +314,12 @@ body {
     --quotation-print-top-inset: 12mm;
   }
 
+  /* WI Proforma Invoice — same 12mm top inset as SLS (exact copy of its
+   * letterhead/margin treatment, per explicit request). */
+  .quotation-doc:has(.wi-pi-quotation-container) {
+    --quotation-print-top-inset: 12mm;
+  }
+
   .sls-quotation-container {
     /* Full-width in print so the outer <table>'s <thead> can repeat across
      * pages. Left / right padding is intentionally NOT overridden here — the
@@ -418,6 +425,78 @@ body {
     margin-left: 8mm !important;
   }
 
+  /* WI Proforma Invoice — exact copy of the SLS block above (container,
+   * print-table, header/footer repeat, full-bleed footer), just under its
+   * own `wi-pi-*` class names so the two templates stay independently
+   * tunable. Per explicit request: margin / width / letterhead / repeat
+   * behaviour all identical to SLS. */
+  .wi-pi-quotation-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .wi-pi-print-table {
+    border: none !important;
+    border-collapse: collapse !important;
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .wi-pi-print-table tbody tr td {
+    vertical-align: top;
+  }
+
+  .wi-pi-print-table thead.wi-pi-print-header-row {
+    display: table-header-group !important;
+  }
+
+  .wi-pi-print-header-row td {
+    display: table-cell !important;
+  }
+
+  .wi-pi-print-table tfoot.wi-pi-print-footer-row {
+    display: table-footer-group !important;
+  }
+
+  .wi-pi-print-footer-row td {
+    display: table-cell !important;
+  }
+
+  .wi-pi-print-page-bottom-spacer {
+    display: table-row !important;
+    height: 100% !important;
+  }
+
+  .wi-pi-print-page-bottom-spacer td {
+    display: table-cell !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .wi-pi-company-footer {
+    margin-top: 10px !important;
+    padding-top: 8px !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: calc(50% - 50vw) !important;
+    margin-right: calc(50% - 50vw) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .wi-pi-company-footer > img:first-child {
+    margin-left: 8mm !important;
+  }
+
   /* Keep the content-to-conditions gap tight (2–3 lines). */
   .conditions-for-print.conditions-for-print--sls {
     margin-top: 0 !important;
@@ -497,7 +576,8 @@ body {
   .quotation-doc .print-container:has(.export-quotation-container),
   .quotation-doc .print-container:has(.bvk-quotation-container),
   .quotation-doc .print-container:has(.gkd-quotation-container),
-  .quotation-doc .print-container:has(.sls-quotation-container) {
+  .quotation-doc .print-container:has(.sls-quotation-container),
+  .quotation-doc .print-container:has(.wi-pi-quotation-container) {
     padding: 0 !important;
   }
 
