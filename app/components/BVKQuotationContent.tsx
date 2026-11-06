@@ -9,7 +9,7 @@ import {
   parseQuotationTaxForSummary,
   resolveQuotationValidity,
 } from '@/lib/quotation-utils'
-import { buildBvkQuotationTableRows } from '@/lib/wi-line-display-shared'
+import { buildBvkQuotationTableRows, resolveWiLineItemCharges } from '@/lib/wi-line-display-shared'
 import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
@@ -237,6 +237,19 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
   const bvkSummaryRows: BvkSummaryRow[] = bvkPackingValuePresent
     ? [{ label: `Total ${displayCurrency}`, value: formatCurrency(bvkTotalInrValue, displayCurrency), bold: true }]
     : []
+  // Line-item-level "Other Charges" — Category_1/2_MM_Database_WI_Other_Charges
+  // (or Product_Fitments_Other_Charges), grouped by Name and summed across
+  // every line item. Shown right after the `Total <currency>` row.
+  const bvkLineItemCharges = resolveWiLineItemCharges(
+    rawQuotationData as Record<string, unknown> | null | undefined,
+    rawQuotationData?.Template as string | undefined
+  )
+  for (const charge of bvkLineItemCharges) {
+    bvkSummaryRows.push({
+      label: charge.name,
+      value: formatCurrency(charge.amount, displayCurrency),
+    })
+  }
   if (bvkPackingValuePresent) {
     bvkSummaryRows.push({
       label: 'Packing Charges',

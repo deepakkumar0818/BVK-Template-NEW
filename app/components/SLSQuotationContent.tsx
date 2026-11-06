@@ -9,7 +9,7 @@ import {
   parseQuotationTaxForSummary,
   resolveQuotationValidity,
 } from '@/lib/quotation-utils'
-import { buildSlsLineItemsFromWi20SubformsShared } from '@/lib/wi-line-display-shared'
+import { buildSlsLineItemsFromWi20SubformsShared, resolveWiLineItemCharges } from '@/lib/wi-line-display-shared'
 import { quotationScalarFieldPresent, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import PrintButton from './PrintButton'
 
@@ -228,10 +228,24 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     slsLineItemsTotalFallback -
     (Number.isFinite(slsDiscountAmount) ? Math.max(0, slsDiscountAmount) : 0)
 
+  // Line-item-level "Other Charges" — Category_1/2_MM_Database_WI_Other_Charges
+  // (or Product_Fitments_Other_Charges), grouped by Name and summed across
+  // every line item. Shown right after the `Total <currency>` row.
+  const slsLineItemCharges = resolveWiLineItemCharges(
+    rawQuotationData as Record<string, unknown> | null | undefined,
+    rawQuotationData?.Template as string | undefined
+  )
+
   type SlsSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const slsSummaryRows: SlsSummaryRow[] = [
     { label: `Total ${displayCurrency}`, value: formatCurrency(slsTotalInrValue, displayCurrency), bold: true },
   ]
+  for (const charge of slsLineItemCharges) {
+    slsSummaryRows.push({
+      label: charge.name,
+      value: formatCurrency(charge.amount, displayCurrency),
+    })
+  }
   if (slsPackingValuePresent) {
     slsSummaryRows.push({
       label: 'Packing Charges',
