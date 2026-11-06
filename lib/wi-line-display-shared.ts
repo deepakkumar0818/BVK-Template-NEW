@@ -32,6 +32,56 @@ export function resolveSlsWi20SubformKey(
   return 'Category_1_MM_Database_WI_2_0'
 }
 
+export interface WiLineItemCharge {
+  /** Zoho `Name` on the charge row (e.g. "Other", "Testing", "Handling"). */
+  name: string
+  /** Summed Zoho `Price` across every line item's charge row sharing this `name`. */
+  amount: number
+}
+
+/**
+ * Line-item-level "Other Charges" — the `*_Other_Charges` subform
+ * (`Category_1/2_MM_Database_WI_Other_Charges`, or
+ * `Product_Fitments_Other_Charges` for fitment records), a SEPARATE
+ * subform from the line-item triplet: an array of `{Name, Price,
+ * Line_Item_ref}` rows, zero or more per line item. Collects every row
+ * across every line item, groups by `Name`, and sums `Price` within each
+ * group — e.g. two different lines each carrying a "Testing" charge become
+ * one combined "Testing" row; a line with a unique "Handling" charge gets
+ * its own row. Family resolved the same way as the main line items
+ * (`resolveSlsWi20SubformKey` / "product fitment" check). Rows with an
+ * empty `Name` or non-numeric/zero `Price` are skipped. Order follows
+ * first appearance.
+ */
+export function resolveWiLineItemCharges(
+  raw: Record<string, unknown> | null | undefined,
+  templateField?: string
+): WiLineItemCharge[] {
+  if (!raw) return []
+  const t = String(templateField ?? '').trim().toLowerCase()
+  const chargesKey = t.includes('product fitment')
+    ? 'Product_Fitments_Other_Charges'
+    : resolveSlsWi20SubformKey(templateField).replace(/_2_0$/, '_Other_Charges')
+  const rows = subformRows(raw, chargesKey)
+  const totals = new Map<string, number>()
+  const order: string[] = []
+  for (const row of rows) {
+    const rawName = String(row.Name ?? '').trim()
+    if (!rawName) continue
+    // A bare "Other" charge name prints as "Other Charges" — every other
+    // name (e.g. "Testing", "Handling") prints as-is.
+    const name = rawName.toLowerCase() === 'other' ? 'Other Charges' : rawName
+    const price = parseFloat(String(row.Price ?? '').replace(/,/g, '').trim())
+    if (!Number.isFinite(price) || price === 0) continue
+    if (!totals.has(name)) {
+      totals.set(name, 0)
+      order.push(name)
+    }
+    totals.set(name, (totals.get(name) ?? 0) + price)
+  }
+  return order.map((name) => ({ name, amount: totals.get(name) ?? 0 }))
+}
+
 export type WiSubformBundle = {
   wi20: 'Category_1_MM_Database_WI_2_0' | 'Category_2_MM_Database_WI_2_0'
   wi30: 'Category_1_MM_Database_WI_3_0' | 'Category_2_MM_Database_WI_3_0'

@@ -30,6 +30,7 @@ import {
   parseOverallGrandTotalInclAccessories,
   parseQuotationTaxForSummary,
 } from '@/lib/quotation-utils'
+import { resolveWiLineItemCharges } from '@/lib/wi-line-display-shared'
 import {
   WI_PROCESS_FEBRIC_ZOHO_FIELDS as F,
   buildWiProcessFebricDeliverySchedule,
@@ -145,6 +146,14 @@ export default function WIProcessFebricQuotationContent({
     0
   )
 
+  // Line-item-level "Other Charges" — Category_1/2_MM_Database_WI_Other_Charges
+  // (or Product_Fitments_Other_Charges), grouped by Name and summed across
+  // every line item. Shown right after "Total Ex-Factory Price" and folded
+  // into the displayed "Total" below (it's not part of `lineItemsTotal`,
+  // which only sums the goods table's own rows).
+  const wpfLineItemCharges = resolveWiLineItemCharges(rawRec, String(rawRec?.[F.template] ?? ''))
+  const wpfLineItemChargesTotal = wpfLineItemCharges.reduce((sum, c) => sum + c.amount, 0)
+
   const {
     totalBeforeTax,
     totalAfterTax,
@@ -173,6 +182,7 @@ export default function WIProcessFebricQuotationContent({
     lineItemsTotal
     - (showDiscountRow ? Math.max(0, discountTotal) : 0)
     + packingContribution
+    + wpfLineItemChargesTotal
 
   type WpfSummaryRow = { label: string; value: string; bold?: boolean; big?: boolean }
   const summaryRows: WpfSummaryRow[] = [
@@ -182,6 +192,12 @@ export default function WIProcessFebricQuotationContent({
       bold: true,
     },
   ]
+  for (const charge of wpfLineItemCharges) {
+    summaryRows.push({
+      label: charge.name,
+      value: formatCurrency(charge.amount, displayCurrency),
+    })
+  }
   if (showDiscountRow) {
     summaryRows.push({
       label: 'Discount On total Qty Order',
