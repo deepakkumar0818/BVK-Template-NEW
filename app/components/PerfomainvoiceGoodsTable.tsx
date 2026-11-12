@@ -103,16 +103,32 @@ function meshInchFromProductCode(productCode: string): string {
 }
 
 export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shippingData, headerNode, footerNode }: PerfomainvoiceGoodsTableProps) {
-  const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
-  const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
+  const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
+  // Fixed: this used to require BOTH "category 2" AND "wi" in the Template
+  // string, which never matches a WMW record (e.g. "Category 2 WMW" has no
+  // "wi" substring) — so Category 2 WMW records were always treated as
+  // Category 1 below. This component is WMW-only, so "category 2" alone is
+  // the right signal.
+  const isCategory2Selected = template.includes('category 2')
+
+  // Line items / product master — Category 1 WMW vs Category 2 WMW. Was
+  // hardcoded to Category 1 only; a Category 2 WMW record (like
+  // 238786000009302060, Template = "Category 2 WMW") has an EMPTY
+  // Category_1_MM_Database_WMW_2_0, so the real rows (and every field read
+  // from them below — HSN Code, Material Code, Blend Category, Brand)
+  // never came through at all.
+  const rawLineItems = (isCategory2Selected
+    ? (rawQuotationData?.Category_2_MM_Database_WMW_2_0 as any[])
+    : (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[])) || []
+  const rawProductDetails = (isCategory2Selected
+    ? (rawQuotationData?.Category_2_MM_Database_WMW as any[])
+    : (rawQuotationData?.Category_1_MM_Database_WMW as any[])) || []
 
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
   const currency = data.currency || rawQuotationData?.Currency || 'USD'
   const currencySymbol = currency
 
-  const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
-  const isCategory2Selected = template.includes('category 2') && template.includes('wi')
   const grossWeight = rawQuotationData?.Gross_Weight || rawQuotationData?.Total_Gross_Weight
 
   const toRowArray = (v: unknown): any[] => {
@@ -237,7 +253,9 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
-    const rows3Linked = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0)
+    const rows3Linked = toRowArray(
+      (rawQuotationData as any)?.[isCategory2Selected ? 'Category_2_MM_Database_WMW_3_0' : 'Category_1_MM_Database_WMW_3_0']
+    )
     const ext3 =
       (itemRef
         ? rows3Linked.find(
@@ -252,9 +270,25 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
         ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
-    // Perfomainvoice: Product must come from Category_1_MM_Database_WMW_2_0 (2.0) Blend_Category only.
-    const blendCategory = firstField([item], 'Blend_Category')
-    const endType = firstField([ext3, item, productDetail], 'End_Type')
+    // Category 2 WMW ONLY — a fourth subform (`Category_2_MM_Database_WMW_4_0`)
+    // carries Form/Quality/Per-Pc-weight for this family, keyed by `Line_ref`
+    // (not `Last_item_ref` like the other three WMW subforms). Category 1
+    // has no equivalent; `ext4` stays undefined there.
+    const rows4Cat2 = isCategory2Selected ? toRowArray((rawQuotationData as any)?.Category_2_MM_Database_WMW_4_0) : []
+    const ext4 = itemRef
+      ? rows4Cat2.find((x: any) => String(x?.Line_ref ?? '').trim() === itemRef)
+      : rows4Cat2[index]
+
+    // Perfomainvoice Product column — Category 1: Blend_Category lives on
+    // the 2_0 line row. Category 2: it's on the 3_0 row instead.
+    const blendCategory = isCategory2Selected
+      ? firstField([ext3], 'Blend_Category')
+      : firstField([item], 'Blend_Category')
+    // Form — Category 1: End_Type chain. Category 2: `Form1` on the `_4_0`
+    // row (e.g. "Endless Diagonal Seam"); End_Type is empty for this family.
+    const endType = isCategory2Selected
+      ? firstField([ext4], 'Form1') || firstField([ext3, item, productDetail], 'End_Type')
+      : firstField([ext3, item, productDetail], 'End_Type')
     /** Zoho `Material_Code` only — WMW 2_0 → 3_0 → Cat1 main → Cat2 main. */
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
@@ -265,27 +299,49 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
     // Fallback to Invoice_Dimension_1/2 from line items if length/width are missing.
     const len = String(productDetail.Length_field ?? '').trim()
     const wid = String(productDetail.Width ?? '').trim()
+    const extractNumber = (str: string) => {
+      const match = str.match(/(\d+\.?\d*)/)
+      return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
+    }
     if (len && wid) {
       size = `${len} x ${wid}`
     } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
-      const extractNumber = (str: string) => {
-        const match = str.match(/(\d+\.?\d*)/)
-        return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
-      }
       const dim1 = extractNumber(item.Invoice_Dimension_1)
       const dim2 = extractNumber(item.Invoice_Dimension_2)
       size = `${dim1} x ${dim2}`
+    } else if (isCategory2Selected && productDetail.Invoice_Dimension_1 && productDetail.Invoice_Dimension_2) {
+      // Category 2 WMW — Invoice_Dimension_1/2 live on the main product row
+      // (`productDetail`), not the 2_0 line row (`item`) like Category 1.
+      const dim1 = extractNumber(productDetail.Invoice_Dimension_1)
+      const dim2 = extractNumber(productDetail.Invoice_Dimension_2)
+      size = `${dim1} x ${dim2}`
     }
 
+    // SQM Area / PC — same method for both categories: Length × Width
+    // (per piece), NOT Zoho's `Total_SQM` (that's the sum across every
+    // piece — e.g. 80.172 ÷ 12 pieces = 6.681, the per-piece figure this
+    // column actually wants). Category 2's Invoice_Dimension_1/2 live on
+    // `productDetail` (the main row), not `item` (the 2_0 row) like
+    // Category 1 — same distinction already made for the SIZE column above.
     const sqmArea = resolveGoodsSqmArea({
-      invoiceDimension1: item.Invoice_Dimension_1,
-      invoiceDimension2: item.Invoice_Dimension_2,
+      invoiceDimension1: isCategory2Selected ? productDetail.Invoice_Dimension_1 : item.Invoice_Dimension_1,
+      invoiceDimension2: isCategory2Selected ? productDetail.Invoice_Dimension_2 : item.Invoice_Dimension_2,
       lengthField: productDetail.Length_field,
       width: productDetail.Width,
       sizeDisplay: size,
     })
-    const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const rateStr = item.Selling_Price?.replace(/,/g, '') || ''
+    // Quantity / Rate — Category 1 uses Qty × Selling_Price directly.
+    // Category 2's `Qty` is an SQM-scale figure, not the billed unit count:
+    // its real line total (Gross_Amount, confirmed against
+    // Total_Cost_After_Tax_Grand_Total on record 238786000009302060 — the
+    // two line Gross_Amounts sum to exactly that grand total) only
+    // reconciles as Pieces (2_0) × Selling_Price_UOM_Billing (3_0).
+    const quantity = isCategory2Selected
+      ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim() || '0')
+      : parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    const rateStr = isCategory2Selected
+      ? String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '')
+      : (item.Selling_Price?.replace(/,/g, '') || '')
     const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
     const totalPriceRaw = productDetail.Total_Price
     const totalPriceParsed =
@@ -315,14 +371,19 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
     const quality = materialCode ? `AISI ${materialCode}` : 'AISI'
 
     // Net Weight (Kg.) Per Pc. mapping:
+    // Category 2 → `Per_Pc` on the `_4_0` row (same row Form1/Quality1 come
+    // from), checked first since it's the direct, purpose-named field.
     // Category 1 → Category_1_MM_Database_WMW_3_0.Net_Weight
-    // Category 2 → Category_2_MM_Database_WI_3_0.Net_Weight
+    // Category 2 fallback → Category_2_MM_Database_WI_3_0.Net_Weight
     // Else (no category signal) → Product_Fitments2_0.Net_Weight
+    const perPcFromExt4 = isCategory2Selected ? parseNumber(ext4?.Per_Pc) : 0
     const perPcFromCategory = pickNetWeightPerPc(itemRef, index)
     const perPc =
-      perPcFromCategory > 0
-        ? perPcFromCategory
-        : pickFitmentNetWeightPerPc(index)
+      perPcFromExt4 > 0
+        ? perPcFromExt4
+        : perPcFromCategory > 0
+          ? perPcFromCategory
+          : pickFitmentNetWeightPerPc(index)
     const totalWeight = perPc * quantity
 
     return {

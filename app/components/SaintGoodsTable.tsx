@@ -78,7 +78,6 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
   const currencySymbol = currency
 
   const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
-  const isCategory2Selected = template.includes('category 2') && template.includes('wi')
 
   // WMW category switch — records tagged "Category 2 WMW" store their
   // line items in Category_2_MM_Database_WMW_* subforms. Every per-line
@@ -116,7 +115,12 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
 
   const pickNetWeightPerPc = (itemRef: string, index: number): number => {
     if (!rawQuotationData) return 0
-    if (!isCategory2Selected) {
+    // Was `!isCategory2Selected`, a flag requiring BOTH "category 2" AND
+    // "wi" in Template — never true for "Category 2 WMW", so this always
+    // took the Category 1 branch regardless of actual category. `isCat2Wmw`
+    // (defined below) is the correct, already-working flag the rest of
+    // this file's category switching uses.
+    if (!isCat2Wmw) {
       const rows = toRowArray((rawQuotationData as any).Category_1_MM_Database_WMW_3_0)
       const r =
         (itemRef
@@ -351,20 +355,18 @@ export default function SaintGoodsTable({ data, rawQuotationData, headerNode, fo
     // Per-item WMW_4_0 join (by Line_ref = index + 1) — used to
     // override Form / Quality when the 4_0 row has them populated.
     // Falls back to the previous End_Type / Material_Code chain
-    // when the 4_0 slot is empty.
-    const wmw4Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_4_0)
-    const wmw4LineRef = String(index + 1)
-    const wmw4Row =
-      wmw4Rows.find((x: any) => String(x?.Line_ref ?? '').trim() === wmw4LineRef) ||
-      wmw4Rows[index] ||
-      {}
-    const wmw4Form1 = String(wmw4Row?.Form1 ?? '').trim()
-    const wmw4Quality1 = String(wmw4Row?.Quality1 ?? '').trim()
+    // when the 4_0 slot is empty. Reuses `ext4` (already resolved above,
+    // category-aware via `isCat2Wmw`, and the same row `remarks1`/`remarks2`
+    // come from) — this used to re-fetch its own separate, hardcoded-to-
+    // Category-1-only `Category_1_MM_Database_WMW_4_0` lookup instead,
+    // which never found anything on a Category 2 WMW record.
+    const wmw4Form1 = String(ext4?.Form1 ?? '').trim()
+    const wmw4Quality1 = String(ext4?.Quality1 ?? '').trim()
 
-    /** Form row: prefer Zoho `Category_1_MM_Database_WMW_4_0[i].Form1`;
+    /** Form row: prefer Zoho `Category_1/2_MM_Database_WMW_4_0[i].Form1`;
      * else fall back to `End_Type` (WMW 3_0 → 2_0 line → main). */
     const form = wmw4Form1 || endType
-    /** Quality row: prefer Zoho `Category_1_MM_Database_WMW_4_0[i].Quality1`;
+    /** Quality row: prefer Zoho `Category_1/2_MM_Database_WMW_4_0[i].Quality1`;
      * else fall back to `AISI ${Material_Code}`. */
     const quality = wmw4Quality1 || (materialCode ? `AISI ${materialCode}` : 'AISI')
     /** UOM_Billing — direct 1:1 to Zoho, same precedence as
