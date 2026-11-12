@@ -103,16 +103,32 @@ function meshInchFromProductCode(productCode: string): string {
 }
 
 export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData, headerNode, footerNode }: AdhunikGoodsTableProps) {
-  const rawLineItems = (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[]) || []
-  const rawProductDetails = (rawQuotationData?.Category_1_MM_Database_WMW as any[]) || []
+  const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
+  // Fixed: this used to require BOTH "category 2" AND "wi" in the Template
+  // string, which never matches a WMW record (e.g. "Category 2 WMW" has no
+  // "wi" substring) — so Category 2 WMW records were always treated as
+  // Category 1 below. This component is WMW-only, so "category 2" alone is
+  // the right signal. Existing Category 1 formulas/fields are unchanged —
+  // this only widens which records route to the (already Cat-1-only)
+  // "else" branch vs the new Cat-2 branches added below.
+  const isCategory2Selected = template.includes('category 2')
+
+  // Line items / product master — Category 1 WMW vs Category 2 WMW. Was
+  // hardcoded to Category 1 only; a Category 2 WMW record (e.g.
+  // 238786000009302060, Template = "Category 2 WMW") has an EMPTY
+  // Category_1_MM_Database_WMW_2_0, so the real rows never came through.
+  const rawLineItems = (isCategory2Selected
+    ? (rawQuotationData?.Category_2_MM_Database_WMW_2_0 as any[])
+    : (rawQuotationData?.Category_1_MM_Database_WMW_2_0 as any[])) || []
+  const rawProductDetails = (isCategory2Selected
+    ? (rawQuotationData?.Category_2_MM_Database_WMW as any[])
+    : (rawQuotationData?.Category_1_MM_Database_WMW as any[])) || []
 
   const defaultProductLabel = 'Stainless Steel Wire Cloth'
 
   const currency = data.currency || rawQuotationData?.Currency || 'USD'
   const currencySymbol = currency
 
-  const template = String(rawQuotationData?.Template ?? '').trim().toLowerCase()
-  const isCategory2Selected = template.includes('category 2') && template.includes('wi')
   // Gross-weight line replaced with the raw `Export_Remarks` string from
   // Zoho (matches Bashundhara). Whole row hides when the field is empty.
   const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
@@ -263,7 +279,9 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
-    const rows3Linked = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_3_0)
+    const rows3Linked = toRowArray(
+      (rawQuotationData as any)?.[isCategory2Selected ? 'Category_2_MM_Database_WMW_3_0' : 'Category_1_MM_Database_WMW_3_0']
+    )
     const ext3 =
       (itemRef
         ? rows3Linked.find(
@@ -278,8 +296,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
         ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
-    // Adhunik: Product must come from Category_1_MM_Database_WMW_2_0 (2.0) Blend_Category only.
-    const blendCategory = firstField([item], 'Blend_Category')
+    // Adhunik: Product must come from Category_1_MM_Database_WMW_2_0 (2.0)
+    // Blend_Category only. Category 2 — Blend_Category lives on the 3_0
+    // row instead (its 2_0 row has no Blend_Category at all).
+    const blendCategory = isCategory2Selected
+      ? firstField([ext3], 'Blend_Category')
+      : firstField([item], 'Blend_Category')
     /** Zoho `Material_Code` only — WMW 2_0 → 3_0 → Cat1 main → Cat2 main. */
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     /** Same precedence as `resolveCategory1WmwHsnCode`: WMW 2_0 → WMW 3_0 → main WMW row */
@@ -293,28 +315,38 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     // Fallback to Invoice_Dimension_1/2 from line items if length/width are missing.
     const len = String(productDetail.Length_field ?? '').trim()
     const wid = String(productDetail.Width ?? '').trim()
+    const extractNumber = (str: string) => {
+      const match = str.match(/(\d+\.?\d*)/)
+      return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
+    }
     if (len && wid) {
       size = `${len} x ${wid}`
     } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
-      const extractNumber = (str: string) => {
-        const match = str.match(/(\d+\.?\d*)/)
-        return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
-      }
       const dim1 = extractNumber(item.Invoice_Dimension_1)
       const dim2 = extractNumber(item.Invoice_Dimension_2)
+      size = `${dim1} x ${dim2}`
+    } else if (isCategory2Selected && productDetail.Invoice_Dimension_1 && productDetail.Invoice_Dimension_2) {
+      // Category 2 WMW — Invoice_Dimension_1/2 live on the main product row
+      // (`productDetail`), not the 2_0 line row (`item`) like Category 1.
+      const dim1 = extractNumber(productDetail.Invoice_Dimension_1)
+      const dim2 = extractNumber(productDetail.Invoice_Dimension_2)
       size = `${dim1} x ${dim2}`
     }
 
     const sqmArea = resolveGoodsSqmArea({
-      invoiceDimension1: item.Invoice_Dimension_1,
-      invoiceDimension2: item.Invoice_Dimension_2,
+      invoiceDimension1: isCategory2Selected ? productDetail.Invoice_Dimension_1 : item.Invoice_Dimension_1,
+      invoiceDimension2: isCategory2Selected ? productDetail.Invoice_Dimension_2 : item.Invoice_Dimension_2,
       lengthField: productDetail.Length_field,
       width: productDetail.Width,
       sizeDisplay: size,
     })
-    // Quantity — direct 1:1 map to Zoho `Category_1_MM_Database_WMW[i].Pieces`
-    // (`productDetail` is already the correct row). No fallback.
-    const quantity = parseFloat(String(productDetail.Pieces ?? '').replace(/,/g, '').trim()) || 0
+    // Quantity — Category 1: direct 1:1 map to Zoho
+    // `Category_1_MM_Database_WMW[i].Pieces` (`productDetail` is the
+    // correct row). Category 2: `Pieces` lives on the 2_0 row (`item`)
+    // instead — its main product row has no `Pieces` field at all.
+    const quantity = isCategory2Selected
+      ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim()) || 0
+      : parseFloat(String(productDetail.Pieces ?? '').replace(/,/g, '').trim()) || 0
     // Rate — direct 1:1 map to Zoho
     // `Category_1_MM_Database_WMW_3_0[i].Selling_Price_UOM_Billing`.
     // `ext3` is already the correct row (joined by last_item_ref).
@@ -337,10 +369,12 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     const wiLine = data.lineItems?.[index]
     /** Product row: Adhunik requires Blend_Category only; if missing, keep it blank. */
     const product = blendCategory || ''
-    // Form row — direct 1:1 map to Zoho `Category_1_MM_Database_WMW_4_0[i].Form1`,
+    // Form row — direct 1:1 map to Zoho `Category_1/2_MM_Database_WMW_4_0[i].Form1`,
     // joined via `Line_ref` (1-based line index). No fallback.
     const form = (() => {
-      const rows4 = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_4_0)
+      const rows4 = toRowArray(
+        (rawQuotationData as any)?.[isCategory2Selected ? 'Category_2_MM_Database_WMW_4_0' : 'Category_1_MM_Database_WMW_4_0']
+      )
       const lineRef = String(index + 1)
       const row = rows4.find(
         (x: any) => String(x?.Line_ref ?? x?.line_ref ?? '').trim() === lineRef
@@ -402,7 +436,13 @@ export default function AdhunikGoodsTable({ data, rawQuotationData, shippingData
     }
   })
 
-  const rawWmw2Rows = toRowArray((rawQuotationData as any)?.Category_1_MM_Database_WMW_2_0)
+  // Same category switch as `rawLineItems` above — was hardcoded to
+  // Category 1 only, so a Category 2 WMW record would always produce an
+  // empty `wmwMappedBlock` here (falling through to the `lineItemsFromZoho`
+  // fallback below instead, which happened to still work when there's no
+  // Product Fitments data to merge with — but would silently drop the real
+  // WMW items if there were).
+  const rawWmw2Rows = toRowArray(rawLineItems)
   const wmwMappedBlock = rawWmw2Rows.length > 0 ? lineItemsFromZoho : []
   const fitmentMappedBlock = buildProductFitmentBrandedGoodsBlock(
     (rawQuotationData ?? null) as ZohoQuotation | null

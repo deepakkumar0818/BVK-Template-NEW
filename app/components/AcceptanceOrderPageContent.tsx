@@ -228,8 +228,19 @@ function buildAcceptanceOrderData(
   ].filter((line) => line.trim().length > 0)
 
   // ── Line items — same field mapping as AdhunikGoodsTable ──────────
-  const rawLineItems = (raw?.Category_1_MM_Database_WMW_2_0 as any[]) || []
-  const rawProductDetails = (raw?.Category_1_MM_Database_WMW as any[]) || []
+  // Category 1 WMW vs Category 2 WMW — was hardcoded to Category 1 only;
+  // a Category 2 WMW record (e.g. 238786000009302060, Template =
+  // "Category 2 WMW") has an EMPTY Category_1_MM_Database_WMW_2_0, so the
+  // real rows never came through. Category 1's own fields/formulas below
+  // are UNCHANGED — Category 2 only adds its own branch alongside each.
+  const templateField = String(raw?.Template ?? '').trim().toLowerCase()
+  const isCat2Wmw = templateField.includes('category 2')
+  const rawLineItems = (isCat2Wmw
+    ? (raw?.Category_2_MM_Database_WMW_2_0 as any[])
+    : (raw?.Category_1_MM_Database_WMW_2_0 as any[])) || []
+  const rawProductDetails = (isCat2Wmw
+    ? (raw?.Category_2_MM_Database_WMW as any[])
+    : (raw?.Category_1_MM_Database_WMW as any[])) || []
 
   const lines: AcceptanceOrderLine[] = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
@@ -239,7 +250,9 @@ function buildAcceptanceOrderData(
         ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
-    const rows3Linked = toRowArray(raw?.Category_1_MM_Database_WMW_3_0)
+    const rows3Linked = toRowArray(
+      isCat2Wmw ? raw?.Category_2_MM_Database_WMW_3_0 : raw?.Category_1_MM_Database_WMW_3_0
+    )
     const ext3 =
       (itemRef
         ? rows3Linked.find(
@@ -254,37 +267,56 @@ function buildAcceptanceOrderData(
         ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
-    const blendCategory = firstField([item], 'Blend_Category')
+    // Blend_Category — Category 1 carries it on the 2_0 row (`item`);
+    // Category 2's 2_0 row has no Blend_Category — it's on the 3_0 row
+    // (`ext3`) instead.
+    const blendCategory = isCat2Wmw
+      ? firstField([ext3], 'Blend_Category')
+      : firstField([item], 'Blend_Category')
     const endType = firstField([ext3, item, productDetail], 'End_Type')
     const materialCode = firstField([item, ext3, productDetail, cat2ProductDetail], 'Material_Code')
     const hsnCode = firstField([item, ext3, productDetail], 'HSN_Code')
+
+    // Dimensions — Category 1 carries Invoice_Dimension_1/2 on the 2_0
+    // row (`item`); Category 2's 2_0 row has no dimension fields at all —
+    // they're on the main product row (`productDetail`) instead.
+    const invoiceDim1 = isCat2Wmw ? productDetail.Invoice_Dimension_1 : item.Invoice_Dimension_1
+    const invoiceDim2 = isCat2Wmw ? productDetail.Invoice_Dimension_2 : item.Invoice_Dimension_2
 
     let size = ''
     const len = String(productDetail.Length_field ?? '').trim()
     const wid = String(productDetail.Width ?? '').trim()
     if (len && wid) {
       size = `${len} x ${wid}`
-    } else if (item.Invoice_Dimension_1 && item.Invoice_Dimension_2) {
+    } else if (invoiceDim1 && invoiceDim2) {
       const extractNumber = (str: string) => {
         const match = str.match(/(\d+\.?\d*)/)
         return match ? match[1] : str.replace(/Length|length|Width|width/gi, '').trim()
       }
-      const dim1 = extractNumber(item.Invoice_Dimension_1)
-      const dim2 = extractNumber(item.Invoice_Dimension_2)
+      const dim1 = extractNumber(invoiceDim1)
+      const dim2 = extractNumber(invoiceDim2)
       size = `${dim1} x ${dim2}`
     }
     const sizeDisplay = size ? `${size} M` : ''
 
     const sqmArea = resolveGoodsSqmArea({
-      invoiceDimension1: item.Invoice_Dimension_1,
-      invoiceDimension2: item.Invoice_Dimension_2,
+      invoiceDimension1: invoiceDim1,
+      invoiceDimension2: invoiceDim2,
       lengthField: productDetail.Length_field,
       width: productDetail.Width,
       sizeDisplay: size,
     })
     const areaDisplay = sqmArea ? `${sqmArea} Sqm` : ''
 
-    const quantity = parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    // Quantity — Category 1: unchanged (`productDetail.Qty` → `item.Qty`).
+    // Category 2: its main row has no Qty/Pieces field at all — the real
+    // billed piece count is on the 2_0 row's `Pieces` (its own `Qty` is an
+    // SQM-scale figure, not the unit count — confirmed against record
+    // 238786000009302060: Pieces 12/9 × Selling_Price_UOM_Billing 369/585
+    // = Gross_Amount 4428/5265, matching the quotation's grand total).
+    const quantity = isCat2Wmw
+      ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim()) || 0
+      : parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
     const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
     const rate = sellingPriceUomBilling ? parseFloat(sellingPriceUomBilling) || NaN : NaN
     const amount = quantity * rate
