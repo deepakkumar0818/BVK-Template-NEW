@@ -89,6 +89,7 @@ export default function SlsOds0254Page() {
           insurance={data.insurance}
           destination={data.destination}
           totalAmount={data.totalAmount}
+          lineItemCharges={data.lineItemCharges}
           qtyTotal={data.qtyTotal}
           transporter={data.transporter}
           freightCharges={data.freightCharges}

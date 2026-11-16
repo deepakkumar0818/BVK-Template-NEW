@@ -67,6 +67,7 @@ export default function SlsOds0254Content({
   insurance,
   destination,
   totalAmount,
+  lineItemCharges,
   qtyTotal,
   transporter,
   freightCharges,
@@ -91,6 +92,7 @@ export default function SlsOds0254Content({
   insurance: string
   destination: string
   totalAmount: string
+  lineItemCharges: Array<{ name: string; amount: string }>
   qtyTotal: string
   transporter: string
   freightCharges: string
@@ -328,6 +330,12 @@ export default function SlsOds0254Content({
                 <span className="sos-label">Total Amount:</span>
                 <span className="sos-total-value">{totalAmount || ' '}</span>
               </div>
+              {lineItemCharges.map((charge) => (
+                <div className="sos-total-amount-strip" key={charge.name}>
+                  <span className="sos-label">{charge.name}:</span>
+                  <span className="sos-total-value">{charge.amount}</span>
+                </div>
+              ))}
               <div className="sos-remarks-strip">
                 <span className="sos-label">Remarks</span>
               </div>
