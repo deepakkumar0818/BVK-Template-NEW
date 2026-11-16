@@ -248,6 +248,8 @@ export interface SlsOdsNo44Data {
   billingAddressLines: string[]
   shippingAddressLines: string[]
   lines: SlsOdsNo44Line[]
+  /** Line-item-level "Other Charges" — Category_1/2_MM_Database_WI_Other_Charges, grouped by Name and summed across every line item. */
+  lineItemCharges: Array<{ name: string; amount: string }>
   gstLabel: string
   gstAmount: string
   totalValue: string
@@ -361,6 +363,41 @@ function formatMoney(n: number): string {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/**
+ * Line-item-level "Other Charges" — `Category_1/2_MM_Database_WI_Other_Charges`,
+ * a SEPARATE subform from the line-item triplet: an array of
+ * `{Name, Price, Line_Item_ref}` rows, zero or more per line item (same
+ * shape confirmed on the Quotation report, now also present on
+ * Sales_Order_Report — e.g. record 238786000009296130). Collects every
+ * row across every line item, groups by `Name`, sums `Price` within each
+ * group. Family resolved the same way as the main line items
+ * (`resolveCategoryBundle`'s `line20` key, suffix swapped).  A bare
+ * "Other" name prints as "Other Charges"; any other name prints as-is.
+ */
+function resolveLineItemCharges(
+  raw: Record<string, unknown> | null | undefined,
+  line20Key: string
+): Array<{ name: string; amount: number }> {
+  if (!raw) return []
+  const chargesKey = line20Key.replace(/_2_0$/, '_Other_Charges')
+  const rows = subformRows(raw, chargesKey)
+  const totals = new Map<string, number>()
+  const order: string[] = []
+  for (const row of rows) {
+    const rawName = strVal(row.Name)
+    if (!rawName) continue
+    const name = rawName.toLowerCase() === 'other' ? 'Other Charges' : rawName
+    const price = parseFloat(strVal(row.Price).replace(/,/g, ''))
+    if (!Number.isFinite(price) || price === 0) continue
+    if (!totals.has(name)) {
+      totals.set(name, 0)
+      order.push(name)
+    }
+    totals.set(name, (totals.get(name) ?? 0) + price)
+  }
+  return order.map((name) => ({ name, amount: totals.get(name) ?? 0 }))
+}
+
 /** Drops the time portion from Zoho's "DD-Mon-YYYY HH:MM:SS" date-time fields (e.g. Created_Date_and_time). */
 function dateOnly(v: string): string {
   return v.split(' ')[0] ?? v
@@ -422,6 +459,7 @@ export function mapSlsOdsNo44(
       billingAddressLines: [],
       shippingAddressLines: [],
       lines: [],
+      lineItemCharges: [],
       gstLabel: 'GST',
       gstAmount: '',
       totalValue: '',
@@ -448,6 +486,10 @@ export function mapSlsOdsNo44(
   const isCategory1Wi = bundle.product === F.cat1Product
   const rows20 = subformRows(raw, bundle.line20)
   const rows30 = subformRows(raw, bundle.line30)
+  const lineItemCharges = resolveLineItemCharges(raw, bundle.line20).map((charge) => ({
+    name: charge.name,
+    amount: formatMoney(charge.amount),
+  }))
   const productRows = subformRows(raw, bundle.product)
 
   // Customer Reference fallback sources — checked regardless of which
@@ -610,6 +652,7 @@ export function mapSlsOdsNo44(
     billingAddressLines,
     shippingAddressLines,
     lines,
+    lineItemCharges,
     gstLabel,
     gstAmount: formatMoney(gstAmount),
     totalValue: formatMoney(numFromString(raw[F.overallGrandTotal])),
