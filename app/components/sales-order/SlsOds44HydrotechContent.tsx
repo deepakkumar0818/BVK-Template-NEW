@@ -263,6 +263,16 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
             <tr style={{ height: '100%' }}>
               <td colSpan={productColCount} style={{ height: '100%', border: 'none', padding: 0 }} />
             </tr>
+            {data.lineItemCharges.map((charge) => (
+              <tr key={charge.name}>
+                <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
+                  {charge.name}
+                </td>
+                <td colSpan={2} className="ods-product-foot-value">
+                  {charge.amount}
+                </td>
+              </tr>
+            ))}
             <tr>
               <td colSpan={productFootLabelSpan} className="ods-product-foot-label">
                 {data.gstLabel}

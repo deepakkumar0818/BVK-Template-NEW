@@ -176,6 +176,8 @@ export interface Sls0254Data {
   insurance: string
   destination: string
   totalAmount: string
+  /** Line-item-level "Other Charges" — Category_1/2_MM_Database_WI/WMW_Other_Charges, grouped by Name and summed across every line item. */
+  lineItemCharges: Array<{ name: string; amount: string }>
   /** Sum of every line's Total SQM (WMW only — WI lines contribute 0, since Total SQM has no WI field yet). */
   qtyTotal: string
   transporter: string
@@ -238,6 +240,38 @@ function resolveCategoryBundle(raw: Record<string, unknown> | null | undefined):
     : { product: F.cat2Product, line20: F.cat2Line20, line30: F.cat2Line30, isWmw: false, isCategory1: false }
 }
 
+/**
+ * Line-item-level "Other Charges" — `Category_1/2_MM_Database_WI/WMW_Other_Charges`
+ * (whichever family `resolveCategoryBundle` resolved), a SEPARATE subform
+ * from the line-item triplet: an array of `{Name, Price, Line_Item_ref}`
+ * rows, zero or more per line item. Collects every row across every line
+ * item, groups by `Name`, sums `Price` within each group. A bare "Other"
+ * name prints as "Other Charges"; any other name prints as-is.
+ */
+function resolveLineItemCharges(
+  raw: Record<string, unknown> | null | undefined,
+  line20Key: string
+): Array<{ name: string; amount: string }> {
+  if (!raw) return []
+  const chargesKey = line20Key.replace(/_2_0$/, '_Other_Charges')
+  const rows = subformRows(raw, chargesKey)
+  const totals = new Map<string, number>()
+  const order: string[] = []
+  for (const row of rows) {
+    const rawName = strVal(row.Name)
+    if (!rawName) continue
+    const name = rawName.toLowerCase() === 'other' ? 'Other Charges' : rawName
+    const price = parseFloat(strVal(row.Price).replace(/,/g, ''))
+    if (!Number.isFinite(price) || price === 0) continue
+    if (!totals.has(name)) {
+      totals.set(name, 0)
+      order.push(name)
+    }
+    totals.set(name, (totals.get(name) ?? 0) + price)
+  }
+  return order.map((name) => ({ name, amount: (totals.get(name) ?? 0).toFixed(2) }))
+}
+
 function mergedLineRow(row20: Record<string, unknown>, rows30: Record<string, unknown>[], index: number): Record<string, unknown> {
   const ref = lineRef(row20)
   const row30 = (ref ? rows30.find((r) => lineRef(r) === ref) : undefined) ?? rows30[index] ?? {}
@@ -266,6 +300,7 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
       insurance: '',
       destination: '',
       totalAmount: '',
+      lineItemCharges: [],
       qtyTotal: '',
       transporter: '',
       freightCharges: '',
@@ -294,6 +329,7 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
   const freightToPayPaidFinal = deliveryTermsDashIdx >= 0 ? freightToPayPaid.toUpperCase() : freightToPayPaid
 
   const bundle = resolveCategoryBundle(raw)
+  const lineItemCharges = resolveLineItemCharges(raw, bundle.line20)
   const rows20 = subformRows(raw, bundle.line20)
   const rows30 = subformRows(raw, bundle.line30)
   const productRows = subformRows(raw, bundle.product)
@@ -354,6 +390,7 @@ export function mapSls0254(raw: Record<string, unknown> | null | undefined): Sls
     destination: strVal(raw[F.destination]),
     qtyTotal,
     totalAmount: strVal(raw[F.totalAmount]),
+    lineItemCharges,
     transporter,
     freightCharges: strVal(raw[F.freightCharges]),
     remarks: strVal(raw[F.rootRemarks]),
