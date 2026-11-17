@@ -218,8 +218,8 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
               <th>Customer Reference</th>
               {showDimensions ? (
                 <>
-                  <th>Length (Meter)</th>
-                  <th>Width (Meter)</th>
+                  <th>{data.lengthColumnLabel}</th>
+                  <th>{data.widthColumnLabel}</th>
                 </>
               ) : null}
               <th>Qty / UOM</th>

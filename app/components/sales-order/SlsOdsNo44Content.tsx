@@ -225,8 +225,8 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <th>Customer Reference</th>
               {showDimensions ? (
                 <>
-                  <th>Length (Meter)</th>
-                  <th>Width (Meter)</th>
+                  <th>{data.lengthColumnLabel}</th>
+                  <th>{data.widthColumnLabel}</th>
                 </>
               ) : null}
               <th>Qty / UOM</th>
