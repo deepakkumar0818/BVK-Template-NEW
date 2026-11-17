@@ -104,7 +104,8 @@ export default function BvkPerformaInvoiceContent({
     return Number.isFinite(n) ? n.toString() : s
   }
 
-  const date = formatPiDate(data.date || rawQuotationData?.Created_Date_and_time)
+  // Header "Date:" — root `PI_Date` (not `Created_Date_and_time`).
+  const date = formatPiDate(rawQuotationData?.PI_Date)
   const gstNo = String(rawQuotationData?.Billing_GST_No ?? '').trim()
   // Ref No. — root `Name` (the quotation number), same field/treatment as
   // the WI PI's Ref No.
