@@ -25,9 +25,9 @@ export default function ArgoMultiAoPage() {
   // Subject line — argo-multi-ao-specific field, not shared with sls-ods-no-44,
   // so read directly here rather than adding it to lib/sls-ods-no-44-mapping.ts.
   const [subject, setSubject] = useState('')
-  // Date row — argo-multi-ao uses `Created_Date_and_time`, NOT `ODS_DATE`
-  // (sls-ods-no-44/-p's "ODS DATE" uses ODS_DATE via mapSlsOdsNo44). Read
-  // directly here so the two forms can diverge.
+  // Date row — argo-multi-ao uses root `AO_Date` (NOT `Created_Date_and_time`
+  // or `ODS_DATE` — sls-ods-no-44/-p's "ODS DATE" uses ODS_DATE via
+  // mapSlsOdsNo44). Read directly here so the two forms can diverge.
   const [date, setDate] = useState('')
   // Shown right after the Subject paragraph — root `Order_of_Acceptance_Header`.
   const [orderOfAcceptanceHeader, setOrderOfAcceptanceHeader] = useState('')
@@ -59,7 +59,7 @@ export default function ArgoMultiAoPage() {
         console.log(`Sales Order Report — record ${id}:`, record)
         setData(mapSlsOdsNo44(record))
         setSubject(String(record?.Acceptance_of_Order_Mention ?? '').trim())
-        setDate(String(record?.Created_Date_and_time ?? '').trim().split(' ')[0] ?? '')
+        setDate(String(record?.AO_Date ?? '').trim().split(' ')[0] ?? '')
         setOrderOfAcceptanceHeader(String(record?.Order_of_Acceptance_Header ?? '').trim())
         setOrderOfAcceptanceRemarks(String(record?.Order_of_Acceptance_Remarks ?? '').trim())
       } catch (err) {

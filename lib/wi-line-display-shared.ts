@@ -26,7 +26,11 @@ export function resolveSlsWi20SubformKey(
   templateField?: string
 ): 'Category_1_MM_Database_WI_2_0' | 'Category_2_MM_Database_WI_2_0' {
   const t = templateField?.trim().toLowerCase() || ''
-  if (t.includes('category 2 mm database wi') || t.includes('category 2 wi')) {
+  // "BVK Hydrotech 2" means the data lives in the Category 2 WI family
+  // (confirmed against record 238786000008633130 — Category_1 is an empty
+  // placeholder row there, Category_2 has the real line item). "BVK
+  // Hydrotech 1" already falls through to the Category 1 default below.
+  if (t.includes('category 2 mm database wi') || t.includes('category 2 wi') || t.includes('bvk hydrotech 2')) {
     return 'Category_2_MM_Database_WI_2_0'
   }
   return 'Category_1_MM_Database_WI_2_0'

@@ -99,7 +99,8 @@ export default function WiPerformaInvoiceContent({
     return Number.isFinite(n) ? n.toString() : s
   }
 
-  const date = formatPiDate(data.date || rawQuotationData?.Created_Date_and_time)
+  // Header "Date:" — root `PI_Date` (not `Created_Date_and_time`).
+  const date = formatPiDate(rawQuotationData?.PI_Date)
   // Ref No. — root `Name` (the quotation number), same field SLS/BVK use
   // for their own "Quotation Ref. No." line. NOT `Quotation_Reference`,
   // which is the long opening-paragraph text, not a short ref code.

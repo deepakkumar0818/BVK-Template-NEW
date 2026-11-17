@@ -24,7 +24,7 @@ export default function ArgoMultiAoHydrotechPage() {
   // Subject line — live `Acceptance_of_Order_Mention`, read directly here
   // (not shared with sls-ods-no-44-mapping.ts, same as argo-multi-ao).
   const [subject, setSubject] = useState('')
-  // Date row — `Created_Date_and_time`, read directly here so this form can
+  // Date row — root `AO_Date`, read directly here so this form can
   // diverge from sls-ods-no-44's ODS_DATE-based odsDate.
   const [date, setDate] = useState('')
   // Shown right after the Subject paragraph — root `Order_of_Acceptance_Header`.
@@ -57,7 +57,7 @@ export default function ArgoMultiAoHydrotechPage() {
         console.log(`Sales Order Report — record ${id}:`, record)
         setData(mapSlsOdsNo44(record))
         setSubject(String(record?.Acceptance_of_Order_Mention ?? '').trim())
-        setDate(String(record?.Created_Date_and_time ?? '').trim().split(' ')[0] ?? '')
+        setDate(String(record?.AO_Date ?? '').trim().split(' ')[0] ?? '')
         setOrderOfAcceptanceHeader(String(record?.Order_of_Acceptance_Header ?? '').trim())
         setOrderOfAcceptanceRemarks(String(record?.Order_of_Acceptance_Remarks ?? '').trim())
       } catch (err) {
