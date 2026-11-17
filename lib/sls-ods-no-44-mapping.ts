@@ -174,7 +174,7 @@ export const SLS_ODS_NO_44_ZOHO_FIELDS = {
   overallGrandTotal: 'Overall_Grand_Total_incl_Accessories',
 
   // Terms — confirmed field names
-  destination: 'Destination',
+  destination: 'Final_Destination',
   packingType: 'Packing_Type',
   documentsRequired: 'Document_Required',
   insurance: 'Insurance',
@@ -403,6 +403,30 @@ function dateOnly(v: string): string {
   return v.split(' ')[0] ?? v
 }
 
+/**
+ * "Length"/"Width" column header labels, derived from `Invoice_Dimension_Type`.
+ * Separator can be EITHER `*` or `x`/`X` (e.g. "ID*OD MM" or "ID x OD MM" or
+ * plain "Length x Width"). An optional shared trailing unit word (e.g. "MM")
+ * is appended to BOTH sides when present — "ID*OD MM" → "ID MM" / "OD MM";
+ * "Length x Width" (no trailing unit) → "Length" / "Width" unchanged.
+ * Falls back to "Length"/"Width" when the field is empty or unparsable.
+ */
+function parseDimensionTypeLabels(raw: string): { length: string; width: string } {
+  const trimmed = raw.trim()
+  if (!trimmed) return { length: 'Length', width: 'Width' }
+
+  const match = trimmed.match(/^(.+?)[*x](.+?)(?:\s+(\S+))?$/i)
+  if (match) {
+    const unitSuffix = match[3] ? ` ${match[3]}` : ''
+    return {
+      length: `${match[1].trim()}${unitSuffix}`,
+      width: `${match[2].trim()}${unitSuffix}`,
+    }
+  }
+
+  return { length: 'Length', width: 'Width' }
+}
+
 function joinAddressLines(name: string, street: string, city: string, state: string, postal: string, country: string, gst: string): string[] {
   const lines: string[] = []
   if (name) lines.push(name)
@@ -501,16 +525,10 @@ export function mapSlsOdsNo44(
   const productGroup = strVal(productRows[0]?.[F.productGroup])
 
   // "Length"/"Width" column headers — derived from the first product row's
-  // `Invoice_Dimension_Type` (e.g. "Length x Width"), split on "x". Falls
-  // back to the literal words "Length"/"Width" when absent/unparsable.
-  const { lengthColumnLabel, widthColumnLabel } = (() => {
-    const raw_ = productRows.map((r) => strVal(r[F.invoiceDimensionType])).find(Boolean) ?? ''
-    const parts = raw_.split(/x/i).map((p) => p.trim()).filter(Boolean)
-    return {
-      lengthColumnLabel: parts[0] || 'Length',
-      widthColumnLabel: parts[1] || 'Width',
-    }
-  })()
+  // `Invoice_Dimension_Type` (e.g. "ID*OD MM" → "ID MM" / "OD MM"; see
+  // `parseDimensionTypeLabels` for the exact rules).
+  const invoiceDimensionTypeLabel = productRows.map((r) => strVal(r[F.invoiceDimensionType])).find(Boolean) ?? ''
+  const { length: lengthColumnLabel, width: widthColumnLabel } = parseDimensionTypeLabels(invoiceDimensionTypeLabel)
 
   // Billing Description = Brand Selling Name + Remarks, computed ONCE for the
   // whole document (both source fields — Workflow[0].Remarks and the first
