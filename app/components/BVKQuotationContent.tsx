@@ -372,7 +372,11 @@ export default function BVKQuotationContent({ data, shippingData, billingData, r
       let entry: Entry | null = null
       const count = String(row.No_of_Items ?? row.No_Of_Items ?? '').trim()
       const twoZeroRow = findByRef(twoZeroRows, ref)
-      const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
+      const mainRowForUom = findByRef(mainRows, ref)
+      // UOM_Billing may live on the `_2_0` linked row OR on the main product
+      // row (e.g. Category_2_MM_Database_WI stores it on the main row, not
+      // `_2_0`) — same fallback used for line items in wi-line-display-shared.ts.
+      const uom = String(twoZeroRow?.UOM_Billing ?? mainRowForUom?.UOM_Billing ?? '').trim()
       const delivery = String(row.Delivery ?? '').trim()
       if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }
       else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom, delivery }
