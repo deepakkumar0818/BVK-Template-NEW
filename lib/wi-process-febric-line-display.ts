@@ -501,6 +501,8 @@ export type WiProcessFebricDeliveryScheduleEntry = {
   value: string
   count: string
   uom: string
+  /** `Delivery` on the same `*_Desired_Date` row — printed after UOM. */
+  delivery: string
 }
 
 /** One group in the Delivery Schedule, keyed by `Line_Item_ref`. */
@@ -575,9 +577,10 @@ export function buildWiProcessFebricDeliverySchedule(
     const count = strVal(row.No_of_Items ?? row[F.desiredNoOfItems])
     const twoZeroRow = findByRef(twoZeroRows, ref)
     const uom = strVal(twoZeroRow?.[F.itemUomBilling])
-    if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
-    else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
-    else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+    const delivery = strVal(row.Delivery)
+    if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }
+    else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom, delivery }
+    else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom, delivery }
     if (!entry) continue
     let group = groups.get(ref)
     if (!group) {

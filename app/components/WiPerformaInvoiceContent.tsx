@@ -277,6 +277,8 @@ export default function WiPerformaInvoiceContent({
   const piPoNumber = String(rawQuotationData?.PO_Number ?? '').trim()
   const piPoDate = String(rawQuotationData?.PO_Date ?? '').trim()
   const piPaymentTerm = String(rawQuotationData?.Term_of_Payment ?? '').trim()
+  // Remarks section — root `PI_Remarks`, shown below Payment Term, only when non-empty.
+  const piRemarksValue = String(rawQuotationData?.PI_Remarks ?? '').trim()
   const piSignatoryName = String(rawQuotationData?.Contact_Person ?? '').trim()
   // Bank Details — root `Our_Bank_Details`, a single free-text field with
   // one "Label : Value" line per field (account number, holder name, bank
@@ -476,6 +478,14 @@ export default function WiPerformaInvoiceContent({
                 {piPaymentTerm ? (
                   <div style={{ marginBottom: '20px' }}>
                     <strong>Payment Term :</strong> {piPaymentTerm}
+                  </div>
+                ) : null}
+
+                {/* Remarks — live, root `PI_Remarks`. Skipped entirely when empty. */}
+                {piRemarksValue ? (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Remarks:</div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{piRemarksValue}</div>
                   </div>
                 ) : null}
 

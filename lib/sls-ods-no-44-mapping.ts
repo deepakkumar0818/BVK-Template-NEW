@@ -280,6 +280,8 @@ export interface SlsOdsNo44DeliveryEntry {
   value: string
   count: string
   uom: string
+  /** `Delivery` on the same `*_Desired_Date` row — printed after UOM. */
+  delivery: string
 }
 
 export interface SlsOdsNo44DeliveryGroup {
@@ -608,10 +610,11 @@ export function mapSlsOdsNo44(
       const count = strVal(row.No_Of_Items ?? row.No_of_Items)
       const row20Match = rows20.find((r) => lineRef(r) === ref)
       const uom = strVal(row20Match?.[F.uomBilling])
+      const delivery = strVal(row.Delivery)
       let entry: SlsOdsNo44DeliveryEntry | null = null
-      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
-      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
-      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom, delivery }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom, delivery }
       if (!entry) continue
       let group = groups.get(ref)
       if (!group) {

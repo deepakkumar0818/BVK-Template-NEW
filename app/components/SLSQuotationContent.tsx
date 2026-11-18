@@ -412,7 +412,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
     const findByRef = (rows: Array<Record<string, unknown>>, ref: string) =>
       rows.find((r) => refOf(r) === ref)
 
-    type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string }
+    type Entry = { label: 'Date' | 'Week' | 'Month'; value: string; count: string; uom: string; delivery: string }
     type Group = { ref: string; heading: string; entries: Entry[] }
     const groups = new Map<string, Group>()
     for (const row of desiredRows) {
@@ -425,9 +425,10 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
       const count = String(row.No_of_Items ?? row.No_Of_Items ?? '').trim()
       const twoZeroRow = findByRef(twoZeroRows, ref)
       const uom = String(twoZeroRow?.UOM_Billing ?? '').trim()
-      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom }
-      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom }
-      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom }
+      const delivery = String(row.Delivery ?? '').trim()
+      if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }
+      else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom, delivery }
+      else if (monthVal) entry = { label: 'Month', value: monthVal, count, uom, delivery }
       if (!entry) continue
       let group = groups.get(ref)
       if (!group) {
@@ -669,6 +670,7 @@ export default function SLSQuotationContent({ data, shippingData, billingData, r
                         <strong>{entry.label}</strong> : {entry.value}
                         {entry.count ? `, ${entry.count} items` : ''}
                         {entry.uom ? `, ${entry.uom}` : ''}
+                        {entry.delivery ? `, ${entry.delivery}` : ''}
                       </li>
                     ))}
                   </ul>

@@ -354,6 +354,7 @@ export default function ArgoMultiAoHydrotechContent({
                             <strong>{entry.label}</strong> : {entry.value}
                             {entry.count ? `, ${entry.count} items` : ''}
                             {entry.uom ? `, ${entry.uom}` : ''}
+                            {entry.delivery ? `, ${entry.delivery}` : ''}
                           </li>
                         ))}
                       </ul>
