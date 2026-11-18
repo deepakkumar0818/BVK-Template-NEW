@@ -343,7 +343,7 @@ export default function SlsOds44PHydrotechContent({ data }: { data: SlsOdsNo44Da
                   {group.entries.map((entry, i) => (
                     <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
                       <strong>{entry.label}</strong> : {entry.value}
-                      {entry.count ? `, ${entry.count} items` : ''}
+                      {entry.count ? `, ${entry.count}` : ''}
                       {entry.uom ? `, ${entry.uom}` : ''}
                     </li>
                   ))}
