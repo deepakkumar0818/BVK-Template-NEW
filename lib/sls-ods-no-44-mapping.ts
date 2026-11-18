@@ -287,6 +287,8 @@ export interface SlsOdsNo44DeliveryEntry {
 export interface SlsOdsNo44DeliveryGroup {
   ref: string
   productCode: string
+  /** `Brand_Category` (Category 1 WI) or `Brand_Selling_Name` (Category 2 WI) on the matching product row — same rule as the quotation templates' Delivery Schedule heading. Used by argo-multi-ao / argo-multi-ao-hydrotech instead of `productCode`. */
+  brandSellingName: string
   entries: SlsOdsNo44DeliveryEntry[]
 }
 
@@ -623,7 +625,12 @@ export function mapSlsOdsNo44(
       let group = groups.get(ref)
       if (!group) {
         const productRowMatch = productRows.find((r) => lineRef(r) === ref)
-        group = { ref, productCode: strVal(productRowMatch?.[F.productCode]), entries: [] }
+        group = {
+          ref,
+          productCode: strVal(productRowMatch?.[F.productCode]),
+          brandSellingName: strVal(productRowMatch?.[brandField]),
+          entries: [],
+        }
         groups.set(ref, group)
       }
       group.entries.push(entry)
