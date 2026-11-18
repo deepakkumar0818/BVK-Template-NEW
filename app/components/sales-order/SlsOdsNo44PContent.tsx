@@ -352,7 +352,7 @@ export default function SlsOdsNo44PContent({ data }: { data: SlsOdsNo44Data }) {
                   {group.entries.map((entry, i) => (
                     <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
                       <strong>{entry.label}</strong> : {entry.value}
-                      {entry.count ? `, ${entry.count} items` : ''}
+                      {entry.count ? `, ${entry.count}` : ''}
                       {entry.uom ? `, ${entry.uom}` : ''}
                     </li>
                   ))}
