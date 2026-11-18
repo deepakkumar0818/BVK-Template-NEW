@@ -346,7 +346,7 @@ export default function ArgoMultiAoHydrotechContent({
                   {deliverySchedule.map((group) => (
                     <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
                       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        {group.ref}. {group.productCode || ' '}
+                        {group.ref}. {group.brandSellingName || ' '}
                       </div>
                       <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
                         {group.entries.map((entry, i) => (
