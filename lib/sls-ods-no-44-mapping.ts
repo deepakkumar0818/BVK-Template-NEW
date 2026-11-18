@@ -609,7 +609,11 @@ export function mapSlsOdsNo44(
       const monthVal = strVal(row.Month_field ?? row.month_field)
       const count = strVal(row.No_Of_Items ?? row.No_of_Items)
       const row20Match = rows20.find((r) => lineRef(r) === ref)
-      const uom = strVal(row20Match?.[F.uomBilling])
+      const productRowMatchForUom = productRows.find((r) => lineRef(r) === ref)
+      // UOM_Billing may live on the `_2_0` linked row OR on the main product
+      // row (e.g. Category_2_MM_Database_WI stores it on the main row, not
+      // `_2_0`) — same fallback used for line items in wi-line-display-shared.ts.
+      const uom = strVal(row20Match?.[F.uomBilling]) || strVal(productRowMatchForUom?.[F.uomBilling])
       const delivery = strVal(row.Delivery)
       let entry: SlsOdsNo44DeliveryEntry | null = null
       if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }

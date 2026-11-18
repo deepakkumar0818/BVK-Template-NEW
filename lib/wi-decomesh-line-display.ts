@@ -442,7 +442,11 @@ export function buildWiDecomeshDeliverySchedule(
     let entry: WiDecomeshDeliveryScheduleEntry | null = null
     const count = strVal(row.No_of_Items ?? row[F.desiredNoOfItems])
     const twoZeroRow = findByRef(twoZeroRows, ref)
-    const uom = strVal(twoZeroRow?.[F.itemUomBilling])
+    const mainRowForUom = findByRef(mainRows, ref)
+    // UOM_Billing may live on the `_2_0` linked row OR on the main product
+    // row (e.g. Category_2_MM_Database_WI stores it on the main row, not
+    // `_2_0`) — same fallback used for line items in wi-line-display-shared.ts.
+    const uom = strVal(twoZeroRow?.[F.itemUomBilling]) || strVal(mainRowForUom?.[F.itemUomBilling])
     const delivery = strVal(row.Delivery)
     if (dateVal) entry = { label: 'Date', value: dateVal, count, uom, delivery }
     else if (weekVal) entry = { label: 'Week', value: weekVal, count, uom, delivery }
