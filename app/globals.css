@@ -15,7 +15,7 @@
   --quotation-line-height: 1.25;
 }
 
-/* WMW / Performa / quotation replica: narrow side gutters, content uses full sheet width. */
+/* WMW / Proforma / quotation replica: narrow side gutters, content uses full sheet width. */
 .quotation-doc--wmw-numbered {
   --quotation-print-side-inset: 8mm;
   --quotation-print-bottom-inset: 13mm;
@@ -104,6 +104,15 @@
   .saint-nonlast-fill .saint-goods-fill-row > td,
   .saint-nonlast-fill .saint-tail-fill-row,
   .saint-nonlast-fill .saint-tail-fill-row > td {
+    height: 100% !important;
+  }
+
+  /* Perfomainvoice: same fill-to-bottom-of-page technique as Saint above —
+   * layout only, ported to match the Saint template's margins/spacing. */
+  .perfomainvoice-nonlast-fill .perfomainvoice-goods-fill-row,
+  .perfomainvoice-nonlast-fill .perfomainvoice-goods-fill-row > td,
+  .perfomainvoice-nonlast-fill .perfomainvoice-tail-fill-row,
+  .perfomainvoice-nonlast-fill .perfomainvoice-tail-fill-row > td {
     height: 100% !important;
   }
 
@@ -240,8 +249,8 @@ body {
   display: table-header-group;
 }
 
-/* Show repeating header on screen (Performa) */
-.performa-invoice-content-section .repeating-header {
+/* Show repeating header on screen (Proforma) */
+.Proforma-invoice-content-section .repeating-header {
   display: table-header-group;
 }
 
@@ -261,8 +270,8 @@ body {
   margin-bottom: 0 !important;
 }
 
-/* Performa Invoice title styling */
-.performa-invoice-title {
+/* Proforma Invoice title styling */
+.Proforma-invoice-title {
   display: block;
   text-align: center;
   font-size: 22px;
@@ -272,12 +281,12 @@ body {
   margin-top: 0;
 }
 
-.performa-invoice-title--compact {
+.Proforma-invoice-title--compact {
   margin-bottom: 0 !important;
 }
 
-/* Performa Invoice content section */
-.performa-invoice-content-section {
+/* Proforma Invoice content section */
+.Proforma-invoice-content-section {
   border: none;
   outline: none;
   box-shadow: none;
@@ -681,16 +690,16 @@ body {
     display: table-cell;
   }
 
-  /* Performa Invoice: allow header row to repeat on every printed page */
-  .performa-invoice-content-section .repeating-header {
+  /* Proforma Invoice: allow header row to repeat on every printed page */
+  .Proforma-invoice-content-section .repeating-header {
     display: table-header-group !important;
   }
 
-  .performa-invoice-content-section .repeating-header tr {
+  .Proforma-invoice-content-section .repeating-header tr {
     display: table-row;
   }
 
-  .performa-invoice-content-section .repeating-header td {
+  .Proforma-invoice-content-section .repeating-header td {
     display: table-cell;
   }
 
@@ -712,8 +721,8 @@ body {
     page-break-inside: avoid;
   }
 
-  /* Performa Invoice title - show only on first page in print */
-  .performa-invoice-title {
+  /* Proforma Invoice title - show only on first page in print */
+  .Proforma-invoice-title {
     display: block !important;
     page-break-after: avoid;
     page-break-inside: avoid;
@@ -734,7 +743,7 @@ body {
     padding-top: 0;
   }
 
-  /* Performa / goods total row: print once after line items, not on every continuation page */
+  /* Proforma / goods total row: print once after line items, not on every continuation page */
   .quotation-doc .goods-description-table>tfoot {
     display: table-row-group !important;
   }
@@ -750,14 +759,14 @@ body {
     page-break-after: avoid;
   }
 
-  /* Prevent sections from splitting across pages (Performa / generic) */
+  /* Prevent sections from splitting across pages (Proforma / generic) */
   .quotation-content-section {
     page-break-inside: avoid !important;
     /* WI/Quotation: remove wrapper border to avoid double lines */
     border: none !important;
   }
 
-  .performa-invoice-content-section {
+  .Proforma-invoice-content-section {
     page-break-inside: avoid !important;
     /* Outer wrapper border removed; main invoice table keeps visible border */
     border: none !important;
@@ -767,7 +776,7 @@ body {
 
   /* Seamless quotation: allow tables to break across pages (dynamic line-item count) */
   .quotation-content-section.quotation-content-section--seamless,
-  .performa-invoice-content-section.performa-invoice-content-section--seamless {
+  .Proforma-invoice-content-section.Proforma-invoice-content-section--seamless {
     page-break-inside: auto !important;
     break-inside: auto !important;
   }
@@ -807,16 +816,16 @@ body {
     page-break-inside: avoid;
   }
 
-  /* Performa Invoice title - show only on first page */
-  .performa-invoice-title {
+  /* Proforma Invoice title - show only on first page */
+  .Proforma-invoice-title {
     display: block !important;
     page-break-after: avoid;
     page-break-inside: avoid;
   }
 
-  /* Hide quotation/performa invoice title on subsequent pages */
+  /* Hide quotation/Proforma invoice title on subsequent pages */
   .quotation-content-section:not(:first-of-type) .quotation-title,
-  .performa-invoice-content-section:not(:first-of-type) .performa-invoice-title {
+  .Proforma-invoice-content-section:not(:first-of-type) .Proforma-invoice-title {
     display: none !important;
   }
 
@@ -982,7 +991,7 @@ body {
 
   /* WMW line grid: compact spacing like reference PDF (not oversized screen padding) */
   .quotation-doc .goods-description-table,
-  .performa-invoice-content-section .goods-description-table {
+  .Proforma-invoice-content-section .goods-description-table {
     font-size: var(--quotation-font-size) !important;
     line-height: var(--quotation-line-height) !important;
   }
@@ -1040,7 +1049,7 @@ body {
     line-height: var(--quotation-line-height) !important;
   }
 
-  /* Paginated goods (WI + Performa): 7 rows per sheet; optional fill padding on full pages */
+  /* Paginated goods (WI + Proforma): 7 rows per sheet; optional fill padding on full pages */
   .quotation-goods-pages-stack {
     width: 100%;
     margin: 0;
@@ -1585,18 +1594,18 @@ body {
   }
 
   .quotation-doc .goods-description-table .goods-description-table-desc-cell > div,
-  .performa-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div {
+  .Proforma-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div {
     margin: 0 !important;
     line-height: 1.2 !important;
   }
 
   .quotation-doc .goods-description-table .goods-description-table-desc-cell > div + div,
-  .performa-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div + div {
+  .Proforma-invoice-content-section .goods-description-table .goods-description-table-desc-cell > div + div {
     margin-top: 1px !important;
   }
 
   .quotation-content-section--seamless,
-  .performa-invoice-content-section--seamless {
+  .Proforma-invoice-content-section--seamless {
     padding: 0 !important;
     margin-bottom: 8mm !important;
   }
@@ -1740,7 +1749,7 @@ body {
   }
 
   .quotation-title--compact,
-  .performa-invoice-title--compact {
+  .Proforma-invoice-title--compact {
     margin-bottom: 0 !important;
   }
 
@@ -3336,7 +3345,7 @@ main.quotation-doc:has(.quotation-header-master-table--wmwd1) {
   margin-top: 2px !important;
 }
 
-.performa-invoice-content-section--seamless {
+.Proforma-invoice-content-section--seamless {
   padding: 0 0 12px !important;
 }
 

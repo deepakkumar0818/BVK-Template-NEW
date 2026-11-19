@@ -98,7 +98,7 @@ export interface WmwJoinedLineDisplayRow {
   packingCharges: string
   seamCharges: string
 
-  /** `accessories` when row came from Accessories + Accessories2_0 join (WMW performa routes). */
+  /** `accessories` when row came from Accessories + Accessories2_0 join (WMW Proforma routes). */
   lineKind?: 'accessories' | 'wmw' | 'pf'
 }
 
@@ -264,7 +264,7 @@ function coalesceLinkedFirst(
 /**
  * HSN_Code for one Category 1 WMW goods line (same precedence as `buildWmwJoinedLineRows`):
  * `Category_1_MM_Database_WMW_2_0` row → linked `Category_1_MM_Database_WMW_3_0` by `last_item_ref` → main `Category_1_MM_Database_WMW` row.
- * For WMW Performa tab HSN column only; WI already uses `buildWmwJoinedLineRows`.
+ * For WMW Proforma tab HSN column only; WI already uses `buildWmwJoinedLineRows`.
  */
 export function resolveCategory1WmwHsnCode(
   raw: ZohoQuotation | null | undefined,
@@ -605,7 +605,7 @@ export function buildAccessoriesJoinedLineRows(
 /**
  * `/wmw/[id]` + `/quotation/[id]`: WMW + Product Fitment join first; else Accessories when mesh lines are absent.
  */
-export function buildJoinedLineRowsForWmwPerforma(
+export function buildJoinedLineRowsForWmwProforma(
   raw: ZohoQuotation | null | undefined
 ): WmwJoinedLineDisplayRow[] {
   const wmw = buildWmwJoinedLineRows(raw)
@@ -675,7 +675,7 @@ export function quotationScalarFieldPresent(value: unknown): boolean {
 
 /**
  * Right-hand summary label: `Discount_Type` + " Discount", or "Discount" when type is empty.
- * Shown just above Freight Charge on WMWD1 / performa / export goods footers.
+ * Shown just above Freight Charge on WMWD1 / Proforma / export goods footers.
  */
 export function formatOverallDiscountRowLabel(discountType: unknown): string {
   const t = String(discountType ?? '').trim()

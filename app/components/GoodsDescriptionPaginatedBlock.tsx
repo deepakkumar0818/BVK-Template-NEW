@@ -20,9 +20,9 @@ const MASTER_HEADER_OMIT_LAST_GOODS_SEGMENTS = 0
 
 export interface GoodsDescriptionPaginatedBlockProps {
   lineItems: QuotationLineItem[]
-  /** When set, the last segment shows a goods-table tfoot (Performa). */
+  /** When set, the last segment shows a goods-table tfoot (Proforma). */
   totalFoot?: { currency: string; amountFormatted: string; /** omit → `Total {currency}` */ label?: string }
-  /** Performa uses 8px cell padding; WI omits for default CSS. */
+  /** Proforma uses 8px cell padding; WI omits for default CSS. */
   cellPaddingPx?: number
   /**
    * WMW quotation: print-only duplicate of the master header before continuation goods segments.

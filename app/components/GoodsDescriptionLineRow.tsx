@@ -7,7 +7,7 @@ import { lineText } from '@/lib/quotation-line-item-display'
 
 interface GoodsDescriptionLineRowProps {
   row: QuotationLineItem
-  /** When set, applies uniform padding to body cells (Performa uses 8). */
+  /** When set, applies uniform padding to body cells (Proforma uses 8). */
   cellPaddingPx?: number
   /** WMWD1: HSN column after description */
   showHsnCodeColumn?: boolean

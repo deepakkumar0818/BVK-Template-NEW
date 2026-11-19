@@ -348,6 +348,21 @@ export default function AcceptanceOrderContent({
                   <td style={{ height: '100%' }}>&nbsp;</td>
                   <td style={{ height: '100%' }}>&nbsp;</td>
                 </tr>
+                {/* Charges — only on the last page, right above the Total
+                 * row. Same model as the quotation templates
+                 * (Transaction/Misc/Export Packing), one row per
+                 * non-empty charge. */}
+                {isLastPage
+                  ? data.charges.map((charge, i) => (
+                      <tr key={`xao-charge-${i}`} className="xao-charge-row">
+                        <td className="xao-total-label" colSpan={4}>
+                          {charge.label}
+                        </td>
+                        <td className="xao-num-cell">{charge.amount}</td>
+                      </tr>
+                    ))
+                  : null}
+
                 {/* total — only on the last page */}
                 {isLastPage ? (
                   <tr className="xao-total-row">

@@ -1,16 +1,16 @@
 import { Suspense } from 'react'
-import PerformaPageContent from '../../components/PerformaPageContent'
+import ProformaPageContent from '../../components/ProformaPageContent'
 
-export default function PerformaPage() {
+export default function ProformaPage() {
   return (
     <Suspense
       fallback={
         <main style={{ padding: '20px', textAlign: 'center' }}>
-          <div>Loading Performa...</div>
+          <div>Loading Proforma...</div>
         </main>
       }
     >
-      <PerformaPageContent />
+      <ProformaPageContent />
     </Suspense>
   )
 }

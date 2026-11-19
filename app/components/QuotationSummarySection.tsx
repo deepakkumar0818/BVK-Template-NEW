@@ -5,7 +5,7 @@ import {
   formatCurrencyRounded,
   formatAmountInWords,
   resolveQuotationValidity,
-  DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
+  DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE,
 } from '@/lib/quotation-utils'
 import { isQuotationZohoCheckboxTrue } from '@/lib/wmw-subform-mapping'
 
@@ -38,12 +38,12 @@ export interface QuotationSummarySectionProps {
   sevenColumnGoodsLayout?: boolean
   /**
    * When set, replaces the merged left “Notes” block (banner + remarks) with this content only.
-   * WMW Performa: static “Remarks :” list in the original left-column position beside tax rows.
+   * WMW Proforma: static “Remarks :” list in the original left-column position beside tax rows.
    */
   notesMergedSlot?: ReactNode
   /** Zoho raw record: drives “Quotation Valid Till” via `Quotation_Validity` / `Offer_Validity`. */
   rawQuotationData?: Record<string, unknown> | null
-  /** When Zoho fields are empty; defaults to {@link DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE}. */
+  /** When Zoho fields are empty; defaults to {@link DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE}. */
   quotationValidityDefault?: string
   /** `/wmw/[id]` only: skip the "Quotation Valid Till : …" row (the Total INR cell that sat in this row is also dropped). */
   hideQuotationValidityRow?: boolean
@@ -78,7 +78,7 @@ export default function QuotationSummarySection({
   sevenColumnGoodsLayout = false,
   notesMergedSlot,
   rawQuotationData,
-  quotationValidityDefault = DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
+  quotationValidityDefault = DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE,
   hideQuotationValidityRow = false,
 }: QuotationSummarySectionProps) {
   const quotationValidityDisplay = resolveQuotationValidity(rawQuotationData ?? undefined, quotationValidityDefault)

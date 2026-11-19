@@ -304,8 +304,8 @@ export interface ZohoQuotation {
   Total_Seam_Charges?: string
   Other_Charges?: string
   Type_of_Other_Charges?: string
-  /** Everite — multiline body under “Performance warranty” (Zoho API spelling) */
-  Performance_Warrenty?: string
+  /** Everite — multiline body under “Proformance warranty” (Zoho API spelling) */
+  Proformance_Warrenty?: string
   /** Everite — multiline body under “Payment Schedule” */
   Payment_Schedule?: string
   /** Primary gross weight field (Zoho API name) */
@@ -316,7 +316,7 @@ export interface ZohoQuotation {
   [key: string]: any
 }
 
-export type TemplateType = 'WI' | 'WMW' | 'WMW2' | 'EXPORT' | 'WMWE1' | 'SLS' | 'GKD' | 'BVK' | 'WI_PROCESS_FEBRIC' | 'WI_DECOMESH' | 'WI_PERFORMA_INVOICE' | 'BVK_PERFORMA_INVOICE'
+export type TemplateType = 'WI' | 'WMW' | 'WMW2' | 'EXPORT' | 'WMWE1' | 'SLS' | 'GKD' | 'BVK' | 'WI_PROCESS_FEBRIC' | 'WI_DECOMESH' | 'WI_PROFORMA_INVOICE' | 'BVK_PROFORMA_INVOICE'
 
 export interface ShippingMaster {
   ID: string

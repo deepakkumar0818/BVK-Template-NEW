@@ -14,7 +14,7 @@
  *     derived from the first two digits of GST).
  *
  * The `shippingData` / `billingData` props remain on the signature so
- * existing call sites (QuotationHeaderThead → PerformaInvoiceContent /
+ * existing call sites (QuotationHeaderThead → ProformaInvoiceContent /
  * QuotationContent / GoodsDescriptionPaginatedBlock) don't need to change,
  * but they are intentionally UNREAD. If a template needs those Master
  * rows for something else (e.g. a GST fallback on BVK/SLS), it must do

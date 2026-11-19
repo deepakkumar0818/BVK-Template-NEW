@@ -95,7 +95,7 @@ function QuotationPageContent() {
     { key: 'seamp', label: 'seamp' },
     { key: 'wmwquotation', label: 'wmwquotation' },
     { key: 'everite', label: 'everite' },
-    { key: 'performa', label: 'performa' },
+    { key: 'Proforma', label: 'Proforma' },
     { key: 'wmw-quotation', label: 'wmw-quotation' },
     { key: 'quotation3', label: 'quotation3' },
     { key: 'saint', label: 'saint' },

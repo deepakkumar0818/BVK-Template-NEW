@@ -1,7 +1,7 @@
 import { ZohoQuotation, QuotationData, QuotationLineItem, TemplateType } from './types'
 import { deliveryDisplayFromRecords, endTypeDisplayFromRecords } from './goods-description-form'
 import {
-  buildJoinedLineRowsForWmwPerforma,
+  buildJoinedLineRowsForWmwProforma,
   buildWmwJoinedLineRows,
   desiredDateForRef,
   isQuotationDiscountSummaryEnabled,
@@ -164,8 +164,8 @@ export function resolveQuotationValidity(
   return String(raw?.Expiry_Date ?? '') || defaultValue
 }
 
-/** WMW WMWD1 / Performa summary row when Zoho `Quotation_Validity` and `Offer_Validity` are absent. */
-export const DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE = '07 Days from the date of Quotation'
+/** WMW WMWD1 / Proforma summary row when Zoho `Quotation_Validity` and `Offer_Validity` are absent. */
+export const DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE = '07 Days from the date of Quotation'
 
 /**
  * “Country of Final Destination” label: Zoho `Final_Destination` on the quotation first,
@@ -349,7 +349,7 @@ function amountFromTotalOrAccessoriesSum(
 }
 
 /**
- * Tax rows for quotation / performa summary: Creator rollups (Total_*) with legacy field fallback,
+ * Tax rows for quotation / Proforma summary: Creator rollups (Total_*) with legacy field fallback,
  * then Accessories subform fallback when the top-level rollups are empty.
  */
 function resolveTotalCostBeforeTax(
@@ -1052,7 +1052,7 @@ export function transformQuotationData(
   templateType: TemplateType = 'WI',
   templateField?: string,
   /** `/wmw/[id]` + `/quotation/[id]`: enable Accessories join when WMW lines are absent. */
-  wmwPerformaRoute = false
+  wmwProformaRoute = false
 ): QuotationData {
   const lineItems: QuotationLineItem[] = []
   let totalAmount = 0
@@ -1131,8 +1131,8 @@ export function transformQuotationData(
   const wiDesiredRowsCat2 = ((zohoData as any).Category_2_MM_Database_WI_Desired_Date as any[]) || []
   const fitmentDesiredRows = ((zohoData as any).Product_Fitments_Desired_Date as any[]) || []
   /** Single WMW+Product_Fitment join for this quotation — used by WI, WMW/WMW2, and SLS/GKD when we prefer the same pipeline as Export. */
-  const joinedWmwForTransform = wmwPerformaRoute && templateType === 'WMW'
-    ? buildJoinedLineRowsForWmwPerforma(zohoData)
+  const joinedWmwForTransform = wmwProformaRoute && templateType === 'WMW'
+    ? buildJoinedLineRowsForWmwProforma(zohoData)
     : buildWmwJoinedLineRows(zohoData)
 
   /**

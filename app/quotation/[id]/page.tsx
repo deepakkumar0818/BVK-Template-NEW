@@ -1,6 +1,6 @@
 import ForcedTemplatePageContent from '@/app/components/ForcedTemplatePageContent'
 
-/** Same layout as `/wmw/[id]`; master header title shows “QUOTATION” instead of “PERFORMA INVOICE”. */
+/** Same layout as `/wmw/[id]`; master header title shows “QUOTATION” instead of “Proforma INVOICE”. */
 export default function QuotationWmwReplicaPage() {
   return (
     <ForcedTemplatePageContent

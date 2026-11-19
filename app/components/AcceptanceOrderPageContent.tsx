@@ -24,7 +24,7 @@ import { resolveGoodsSqmArea } from '@/lib/goods-sqm-area'
 import { quotationRichText } from '@/lib/quotation-rich-text'
 import SalesOrderPrintButton from './sales-order/SalesOrderPrintButton'
 import AcceptanceOrderContent from './sales-order/AcceptanceOrderContent'
-import type { AcceptanceOrderData, AcceptanceOrderLine } from './sales-order/acceptanceOrderTypes'
+import type { AcceptanceOrderCharge, AcceptanceOrderData, AcceptanceOrderLine } from './sales-order/acceptanceOrderTypes'
 
 /** Same "first non-empty across a row precedence chain" helper used by Adhunik/Saint. */
 function firstField(records: any[], field: string): string {
@@ -72,16 +72,14 @@ export default function AcceptanceOrderPageContent() {
           throw new Error('Missing quotation id in URL')
         }
 
-        // Try the Quotations report first (this template's original data
-        // source). Some record ids only exist in Sales_Order_Report (a
-        // Quotation that was converted to a Sales Order no longer matches
-        // `ID == <id>` in All_Quotations) — fall back to that report so the
-        // same id works regardless of which report it actually lives in.
-        let response = await fetch(`/api/zoho-quotations?id=${encodeURIComponent(id)}`)
+        // Acceptance of Order is a Sales Order document — fetch from
+        // Sales_Order_Report first. Fall back to the Quotations report for
+        // any id that doesn't (yet) exist there, so old links keep working.
+        let response = await fetch(`/api/zoho-sales-order-report?id=${encodeURIComponent(id)}`)
         let data: ZohoQuotationResponse = await response.json()
 
         if (!response.ok || data.code !== 3000 || !data.data || data.data.length === 0) {
-          const fallbackResponse = await fetch(`/api/zoho-sales-order-report?id=${encodeURIComponent(id)}`)
+          const fallbackResponse = await fetch(`/api/zoho-quotations?id=${encodeURIComponent(id)}`)
           const fallbackData: ZohoQuotationResponse = await fallbackResponse.json()
           if (fallbackResponse.ok && fallbackData.code === 3000 && fallbackData.data && fallbackData.data.length > 0) {
             response = fallbackResponse
@@ -189,7 +187,7 @@ function buildAcceptanceOrderData(
 
   const quotationNumber = data.quotationNumber || raw?.Name || ''
   const quotationDate = data.date || raw?.Created_Date_and_time || ''
-  const buyerOrderNo = data.buyerEnquiryNo || data.customerReference || raw?.customer_Reference || ''
+  const buyerOrderNo = String(raw?.PO_Number ?? '').trim()
   const buyerOrderDate = data.customerReferenceDate || raw?.Customer_Reference_Date || ''
   const otherReferences = resolveOtherReferenceDisplay(raw, '')
 
@@ -260,6 +258,22 @@ function buildAcceptanceOrderData(
           )
         : undefined) || rows3Linked[index]
 
+    // `_4_0` — on Quotation-sourced data `Selling_Price_UOM_Billing` lives
+    // on the `_3_0` row (`ext3` above); on Sales-Order-sourced data (this
+    // template's primary source) that field isn't on `_3_0` at all — it's
+    // on `_4_0` instead (confirmed against record 238786000009357062).
+    // Checked as a fallback so the same field name resolves regardless of
+    // which report the record came from.
+    const rows4Linked = toRowArray(
+      isCat2Wmw ? raw?.Category_2_MM_Database_WMW_4_0 : raw?.Category_1_MM_Database_WMW_4_0
+    )
+    const ext4 =
+      (itemRef
+        ? rows4Linked.find(
+            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+          )
+        : undefined) || rows4Linked[index]
+
     const cat2WmwMainRows = toRowArray(raw?.Category_2_MM_Database_WMW)
     const cat2ProductDetail = itemRef
       ? cat2WmwMainRows.find(
@@ -317,7 +331,9 @@ function buildAcceptanceOrderData(
     const quantity = isCat2Wmw
       ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim()) || 0
       : parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const sellingPriceUomBilling = String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '').trim()
+    const sellingPriceUomBilling = String(
+      ext3?.Selling_Price_UOM_Billing ?? ext4?.Selling_Price_UOM_Billing ?? ''
+    ).replace(/,/g, '').trim()
     const rate = sellingPriceUomBilling ? parseFloat(sellingPriceUomBilling) || NaN : NaN
     const amount = quantity * rate
 
@@ -347,6 +363,45 @@ function buildAcceptanceOrderData(
       amount: Number.isFinite(amount) ? formatCurrency(amount, '') : '',
     }
   })
+
+  // Charges — same toggle-gated model as the quotation templates
+  // (SaintGoodsTable.tsx / PerfomainvoiceGoodsTable.tsx), minus the
+  // discount row (not wanted on this template). Each row is
+  // independently gated by its own Zoho checkbox, flat amount.
+  const isTruthyToggle = (v: unknown): boolean =>
+    v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  const parseFlatAmt = (v: unknown): number => {
+    const n = parseFloat(String(v ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const transactionChargeEnabled = isTruthyToggle(raw?.Transaction_changes)
+  const transactionChargeAmt = transactionChargeEnabled ? parseFlatAmt(raw?.Transaction_changes_Value) : 0
+  const transactionChargeLabel = String(raw?.Transaction_changes_Descriptions ?? '').trim() || 'Transaction Charges'
+
+  const miscChargeEnabled = isTruthyToggle(raw?.Miscellaneous_Charges)
+  const miscChargeAmt = miscChargeEnabled ? parseFlatAmt(raw?.Miscellaneous_Charges_Value) : 0
+  const miscChargeLabel = (
+    String(raw?.Miscellaneous_Charges_Description1 ?? '').trim() ||
+    String(raw?.Miscellaneous_Charges_Description ?? '').trim() ||
+    'Miscellaneous Charges'
+  )
+
+  const exportPackingEnabled = isTruthyToggle(raw?.Export_Packing)
+  const exportPackingAmt = exportPackingEnabled ? parseFlatAmt(raw?.Export_Packing_Value) : 0
+  const exportPackingLabel = String(raw?.Export_Packing_Description ?? '').trim() || 'Export Packing'
+
+  const charges: AcceptanceOrderCharge[] = [
+    transactionChargeEnabled
+      ? { label: transactionChargeLabel, amount: formatCurrency(transactionChargeAmt, '') }
+      : null,
+    miscChargeEnabled
+      ? { label: miscChargeLabel, amount: formatCurrency(miscChargeAmt, '') }
+      : null,
+    exportPackingEnabled
+      ? { label: exportPackingLabel, amount: formatCurrency(exportPackingAmt, '') }
+      : null,
+  ].filter((c): c is AcceptanceOrderCharge => c !== null)
 
   // ── Grand total — strict 1:1 map, same field every other WMW
   // template uses for the printed Total. ────────────────────────────
@@ -403,6 +458,7 @@ function buildAcceptanceOrderData(
     bankerLines: ourBankDetails ? [ourBankDetails] : [],
     dispatchExWorks: 'Dispatch Ex-Works Jaipur:',
     lines,
+    charges,
     descriptionHeader: 'Description Of Goods',
     hsnHeader: 'HSN Code',
     quantityHeader: 'Quantity',

@@ -13,9 +13,9 @@ import type {
 import { logQuotationPayloadForUrlId } from '@/lib/log-quotation-payload'
 import { transformQuotationData, determineTemplateType } from '@/lib/quotation-utils'
 import PrintButton from './PrintButton'
-import PerformaInvoiceContent from './PerformaInvoiceContent'
+import ProformaInvoiceContent from './ProformaInvoiceContent'
 
-export default function PerformaPageContent() {
+export default function ProformaPageContent() {
   const params = useParams()
   const id = typeof params?.id === 'string' ? params.id : ''
 
@@ -45,7 +45,7 @@ export default function PerformaPageContent() {
         }
 
         const quotation = data.data[0]
-        logQuotationPayloadForUrlId(id, quotation, 'performa')
+        logQuotationPayloadForUrlId(id, quotation, 'Proforma')
         setRawQuotationData(quotation)
 
         const autoTemplateType = determineTemplateType(quotation.Type_Of_Quotation, quotation.Template)
@@ -107,13 +107,13 @@ export default function PerformaPageContent() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-          <div>Loading Performa...</div>
+          <div>Loading Proforma...</div>
         </div>
       )}
 
       {error && (
         <div style={{ textAlign: 'center', padding: '40px', color: '#d32f2f' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading Performa</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Error loading Proforma</div>
           <div>{error}</div>
           <div style={{ marginTop: '16px', fontSize: '14px' }}>
             <Link href="/" style={{ color: '#1e40af', textDecoration: 'underline' }}>
@@ -129,7 +129,7 @@ export default function PerformaPageContent() {
             <tbody>
               <tr>
                 <td colSpan={2} style={{ verticalAlign: 'top', border: 'none', padding: 0 }}>
-                  <PerformaInvoiceContent
+                  <ProformaInvoiceContent
                     data={quotationData}
                     shippingData={shippingData}
                     billingData={billingData}

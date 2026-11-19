@@ -16,39 +16,45 @@ import {
 import PrintButton from './PrintButton'
 
 /**
- * BVK Proforma Invoice — ISOLATED sibling of WiPerformaInvoiceContent.tsx.
+ * WI Proforma Invoice — ISOLATED sibling of SLSQuotationContent.tsx.
  *
- * Same approach as the WI PI (Quotation report, Category 1 WI / Category 2
- * WI / Product Fitments via `buildSlsLineItemsFromWi20SubformsShared`;
- * dynamic CGST/SGST/IGST summary box; "Amount In Word" describing the
- * Grand Total; live `Our_Bank_Details` parsed into a boxed Label/Value
- * table; line items filtered to only those whose matching `_3_0` row has a
- * non-empty `PI_no` that isn't "Closed"), but BVK-branded — reuses
- * BVKQuotationContent.tsx's own CSS classes directly (`bvk-quotation-container`,
- * `bvk-print-table`, `bvk-print-header-row`, `bvk-print-footer-row`,
- * `bvk-page-footer`), not a new isolated class set, since the goal is to
- * match BVK's letterhead/margin exactly, not to diverge from it. No new
- * globals.css rules were needed for this reason.
+ * Same data source (Quotation report, Category 1 WI / Category 2 WI /
+ * Product Fitments — via `buildSlsLineItemsFromWi20SubformsShared`, the
+ * exact same helper SLS uses) and the exact same letterhead / repeating
+ * header-footer print technique as SLS (and, downstream, argo-multi-ao,
+ * which copies SLS's technique too): `/wi.png` header, `/wi bottom left
+ * side.png` + `/wi_bottom_rightside.png` footer, 12mm top inset via a
+ * repeating `print-page-top-spacer` row, 20mm side padding, full-bleed
+ * footer with an 8mm inset on the left image only.
  *
- * One confirmed difference from the WI PI, per explicit instruction:
- *   - No Advance Payment section (the sample PDF has one; WI's PI dropped
- *     it, and BVK's follows the same choice).
- * Ref No. (root `Name`, same as WI PI) is shown next to GST No. — the
- * sample PDF's own unlabeled reference code next to GST No. is NOT mapped
- * (no confirmed field for it).
- * Also dropped versus the sample PDF: a "Telephone" line in the recipient
- * block — no confirmed Zoho field for it, so not mapped (no guessing).
+ * Column set is trimmed from the sample PDF: no Item Code, no Po. No., no
+ * SAP No., no Client Reference — none of those four have a matching field
+ * anywhere in Quotation data (confirmed against live records; Sales Order
+ * data has SAP_No / Client_PO_No / Customer_Reference on its `_3_0`
+ * subform, Quotation data does not). Final columns: HSN Code / Product /
+ * Qty. / Billing UOM / Rate / Total — Billing UOM is its own column (not
+ * merged into Qty), matching the argo-multi-ao split.
  *
- * Item table adds a leading "Item" serial-number column (1, 2, 3…, matching
- * the sample) and renders Product as a single plain value (no "Product :"
- * prefix, no stacked Remarks) — the sample shows flat product names
- * ("Cathode Nickel", "Anode Nickel"), not the SLS-style Remarks block.
+ * Summary block reuses BVKQuotationContent's dynamic CGST/SGST/IGST
+ * pattern (rates read from the record, rows hidden when zero, Export
+ * quotations show a single Total line). Two PI-only additions: "Amount In
+ * Word" and "50% Advance" — both describe the SAME computed value (50% of
+ * the Grand Total), matching the sample PDF exactly (its "Amount In Word"
+ * line spells out 1,536,360.00, which is exactly half of its 3,072,720.00
+ * Grand Total — not the Grand Total itself). There is no Zoho field for an
+ * advance percentage, so this is a client-side computation, not a mapped
+ * field.
  *
- * Does NOT import from or modify BVKQuotationContent.tsx / WiPerformaInvoiceContent.tsx,
+ * Bank Details are live — root `Our_Bank_Details`, a single free-text field
+ * with one "Label : Value" line per field, printed verbatim (not parsed
+ * into a table, since the line set isn't guaranteed to be the same shape
+ * on every record). Authorized Signatory reads root `Contact_Person`.
+ *
+ * Does NOT import from or modify SLSQuotationContent.tsx / BVKQuotationContent.tsx,
  * so neither is affected by anything here.
  */
 
-interface BvkPerformaInvoiceContentProps {
+interface WiProformaInvoiceContentProps {
   data: QuotationData
   shippingData?: any
   billingData?: any
@@ -58,22 +64,16 @@ interface BvkPerformaInvoiceContentProps {
   contactData?: { salutation: string; fullName: string } | null
 }
 
-export default function BvkPerformaInvoiceContent({
+export default function WiProformaInvoiceContent({
   data,
   shippingData,
   billingData,
   rawQuotationData,
   contactData,
-}: BvkPerformaInvoiceContentProps) {
-  // Same DD.MM.YY formatter as BVKQuotationContent.
+}: WiProformaInvoiceContentProps) {
+  // Same DD.MM.YYYY formatter as SLSQuotationContent.
   const formatPiDate = (dateString?: string): string => {
-    if (!dateString) {
-      const today = new Date()
-      const day = String(today.getDate()).padStart(2, '0')
-      const month = String(today.getMonth() + 1).padStart(2, '0')
-      const year = String(today.getFullYear()).slice(-2)
-      return `${day}.${month}.${year}`
-    }
+    if (!dateString) return ''
     try {
       const dateMatch = dateString.match(/(\d{2})-(\w{3})-(\d{4})/)
       if (dateMatch) {
@@ -83,20 +83,15 @@ export default function BvkPerformaInvoiceContent({
           Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
         }
         const monthNum = monthMap[month] || '01'
-        const shortYear = year.slice(-2)
-        return `${day}.${monthNum}.${shortYear}`
+        return `${day}.${monthNum}.${year}`
       }
       return dateString
     } catch {
-      const today = new Date()
-      const day = String(today.getDate()).padStart(2, '0')
-      const month = String(today.getMonth() + 1).padStart(2, '0')
-      const year = String(today.getFullYear()).slice(-2)
-      return `${day}.${month}.${year}`
+      return dateString || ''
     }
   }
 
-  // Strip trailing zeros from a numeric qty string.
+  // Strip trailing zeros from a numeric qty string (same as SLS's formatQty).
   const formatQty = (q: unknown): string => {
     const s = String(q ?? '').trim()
     if (!s) return ''
@@ -106,10 +101,11 @@ export default function BvkPerformaInvoiceContent({
 
   // Header "Date:" — root `PI_Date` (not `Created_Date_and_time`).
   const date = formatPiDate(rawQuotationData?.PI_Date)
-  const gstNo = String(rawQuotationData?.Billing_GST_No ?? '').trim()
-  // Ref No. — root `Name` (the quotation number), same field/treatment as
-  // the WI PI's Ref No.
+  // Ref No. — root `Name` (the quotation number), same field SLS/BVK use
+  // for their own "Quotation Ref. No." line. NOT `Quotation_Reference`,
+  // which is the long opening-paragraph text, not a short ref code.
   const refNo = data.quotationNumber || rawQuotationData?.Name || ''
+  const gstNo = String(rawQuotationData?.Billing_GST_No ?? '').trim()
 
   const consignee = resolveConsigneeDisplay(shippingData, rawQuotationData)
   const recipientNameDisplay = (() => {
@@ -133,7 +129,7 @@ export default function BvkPerformaInvoiceContent({
 
   const displayCurrency = data.currency || rawQuotationData?.Currency || 'INR'
 
-  // Same line-item source WI PI uses — Category 1 WI / Category 2 WI /
+  // Same line-item source SLS uses — Category 1 WI / Category 2 WI /
   // Product Fitments, resolved from the record's `Template` field.
   const piTemplateField = rawQuotationData?.Template as string | undefined
   const rawLineItems = buildSlsLineItemsFromWi20SubformsShared(
@@ -141,11 +137,12 @@ export default function BvkPerformaInvoiceContent({
     piTemplateField
   )
   // Only show line items whose matching `_3_0` row (same `Line_Item_ref`,
-  // active WI category) has a non-empty `PI_no` that isn't "Closed" (a
-  // line-status value some records put in this field, not a real PI
-  // number). Only applies to the Category 1/2 WI branch — Product
-  // Fitments records have no `_3_0`/PI_no concept, so they're left
-  // unfiltered.
+  // active WI category — Cat1 or Cat2, whichever the Template field
+  // resolved to) has a non-empty `PI_no`. Only applies to the Category
+  // 1/2 WI branch — Product Fitments records have no `_3_0`/PI_no concept,
+  // so they're left unfiltered. Index-aligned with `rawLineItems` because
+  // both call the exact same `subformRows(raw, key20)` the shared helper
+  // uses internally, in the same order.
   const lineItems = (() => {
     const t = String(piTemplateField ?? '').trim().toLowerCase()
     if (t.includes('product fitment')) return rawLineItems
@@ -163,6 +160,8 @@ export default function BvkPerformaInvoiceContent({
     return rawLineItems.filter((_, index) => {
       const ref = String(rows20[index]?.Line_Item_ref ?? '').trim()
       const piNo = piNoByRef.get(ref) ?? ''
+      // "Closed" is a line-status value some records put in this field, not
+      // an actual PI number — doesn't count as "PI no is there".
       return Boolean(piNo) && piNo.toLowerCase() !== 'closed'
     })
   })()
@@ -282,9 +281,10 @@ export default function BvkPerformaInvoiceContent({
   const piRemarksValue = String(rawQuotationData?.PI_Remarks ?? '').trim()
   const piSignatoryName = String(rawQuotationData?.Contact_Person ?? '').trim()
   // Bank Details — root `Our_Bank_Details`, a single free-text field with
-  // one "Label : Value" line per field. Split on the first ":" per line so
-  // it can render in a boxed Label/Value table — the row SET is whatever
-  // Zoho sends for this record (BVK's own account, not WMW's).
+  // one "Label : Value" line per field (account number, holder name, bank
+  // name, branch, SWIFT/IFSC/MICR codes). Split on the first ":" per line
+  // so it can render in the same bordered Label/Value box as the sample
+  // PDF — the row SET is whatever Zoho sends, not a fixed list.
   const piBankDetails = String(rawQuotationData?.Our_Bank_Details ?? '').trim()
   const piBankDetailsRows = piBankDetails
     .split(/\r?\n/)
@@ -300,61 +300,44 @@ export default function BvkPerformaInvoiceContent({
   return (
     <>
       <div
-        className="bvk-quotation-container"
-        style={{ maxWidth: '210mm', margin: '0 auto', padding: '20mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}
+        className="wi-pi-quotation-container"
+        style={{ maxWidth: '210mm', margin: '0 auto', padding: '10mm 20mm 20mm 20mm', fontFamily: 'Arial, sans-serif', fontSize: '11px', lineHeight: '1.6' }}
       >
         {/* Whole page wrapped in a <table> so the browser repeats <thead> on
-         * every printed page — exact same technique as BVKQuotationContent.tsx.
-         * Reuses BVK's own `.bvk-print-table` / `.bvk-print-header-row` /
-         * `.bvk-print-footer-row` classes directly (not a new isolated set)
-         * so margin/width/repeat behaviour matches BVK exactly. */}
-        <table className="bvk-print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
-          <thead className="bvk-print-header-row">
+         * every printed page — exact same technique as SLSQuotationContent.tsx. */}
+        <table className="bvk-print-table wi-pi-print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+          <thead className="bvk-print-header-row wi-pi-print-header-row">
             <tr className="print-page-top-spacer" aria-hidden="true">
-              <td colSpan={2} />
+              <td />
             </tr>
             <tr>
-              <td colSpan={2} style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                {/* Header — exact copy of BVKQuotationContent.tsx's header:
-                 * top green line, then the BVK top-left/top-right images. */}
-                <div className="bvk-print-header" style={{ marginBottom: '20px' }}>
-                  <div style={{ borderTop: '2px solid #00a651', marginBottom: '10px' }}></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-                      <img
-                        src="/bvk top left.png"
-                        alt="BVK header (left)"
-                        style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <img
-                        src="/bvk top right.png"
-                        alt="BVK header (right)"
-                        style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                  </div>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+                {/* Header — same single combined-logo image as SLS
+                 * (`/wi.png` already has the WMW mark + "WMW INDUSTRIES LTD"
+                 * + tagline baked in as one graphic). */}
+                <div style={{ marginBottom: '12px', marginTop: 0 }}>
+                  <img
+                    src="/wi.png"
+                    alt="WMW Industries Ltd"
+                    style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block', marginTop: 0 }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
                 </div>
               </td>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colSpan={2} style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
+              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
                 {/* Recipient — "To," on the left, Date on the right, same
-                 * baseline — same layout as BVK quotation. */}
+                 * baseline — same layout as SLS. */}
                 <div style={{ marginBottom: '15px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
                     <div style={{ fontWeight: 'bold' }}>To,</div>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', textAlign: 'right' }}>
-                      Date : - {date}
+                    <div style={{ fontSize: '11px', textAlign: 'right' }}>
+                      <strong>Date:</strong> {date}
                     </div>
                   </div>
                   {recipientNameDisplay ? (
@@ -384,7 +367,7 @@ export default function BvkPerformaInvoiceContent({
                   Proforma Invoice
                 </div>
 
-                {/* GST No. (left) / Ref No. (right) — same layout as the WI PI. */}
+                {/* GST No. (left) / Ref No. (right) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                   <div>
                     <strong>GST No.</strong> {gstNo}
@@ -394,38 +377,32 @@ export default function BvkPerformaInvoiceContent({
                   </div>
                 </div>
 
-                {/* Line items table — "Item" serial column + plain Product
-                 * text (no Remarks stack), matching the sample. No bottom
-                 * margin so the summary box right below sits flush against
-                 * it, no gap. */}
+                {/* Line items table — no bottom margin so the summary box
+                 * right below sits flush against it, no gap. */}
                 <div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: '11px', tableLayout: 'fixed', wordWrap: 'break-word' }}>
-                    <colgroup>
-                      <col style={{ width: '6%' }} />
-                      <col style={{ width: '12%' }} />
-                      <col style={{ width: '34%' }} />
-                      <col style={{ width: '11%' }} />
-                      <col style={{ width: '12%' }} />
-                      <col style={{ width: '12%' }} />
-                      <col style={{ width: '13%' }} />
-                    </colgroup>
                     <thead>
                       <tr>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', whiteSpace: 'nowrap' }}>Item</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', whiteSpace: 'nowrap' }}>HSN Code</th>
-                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>Product</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', whiteSpace: 'nowrap' }}>Qty.</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', whiteSpace: 'nowrap' }}>Billing UOM</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Rate${priceUomLabel ? ` / ${priceUomLabel}` : ''}`}</th>
-                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0' }}>{`Total${displayCurrency ? ` in ${displayCurrency}` : ''}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '12%', whiteSpace: 'nowrap' }}>HSN Code</th>
+                        <th style={{ border: '1px solid #000', padding: '8px', textAlign: 'left', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '40%' }}>Product</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '11%', whiteSpace: 'nowrap' }}>Qty.</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '12%', whiteSpace: 'nowrap' }}>Billing UOM</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '12%' }}>{`Rate${priceUomLabel ? ` / ${priceUomLabel}` : ''}`}</th>
+                        <th style={{ border: '1px solid #000', padding: '4px 2px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f0f0f0', width: '13%' }}>{`Total${displayCurrency ? ` in ${displayCurrency}` : ''}`}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {lineItems.map((item, index) => (
                         <tr key={index}>
-                          <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{index + 1}.</td>
                           <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>{item.hsnCode || ''}</td>
-                          <td style={{ border: '1px solid #000', padding: '8px' }}>{item.productName || ''}</td>
+                          <td style={{ border: '1px solid #000', padding: '8px' }}>
+                            {item.productName ? (
+                              <div style={{ marginBottom: '4px' }}>
+                                <span style={{ fontWeight: 'bold' }}>Product</span> : {item.productName}
+                              </div>
+                            ) : null}
+                            <div style={{ whiteSpace: 'pre-wrap' }}>{item.product}</div>
+                          </td>
                           <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{formatQty(item.qty)}</td>
                           <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{item.uom || ''}</td>
                           <td style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>{formatCurrency(item.unitPrice, displayCurrency)}</td>
@@ -436,14 +413,21 @@ export default function BvkPerformaInvoiceContent({
                   </table>
                 </div>
 
-                {/* Summary box — one bordered table: "Amount In Word" on the
-                 * left spans every row on the right (Total Before Tax /
-                 * CGST / SGST / IGST / Total After GST — dynamic, same
-                 * pattern as BVK quotation), all inside a single box. No
-                 * Advance row. Column widths (52/23/25) land the vertical
-                 * lines on the item table's Qty-left-edge and
-                 * Rate-left-edge, same alignment rule as the WI PI. */}
+                {/* Summary box — one bordered table, same layout as the
+                 * sample PDF: "Amount In Word" on the left spans every row
+                 * on the right (Total Before Tax / CGST / SGST / IGST /
+                 * Total After GST — dynamic, same pattern as BVK/SLS), all
+                 * inside a single box. No separate Advance row. */}
                 <div style={{ marginBottom: '20px' }}>
+                  {/* borderTop: none — the line items table right above already
+                   * has its own 1px bottom border; without this the two
+                   * adjacent 1px borders stack into a visibly thicker line.
+                   * Column widths (52/23/25) deliberately mirror the item
+                   * table's own widths above (HSN 12 + Product 40 = 52, so
+                   * the Amount In Word line lands on the Qty column's LEFT
+                   * edge; then + Qty 11 + Billing UOM 12 = 75 for the
+                   * label/value line, landing on the Rate column's LEFT
+                   * edge). */}
                   <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', borderTop: 'none', fontSize: '11px', tableLayout: 'fixed' }}>
                     <colgroup>
                       <col style={{ width: '52%' }} />
@@ -506,8 +490,8 @@ export default function BvkPerformaInvoiceContent({
                 ) : null}
 
                 {/* Our Bank Details — live, root `Our_Bank_Details`, parsed
-                 * into Label/Value rows and boxed. Skipped entirely when
-                 * the field is empty. */}
+                 * into Label/Value rows and boxed the same way as the
+                 * sample PDF. Skipped entirely when the field is empty. */}
                 {piBankDetailsRows.length > 0 ? (
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Our Bank Details:</div>
@@ -530,46 +514,53 @@ export default function BvkPerformaInvoiceContent({
 
                 {/* Signature block */}
                 <div style={{ marginBottom: '20px' }}>
-                  <div>For BVK Hydrotech India Pvt. Ltd</div>
+                  <div>For WMW Industries Ltd.</div>
                   <div style={{ marginTop: '40px' }}>Authorized Signatory</div>
                   {piSignatoryName ? <div style={{ marginTop: '4px' }}>{piSignatoryName}</div> : null}
                 </div>
               </td>
             </tr>
+            {/* Spacer row — height:100% in print, stretches to consume
+             * leftover space on the LAST page so the footer sinks to the
+             * bottom (same trick SLS uses). */}
+            <tr className="wi-pi-print-page-bottom-spacer" aria-hidden="true">
+              <td />
+            </tr>
           </tbody>
           {/* Empty tfoot spacer — reserves 32mm at the bottom of every
            * printed page so body content never flows under the fixed
-           * footer below (same trick BVK quotation uses). */}
-          <tfoot className="bvk-print-footer-row">
+           * footer below (same trick SLS uses). */}
+          <tfoot className="wi-pi-print-footer-row">
             <tr>
-              <td colSpan={2} style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
+              <td style={{ border: 'none', padding: 0, height: '32mm' }} aria-hidden />
             </tr>
           </tfoot>
         </table>
 
         {/* Actual footer — lives OUTSIDE the table. In print media it gets
-         * `position: fixed; bottom: 0` (see globals.css `.bvk-page-footer`)
-         * so it pins to the paper bottom on EVERY generated page. Exact
-         * same content as BVKQuotationContent.tsx's footer. */}
-        <div className="bvk-page-footer bvk-print-footer" style={{ paddingTop: '15px', fontSize: '10px' }}>
-          <div style={{ marginBottom: '8px' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>BVK Hydrotech India Pvt. Ltd.</div>
-            <div style={{ marginBottom: '4px' }}>
-              <span style={{ color: '#00a651' }}>Reg. Office:</span> Imax Imperial, Room No. 1C, 1st Floor, 101/5, S.N. Banerjee Road, Taltala, Kolkata - 700014, West Bengal, India
-            </div>
-            <div style={{ marginBottom: '4px' }}>
-              <span style={{ color: '#00a651' }}>CIN:</span> U46103WB2024PTC269415 | <span style={{ color: '#00a651' }}>GSTIN:</span> 08AAMCB4592K1Z3
-            </div>
-            <div>
-              <span style={{ color: '#00a651' }}>Correspondence Address:</span> 52-B (Part), Industrial Area, Jhotwara, Jaipur - 302012, Rajasthan, India
-            </div>
-          </div>
-          <div style={{ borderTop: '2px solid #00a651', marginTop: '10px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ width: '60%' }}></div>
-            <div style={{ color: '#00a651', fontSize: '10px', textAlign: 'right' }}>
-              Woven Solutions for Electrolyzers and Fuel Cells
-            </div>
-          </div>
+         * `position: fixed; bottom: 0` (see globals.css) so the two images
+         * pin to the paper bottom on EVERY generated page, including the
+         * last — same two images / same full-bleed treatment as SLS's footer. */}
+        <div
+          className="wi-pi-page-footer wi-pi-company-footer"
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px' }}
+        >
+          <img
+            src="/wi bottom left side.png"
+            alt="WMW Industries Ltd — company details"
+            style={{ maxWidth: '60%', height: 'auto', display: 'block', marginBottom: '45px' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
+          <img
+            src="/wi_bottom_rightside.png"
+            alt="WMW Industries Ltd — CIN / GST / BVK Group"
+            style={{ maxWidth: '35%', height: 'auto', display: 'block' }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+          />
         </div>
       </div>
 

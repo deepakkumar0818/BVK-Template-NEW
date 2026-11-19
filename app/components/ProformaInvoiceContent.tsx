@@ -12,28 +12,28 @@ import {
   parseOverallGrandTotalInclAccessories,
   resolveQuotationValidity,
   applyWmwd1LineDiscountAbsorption,
-  DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE,
+  DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE,
 } from '@/lib/quotation-utils'
 import { isQuotationDiscountSummaryEnabled, resolveWmwd1ChargeTotals, resolveWmwChargeTotals } from '@/lib/wmw-subform-mapping'
 import QuotationHeaderThead from './QuotationHeaderThead'
 import QuotationSummarySection from './QuotationSummarySection'
 import StandardConditionsOfSale from './StandardConditionsOfSale'
 
-interface PerformaInvoiceContentProps {
+interface ProformaInvoiceContentProps {
   data: QuotationData
   shippingData?: any
   billingData?: any
   rawQuotationData?: any
   /**
    * WMW tab only: same structure as WMWD1 (header, 7-col goods + HSN, summary grid + field order).
-   * Keeps legacy Performa “Remarks :” list + bank details + DOC NO after the summary.
+   * Keeps legacy Proforma “Remarks :” list + bank details + DOC NO after the summary.
    */
   useWmwd1StyleLayout?: boolean
-  /** When `useWmwd1StyleLayout`: master thead title (default “PERFORMA INVOICE”). */
+  /** When `useWmwd1StyleLayout`: master thead title (default “Proforma INVOICE”). */
   wmwd1DocumentTitle?: string
   /**
    * `/quotation/[id]` only: left merged column shows **Notes** from Zoho `Inside_Quotation_Text`,
-   * then `Please_Note` (replacing static performa remarks). `/wmw/[id]` omits this prop.
+   * then `Please_Note` (replacing static Proforma remarks). `/wmw/[id]` omits this prop.
    */
   wmwd1NotesRemarksFromApi?: boolean
   /**
@@ -43,7 +43,7 @@ interface PerformaInvoiceContentProps {
   useWmwPagination?: boolean
 }
 
-/** Left column for wmwd1 when {@link PerformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — `Inside_Quotation_Text` then `Please_Note`. */
+/** Left column for wmwd1 when {@link ProformaInvoiceContentProps.wmwd1NotesRemarksFromApi} — `Inside_Quotation_Text` then `Please_Note`. */
 function Wmwd1ApiNotesRemarksSlot({ raw }: { raw: Record<string, unknown> | null | undefined }) {
   const fromInside = String(raw?.Inside_Quotation_Text ?? '').trim()
   const fromPlease =
@@ -77,8 +77,8 @@ const QUOTATION_ROUTE_REMARK_ITEMS: readonly string[] = [
  
 ]
 
-/** Static Performa remarks (unchanged copy) — left column beside tax rows (original WMW position). */
-const performaStaticRemarksBlock: ReactNode = (
+/** Static Proforma remarks (unchanged copy) — left column beside tax rows (original WMW position). */
+const ProformaStaticRemarksBlock: ReactNode = (
   <>
     <div className="qs-notes-banner">Remarks :</div>
     <ol className="qs-remarks-list qs-notes-fill">
@@ -90,7 +90,7 @@ const performaStaticRemarksBlock: ReactNode = (
 )
 
 /** `/quotation/[id]` footer: same grid as bank block, left column = hardcoded Remarks list. */
-function performaRemarksFooterBlock(data: QuotationData): ReactNode {
+function ProformaRemarksFooterBlock(data: QuotationData): ReactNode {
   return (
     <div className="wmw-bank-details-group">
       <table className="quotation-stack-table wmw-footer-slot-table">
@@ -125,7 +125,7 @@ function performaRemarksFooterBlock(data: QuotationData): ReactNode {
 /** Static bank identifiers shown under Zoho `Our_Bank_Details` on `/wmw/[id]`. */
 const WMW_BANK_EXTRA_LINES = ['IFSC Code: IOBA0000158', 'Branch Code: 0158'] as const
 
-function performaBankDetailsBlock(
+function ProformaBankDetailsBlock(
   data: QuotationData,
   options?: { ourBankDetails?: string; showWmwBankSplit?: boolean }
 ): ReactNode {
@@ -187,7 +187,7 @@ function performaBankDetailsBlock(
   )
 }
 
-export default function PerformaInvoiceContent({
+export default function ProformaInvoiceContent({
   data,
   shippingData,
   billingData,
@@ -196,7 +196,7 @@ export default function PerformaInvoiceContent({
   wmwd1DocumentTitle,
   wmwd1NotesRemarksFromApi = false,
   useWmwPagination = false,
-}: PerformaInvoiceContentProps) {
+}: ProformaInvoiceContentProps) {
   const {
     cgstRate,
     cgstAmount,
@@ -214,7 +214,7 @@ export default function PerformaInvoiceContent({
   // rate found in the WI / Fitments / Accessories subforms. Falls back to
   // the historic 9/9/18 default when nothing is set. Amounts are NOT
   // recomputed here — only the % text on the summary-row labels.
-  const performaRateFrom = (
+  const ProformaRateFrom = (
     raw: Record<string, unknown> | null | undefined,
     topKey: string,
     subforms: readonly string[]
@@ -233,7 +233,7 @@ export default function PerformaInvoiceContent({
     }
     return 0
   }
-  const performaRateSubforms = [
+  const ProformaRateSubforms = [
     'Category_1_MM_Database_WI_2_0',
     'Category_1_MM_Database_WI_3_0',
     'Category_2_MM_Database_WI_2_0',
@@ -241,13 +241,13 @@ export default function PerformaInvoiceContent({
     'Product_Fitments2_0',
     'Accessories2_0',
   ] as const
-  const performaRawRec = rawQuotationData as Record<string, unknown> | undefined
-  const performaCgstResolved = cgstRate > 0 ? cgstRate : performaRateFrom(performaRawRec, 'CGST', performaRateSubforms)
-  const performaSgstResolved = sgstRate > 0 ? sgstRate : performaRateFrom(performaRawRec, 'SGST', performaRateSubforms)
-  const performaIgstResolved = igstRate > 0 ? igstRate : performaRateFrom(performaRawRec, 'IGST', performaRateSubforms)
-  const performaCgstLabelRate = performaCgstResolved > 0 ? performaCgstResolved : 9
-  const performaSgstLabelRate = performaSgstResolved > 0 ? performaSgstResolved : 9
-  const performaIgstLabelRate = performaIgstResolved > 0 ? performaIgstResolved : 18
+  const ProformaRawRec = rawQuotationData as Record<string, unknown> | undefined
+  const ProformaCgstResolved = cgstRate > 0 ? cgstRate : ProformaRateFrom(ProformaRawRec, 'CGST', ProformaRateSubforms)
+  const ProformaSgstResolved = sgstRate > 0 ? sgstRate : ProformaRateFrom(ProformaRawRec, 'SGST', ProformaRateSubforms)
+  const ProformaIgstResolved = igstRate > 0 ? igstRate : ProformaRateFrom(ProformaRawRec, 'IGST', ProformaRateSubforms)
+  const ProformaCgstLabelRate = ProformaCgstResolved > 0 ? ProformaCgstResolved : 9
+  const ProformaSgstLabelRate = ProformaSgstResolved > 0 ? ProformaSgstResolved : 9
+  const ProformaIgstLabelRate = ProformaIgstResolved > 0 ? ProformaIgstResolved : 18
 
   const totalAmount = formatCurrency(
     parseOverallGrandTotalInclAccessories(rawQuotationData as Record<string, unknown> | null | undefined)
@@ -256,7 +256,7 @@ export default function PerformaInvoiceContent({
   const lineItems = data.lineItems ?? []
 
   if (useWmwd1StyleLayout) {
-    const performaTitle = wmwd1DocumentTitle ?? 'PERFORMA INVOICE'
+    const ProformaTitle = wmwd1DocumentTitle ?? 'Proforma INVOICE'
     const cur = data.currency || 'INR'
     const { lineItems: wmwd1LineItems, netTotal: wmwd1NetLineTotal } = applyWmwd1LineDiscountAbsorption(
       lineItems,
@@ -411,15 +411,15 @@ export default function PerformaInvoiceContent({
             wmwd1NotesRemarksFromApi ? (
               <Wmwd1ApiNotesRemarksSlot raw={rawQuotationData as Record<string, unknown> | null | undefined} />
             ) : (
-              performaStaticRemarksBlock
+              ProformaStaticRemarksBlock
             )
           }
           rawQuotationData={rawQuotationData as Record<string, unknown> | null | undefined}
           hideQuotationValidityRow={useWmwPagination && !wmwd1NotesRemarksFromApi}
         />
         {wmwd1NotesRemarksFromApi
-          ? performaRemarksFooterBlock(data)
-          : performaBankDetailsBlock(data, {
+          ? ProformaRemarksFooterBlock(data)
+          : ProformaBankDetailsBlock(data, {
               ourBankDetails: String(
                 (rawQuotationData as Record<string, unknown> | null | undefined)?.Our_Bank_Details ?? ''
               ),
@@ -443,7 +443,7 @@ export default function PerformaInvoiceContent({
               style={{ width: '100%', borderCollapse: 'collapse' }}
             >
               <QuotationHeaderThead
-                title={performaTitle}
+                title={ProformaTitle}
                 data={data}
                 shippingData={shippingData}
                 billingData={billingData}
@@ -462,7 +462,7 @@ export default function PerformaInvoiceContent({
                       }
                       cellPaddingPx={8}
                       masterQuotationHeaderProps={{
-                        title: performaTitle,
+                        title: ProformaTitle,
                         data,
                         shippingData,
                         billingData,
@@ -502,11 +502,11 @@ export default function PerformaInvoiceContent({
 
   return (
     <>
-      <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
+      <div className="Proforma-invoice-content-section Proforma-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <div className="quotation-seamless-stack">
           <table className="quotation-stack-table quotation-header-master-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <QuotationHeaderThead
-              title="PERFORMA INVOICE"
+              title="Proforma INVOICE"
               data={data}
               shippingData={shippingData}
               billingData={billingData}
@@ -518,7 +518,7 @@ export default function PerformaInvoiceContent({
                   <GoodsDescriptionPaginatedBlock
                     lineItems={lineItems}
                     totalFoot={{ currency: data.currency, amountFormatted: totalAmount }}
-                    masterQuotationHeaderProps={{ title: 'PERFORMA INVOICE', data, shippingData, billingData, rawQuotationData }}
+                    masterQuotationHeaderProps={{ title: 'Proforma INVOICE', data, shippingData, billingData, rawQuotationData }}
                   />
                 </td>
               </tr>
@@ -540,7 +540,7 @@ export default function PerformaInvoiceContent({
                             <strong>Quotation Valid Till:</strong>{' '}
                             {resolveQuotationValidity(
                               rawQuotationData as Record<string, unknown> | undefined,
-                              DEFAULT_WMW_PERFORMA_QUOTATION_VALIDITY_PHRASE
+                              DEFAULT_WMW_Proforma_QUOTATION_VALIDITY_PHRASE
                             )}
                           </div>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -619,19 +619,19 @@ export default function PerformaInvoiceContent({
                               {/* GST rate labels are dynamic — read from Zoho (top-level rate first, then any non-zero rate on the WI/Fitments/Accessories subforms). Falls back to 9/9/18 when nothing is set. Amount is unchanged; row is hidden when the amount is zero. */}
                               {Number.isFinite(cgstAmount) && cgstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add CGST @ ${performaCgstLabelRate}%`}</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add CGST @ ${ProformaCgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(cgstAmount)}</td>
                                 </tr>
                               ) : null}
                               {Number.isFinite(sgstAmount) && sgstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add SGST @ ${performaSgstLabelRate}%`}</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add SGST @ ${ProformaSgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(sgstAmount)}</td>
                                 </tr>
                               ) : null}
                               {Number.isFinite(igstAmount) && igstAmount !== 0 ? (
                                 <tr>
-                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add IGST @ ${performaIgstLabelRate}%`}</td>
+                                  <td style={{ border: '1px solid #000', padding: '1px 8px' }}>{`Add IGST @ ${ProformaIgstLabelRate}%`}</td>
                                   <td style={{ border: '1px solid #000', padding: '1px 8px', textAlign: 'right' }}>{formatCurrency(igstAmount)}</td>
                                 </tr>
                               ) : null}
@@ -658,7 +658,7 @@ export default function PerformaInvoiceContent({
                     <strong>Amount Chargeable (In words):-</strong> {formatAmountInWords(totalAfterTax, data.currency || 'INR')}
                   </div>
 
-                  {performaBankDetailsBlock(data)}
+                  {ProformaBankDetailsBlock(data)}
                 </td>
               </tr>
             </tbody>
@@ -707,7 +707,7 @@ export default function PerformaInvoiceContent({
         <div className="section" style={{ marginBottom: '16px' }}>
           <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>6. CLAIMS</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.1.</strong> The Buyer shall not be entitled to any claim in respect of any repairs of alterations to goods undertaken by the Buyer without the prior specific written consent of the Company nor in respect of any defect arising by reason of normal wear and tear or damage due to misuse/accident.</p>
-          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as performance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
+          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as Proformance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.3.</strong> Without prejudice to any other rights which it may have against the Buyers, the company may rescind the contract, in whole or in part, or suspend deliveries under it or of any other goods in any of the following circumstances:</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.1.</strong> If any sum is due from the Buyer to the Company under the contract (or of any other account) but it is unpaid.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.2.</strong> If the Buyer is in breach of any provision of the contract.</p>

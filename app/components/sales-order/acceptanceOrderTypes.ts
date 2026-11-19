@@ -22,6 +22,12 @@ export interface AcceptanceOrderLine {
   amount: string
 }
 
+/** Charge row shown just above the Total row — same toggle-gated model as the quotation templates (Saint / Performa), minus the discount row. */
+export interface AcceptanceOrderCharge {
+  label: string
+  amount: string
+}
+
 export interface AcceptanceOrderData {
   variant: AcceptanceOrderVariant
   title: string
@@ -42,6 +48,7 @@ export interface AcceptanceOrderData {
   bankerLines: string[]
   dispatchExWorks: string
   lines: AcceptanceOrderLine[]
+  charges: AcceptanceOrderCharge[]
   descriptionHeader: string
   hsnHeader: string
   quantityHeader: string

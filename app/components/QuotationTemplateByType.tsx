@@ -2,7 +2,7 @@
 
 import type { QuotationData, TemplateType, ZohoQuotation } from '@/lib/types'
 import QuotationContent from './QuotationContent'
-import PerformaInvoiceContent from './PerformaInvoiceContent'
+import ProformaInvoiceContent from './ProformaInvoiceContent'
 import ExportQuotationContent from './ExportQuotationContent'
 import Wmwe1QuotationContent from './Wmwe1QuotationContent'
 import SLSQuotationContent from './SLSQuotationContent'
@@ -10,8 +10,8 @@ import GKDQuotationContent from './GKDQuotationContent'
 import BVKQuotationContent from './BVKQuotationContent'
 import WIProcessFebricQuotationContent from './WIProcessFebricQuotationContent'
 import WIDecomeshQuotationContent from './WIDecomeshQuotationContent'
-import WiPerformaInvoiceContent from './WiPerformaInvoiceContent'
-import BvkPerformaInvoiceContent from './BvkPerformaInvoiceContent'
+import WiProformaInvoiceContent from './WiProformaInvoiceContent'
+import BvkProformaInvoiceContent from './BvkProformaInvoiceContent'
 
 const headerSupplierCell = (
   <td style={{ width: '55%', verticalAlign: 'top', border: '1px solid #000', padding: '12px' }}>
@@ -44,7 +44,7 @@ const headerSupplierCell = (
   </td>
 )
 
-/** WMW2 performa header right cell (bordered grid) — only used in that layout. */
+/** WMW2 Proforma header right cell (bordered grid) — only used in that layout. */
 function wmw2HeaderQuotationCell(quotationData: QuotationData) {
   return (
     <td style={{ width: '45%', verticalAlign: 'top', border: '1px solid #000', padding: '12px' }}>
@@ -115,7 +115,7 @@ export interface QuotationTemplateByTypeProps {
    * templates ignore it.
    */
   contactData?: { salutation: string; fullName: string } | null
-  /** WMW wmwd1 layout only: overrides header title (default “PERFORMA INVOICE”). */
+  /** WMW wmwd1 layout only: overrides header title (default “Proforma INVOICE”). */
   wmwd1DocumentTitle?: string
   /** WMW wmwd1 `/quotation/[id]` only: Notes from Zoho `Inside_Quotation_Text`, then `Please_Note`. */
   wmwd1NotesRemarksFromApi?: boolean
@@ -195,18 +195,18 @@ export default function QuotationTemplateByType({
           rawQuotationData={rawQuotationData}
           contactData={contactData}
         />
-      ) : templateType === 'WI_PERFORMA_INVOICE' ? (
-        // Isolated template — see the isolation note in WiPerformaInvoiceContent.tsx.
-        <WiPerformaInvoiceContent
+      ) : templateType === 'WI_PROFORMA_INVOICE' ? (
+        // Isolated template — see the isolation note in WiProformaInvoiceContent.tsx.
+        <WiProformaInvoiceContent
           data={quotationData}
           shippingData={shippingData}
           billingData={billingData}
           rawQuotationData={rawQuotationData}
           contactData={contactData}
         />
-      ) : templateType === 'BVK_PERFORMA_INVOICE' ? (
-        // Isolated template — see the isolation note in BvkPerformaInvoiceContent.tsx.
-        <BvkPerformaInvoiceContent
+      ) : templateType === 'BVK_PROFORMA_INVOICE' ? (
+        // Isolated template — see the isolation note in BvkProformaInvoiceContent.tsx.
+        <BvkProformaInvoiceContent
           data={quotationData}
           shippingData={shippingData}
           billingData={billingData}
@@ -218,7 +218,7 @@ export default function QuotationTemplateByType({
           <tbody>
             <tr>
               <td style={{ verticalAlign: 'top', border: 'none', padding: 0 }}>
-                <PerformaInvoiceContent
+                <ProformaInvoiceContent
                   data={quotationData}
                   shippingData={shippingData}
                   billingData={billingData}
@@ -243,7 +243,7 @@ export default function QuotationTemplateByType({
           <tbody>
             <tr>
               <td colSpan={2} style={{ verticalAlign: 'top', border: 'none', padding: 0 }}>
-                <PerformaInvoiceContent
+                <ProformaInvoiceContent
                   data={quotationData}
                   shippingData={shippingData}
                   billingData={billingData}
