@@ -46,7 +46,7 @@ export function StandardConditionsOfSaleBody() {
           <strong>2.1</strong> Prices are exclusive of GST and other applicable taxes unless otherwise stated.
         </p>
         <p style={paraStyle}>
-          <strong>2.2</strong> The Seller reserves the right to revise prices prior to dispatch where there is a material increase in the cost of raw materials, freight, duties, taxes, exchange rates or other direct costs affecting performance of the contract.
+          <strong>2.2</strong> The Seller reserves the right to revise prices prior to dispatch where there is a material increase in the cost of raw materials, freight, duties, taxes, exchange rates or other direct costs affecting Proformance of the contract.
         </p>
       </div>
 
@@ -153,7 +153,7 @@ export function StandardConditionsOfSaleBody() {
       <div className="section" style={sectionStyle}>
         <div className="section-title" style={titleStyle}>13. FORCE MAJEURE</div>
         <p style={paraStyle}>
-          The Seller shall not be liable for any delay or failure in performance caused by events beyond its reasonable control, including acts of God, natural disasters, war, governmental actions, labour disputes, transportation disruptions, shortage of materials or utility failures. The affected party shall promptly notify the other party of the Force Majeure event and use reasonable efforts to mitigate its effects.
+          The Seller shall not be liable for any delay or failure in Proformance caused by events beyond its reasonable control, including acts of God, natural disasters, war, governmental actions, labour disputes, transportation disruptions, shortage of materials or utility failures. The affected party shall promptly notify the other party of the Force Majeure event and use reasonable efforts to mitigate its effects.
         </p>
       </div>
 

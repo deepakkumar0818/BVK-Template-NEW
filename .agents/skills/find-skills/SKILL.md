@@ -58,7 +58,7 @@ npx skills find [query] [--owner <owner>]
 
 For example:
 
-- User asks "how do I make my React app faster?" → `npx skills find react performance`
+- User asks "how do I make my React app faster?" → `npx skills find react Proformance`
 - User asks "can you help me with PR reviews?" → `npx skills find pr review`
 - User asks "I need to create a changelog" → `npx skills find changelog`
 
@@ -83,7 +83,7 @@ Example response:
 
 ```
 I found a skill that might help! The "react-best-practices" skill provides
-React and Next.js performance optimization guidelines from Vercel Engineering.
+React and Next.js Proformance optimization guidelines from Vercel Engineering.
 (185K installs)
 
 To install it:

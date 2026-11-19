@@ -150,7 +150,7 @@ export default function QuotationContent({ data, shippingData, billingData, rawQ
         <div className="section">
           <div className="section-title">6. CLAIMS:</div>
           <p><strong>6.1.</strong> Buyer is not entitled to claims for repairs/alterations without company&apos;s written consent, or for defects arising from normal wear and tear or accident.</p>
-          <p><strong>6.2.</strong> Company&apos;s liability is limited to the ex-factory price of the goods; not liable for consequential or indirect loss or damage. No warranty for performance. Complaints not accepted after 6 months from invoice date. Any liability ceases after 12 months.</p>
+          <p><strong>6.2.</strong> Company&apos;s liability is limited to the ex-factory price of the goods; not liable for consequential or indirect loss or damage. No warranty for Proformance. Complaints not accepted after 6 months from invoice date. Any liability ceases after 12 months.</p>
           <p><strong>6.3.</strong> Company may rescind the contract or suspend deliveries under specific circumstances:</p>
           <p><strong>6.3.1.</strong> Any sum due from the Buyer to the Company is unpaid.</p>
           <p><strong>6.3.2.</strong> The Buyer is in breach of any contract provision.</p>

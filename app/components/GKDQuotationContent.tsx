@@ -275,7 +275,7 @@ export default function GKDQuotationContent({ data, shippingData, billingData, r
 
                 {/* PROFORMA INVOICE Title */}
                 <div style={{ textAlign: 'center', fontSize: '18px', fontWeight: 'bold', marginBottom: '20px', textTransform: 'uppercase' }}>
-                  PERFORMA INVOICE
+                  Proforma INVOICE
                 </div>
 
                 {/* GST No. and Ref. No. */}

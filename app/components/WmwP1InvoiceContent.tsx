@@ -51,7 +51,7 @@ export default function WmwP1InvoiceContent({
       {/* 15mm top spacer — outer wrapper so `.seamless` class'
        * `padding: 0 !important` doesn't wipe it out. */}
       <div style={{ paddingTop: '15mm' }}>
-      <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
+      <div className="Proforma-invoice-content-section Proforma-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <WmwP1GoodsTable
           data={data}
           rawQuotationData={rawQuotationData}
@@ -352,7 +352,7 @@ export default function WmwP1InvoiceContent({
         <div className="section" style={{ marginBottom: '16px' }}>
           <div className="section-title" style={{ textTransform: 'uppercase', marginBottom: '8px' }}>6. CLAIMS</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.1.</strong> The Buyer shall not be entitled to any claim in respect of any repairs of alterations to goods undertaken by the Buyer without the prior specific written consent of the Company nor in respect of any defect arising by reason of normal wear and tear or damage due to misuse/accident.</p>
-          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as performance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
+          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as Proformance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.3.</strong> Without prejudice to any other rights which it may have against the Buyers, the company may rescind the contract, in whole or in part, or suspend deliveries under it or of any other goods in any of the following circumstances:</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.1.</strong> If any sum is due from the Buyer to the Company under the contract (or of any other account) but it is unpaid.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.2.</strong> If the Buyer is in breach of any provision of the contract.</p>

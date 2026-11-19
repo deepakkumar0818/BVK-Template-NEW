@@ -12,12 +12,6 @@ import {
   resolveCountryOfFinalDestination,
   resolveTransportDisplayLine,
 } from '@/lib/quotation-utils'
-import {
-  filterNonZeroWmwChargeRows,
-  quotationScalarFieldPresent,
-  resolveWmwChargeTotals,
-  WMW_STANDARD_CHARGE_NAMES,
-} from '@/lib/wmw-subform-mapping'
 import { groupChunkRowsByProductFormQuality } from '@/lib/goods-meta-grouping'
 import {
   GOODS_DESC_GRID_TEMPLATE_COLUMNS_WMW_BRANDED,
@@ -47,7 +41,11 @@ const bdItemGrid: CSSProperties = {
 
 const bdTitleRow: CSSProperties = {
   ...bdSides,
-  borderTop: 'none',
+  // The goods table itself now has `borderTop: 'none'` (avoids doubling
+  // with headerNode's own bottom border, matching SaintGoodsTable.tsx) —
+  // so the title row's OWN top border is what draws the table's visible
+  // top edge now, same as Saint's title row using the plain `bd` style.
+  borderTop: '1px solid #000',
   borderBottom: '1px solid #000',
 }
 
@@ -129,7 +127,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
   const currency = data.currency || rawQuotationData?.Currency || 'USD'
   const currencySymbol = currency
 
-  const grossWeight = rawQuotationData?.Gross_Weight || rawQuotationData?.Total_Gross_Weight
+  const exportRemarksValue = String(rawQuotationData?.Export_Remarks ?? '').trim()
 
   const toRowArray = (v: unknown): any[] => {
     if (v == null) return []
@@ -204,30 +202,6 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
 
   const subformTotalSaleValue = parseFloat(activeSubform?.Total_Sale_Value || '0') || 0
   const subformCostBeforeTax = parseFloat(activeSubform?.Cost_Before_Tax || '0') || 0
-
-  const transaction = parseFloat(rawQuotationData?.Transaction_Charges || '0') || 0
-
-  const chargeTotalsResolved = resolveWmwChargeTotals(rawQuotationData)
-  const discountRowLabel = chargeTotalsResolved.discountLabel
-  const discountChargeAmt = chargeTotalsResolved.discountTotal
-  const freightChargeAmt = chargeTotalsResolved.freightTotal
-  const packingChargeAmt = chargeTotalsResolved.packingTotal
-  const seamChargeAmt = chargeTotalsResolved.seamTotal
-  const otherChargesAmt = quotationScalarFieldPresent(rawQuotationData?.Other_Charges)
-    ? parseFloat(String(rawQuotationData?.Other_Charges).replace(/,/g, '').trim()) || 0
-    : 0
-  const typeOfOtherCharges = String(rawQuotationData?.Type_of_Other_Charges ?? '').trim()
-  const otherChargesLabel = typeOfOtherCharges ? `Other Charges (${typeOfOtherCharges})` : 'Other Charges'
-  const discountDeduct = Math.max(0, discountChargeAmt)
-  const chargesSum = freightChargeAmt + packingChargeAmt + seamChargeAmt + otherChargesAmt - discountDeduct
-
-  const perfomainvoiceChargeRows: readonly [string, number][] = filterNonZeroWmwChargeRows([
-    [discountRowLabel, discountChargeAmt],
-    [WMW_STANDARD_CHARGE_NAMES.FREIGHT, freightChargeAmt],
-    [WMW_STANDARD_CHARGE_NAMES.PACKING, packingChargeAmt],
-    [WMW_STANDARD_CHARGE_NAMES.SEAM, seamChargeAmt],
-    [otherChargesLabel, otherChargesAmt],
-  ])
 
   const countryOfDestination = resolveCountryOfFinalDestination(
     rawQuotationData as Record<string, unknown> | null | undefined,
@@ -468,6 +442,28 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
 
   const lineSum = displayLineItems.reduce((s, it) => s + (it.amount || 0), 0)
 
+  // Net Weight (Kg.) column — dynamic: only shown (same two-sub-column
+  // style as AdhunikGoodsTable.tsx, Per Pc. / Total) when at least one
+  // line actually has a non-zero net weight value. `perPc`/`totalWeight`
+  // are already computed per line above; this just decides whether to
+  // render them.
+  const hasNetWeightData = displayLineItems.some(
+    (it) => (it.perPc || 0) > 0 || (it.totalWeight || 0) > 0
+  )
+  // Full-width tail rows (Transport / Note / Amount Chargeable) span a
+  // fixed number of the table's physical columns — bump that span by 2
+  // when the Net Weight columns are present so they still cover the
+  // full row width.
+  const wideColSpan = (base: number) => base + (hasNetWeightData ? 2 : 0)
+  // Extra empty cells for the 2 Net Weight columns — reused across every
+  // tail row below that otherwise assumes a 6-physical-column table.
+  const netWeightFillerCells = hasNetWeightData ? (
+    <>
+      <td style={{ ...bdSides, padding: '6px' }} />
+      <td style={{ ...bdSides, padding: '6px' }} />
+    </>
+  ) : null
+
   const baseAmount =
     subformTotalSaleValue > 0
       ? subformTotalSaleValue
@@ -476,6 +472,54 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
         : lineSum > 0
           ? lineSum
           : data.totalAmount
+
+  // Four Zoho-driven charge rows — same model as SaintGoodsTable.tsx
+  // (client rule, matches Adhunik / Bashundhara / Everite too). Each row
+  // is independently toggle-gated. Export Discount is a PERCENTAGE of the
+  // line-item total and shown in red; the other three are flat amounts.
+  const isTruthyToggle = (v: unknown): boolean =>
+    v === true || (typeof v === 'string' && v.trim().toLowerCase() === 'true')
+  const parseFlatAmt = (raw: unknown): number => {
+    const n = parseFloat(String(raw ?? '').replace(/,/g, '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+
+  const exportDiscountEnabled = isTruthyToggle(rawQuotationData?.Export_Discount)
+  const exportDiscountPct = exportDiscountEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Discount_Value)
+    : 0
+  const exportDiscountAmt = exportDiscountEnabled
+    ? lineSum * (exportDiscountPct / 100)
+    : 0
+  const exportDiscountLabel = String(
+    rawQuotationData?.Export_Discount_Description ?? ''
+  ).trim() || 'Discount'
+
+  const transactionChargeEnabled = isTruthyToggle(rawQuotationData?.Transaction_changes)
+  const transactionChargeAmt = transactionChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Transaction_changes_Value)
+    : 0
+  const transactionChargeLabel = String(
+    rawQuotationData?.Transaction_changes_Descriptions ?? ''
+  ).trim() || 'Transaction Charges'
+
+  const miscChargeEnabled = isTruthyToggle(rawQuotationData?.Miscellaneous_Charges)
+  const miscChargeAmt = miscChargeEnabled
+    ? parseFlatAmt(rawQuotationData?.Miscellaneous_Charges_Value)
+    : 0
+  const miscChargeLabel = (
+    String(rawQuotationData?.Miscellaneous_Charges_Description1 ?? '').trim() ||
+    String(rawQuotationData?.Miscellaneous_Charges_Description ?? '').trim() ||
+    'Miscellaneous Charges'
+  )
+
+  const exportPackingEnabled = isTruthyToggle(rawQuotationData?.Export_Packing)
+  const exportPackingAmt = exportPackingEnabled
+    ? parseFlatAmt(rawQuotationData?.Export_Packing_Value)
+    : 0
+  const exportPackingLabel = String(
+    rawQuotationData?.Export_Packing_Description ?? ''
+  ).trim() || 'Export Packing'
 
   const displayGrandTotal = parseOverallGrandTotalInclAccessories(
     rawQuotationData as Record<string, unknown> | null | undefined
@@ -496,49 +540,117 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
         return (
           <div
             key={pageIdx}
-            className={`quotation-goods-pages-segment ${!isLastChunk ? 'quotation-goods-pages-break' : ''}`}
-            style={{ pageBreakInside: 'avoid', marginTop: pageIdx > 0 ? '-1px' : '0' }}
+            className={`quotation-goods-pages-segment perfomainvoice-nonlast-fill ${!isLastChunk ? 'quotation-goods-pages-break' : ''}`}
+            style={{
+              pageBreakInside: 'avoid',
+              marginTop: pageIdx > 0 ? '-1px' : '0',
+              // ALWAYS stretch segment to fill the tbody's per-page area
+              // (both last and non-last chunks) so the goods table's
+              // bottom border always reaches the printable-area bottom —
+              // same technique as SaintGoodsTable.tsx (see
+              // `.perfomainvoice-nonlast-fill` rules in globals.css).
+              minHeight: 'calc(100vh - 22mm)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
           >
-            <div className="quotation-seamless-stack">
+            <div
+              className="quotation-seamless-stack"
+              style={{ display: 'flex', flexDirection: 'column', flex: 1 }}
+            >
               {headerNode}
-              
+
               <table
                 className="goods-description-table quotation-stack-table perfomainvoice-goods-table"
                 style={{
                   width: '100%',
                   borderCollapse: 'collapse',
                   border: '1px solid #000',
+                  // Remove top border — headerNode already draws its own
+                  // bottom border, so both stacked 1px borders were adding
+                  // up to a doubled 2px seam line (same fix as Saint).
+                  borderTop: 'none',
                   marginTop: 0,
                   tableLayout: 'fixed',
                   fontSize: '10px',
+                  flex: 1,
+                  height: '100%',
                 }}
               >
                 <colgroup>
-                  <col style={{ width: '20%' }} />
-                  <col style={{ width: '32%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '14%' }} />
+                  {hasNetWeightData ? (
+                    <>
+                      <col style={{ width: '18%' }} />
+                      <col style={{ width: '28%' }} />
+                      <col style={{ width: '9%' }} />
+                      <col style={{ width: '6%' }} />
+                      <col style={{ width: '6%' }} />
+                      <col style={{ width: '11%' }} />
+                      <col style={{ width: '11%' }} />
+                      <col style={{ width: '11%' }} />
+                    </>
+                  ) : (
+                    <>
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '30%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '13%' }} />
+                    </>
+                  )}
                 </colgroup>
                 <tbody>
-                  <tr className="perfomainvoice-goods-title-row">
-                    <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
-                      Description of Goods
-                    </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
-                      HSN Code
-                    </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Quantiy<br />UOM
-                    </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
-                    </td>
-                    <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                      Amount<br />{currencySymbol}
-                    </td>
-                  </tr>
+                  {hasNetWeightData ? (
+                    <>
+                      <tr className="perfomainvoice-goods-title-row">
+                        <td colSpan={2} rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
+                          Description of Goods
+                        </td>
+                        <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                          HSN Code
+                        </td>
+                        <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}>
+                          Net Weight (Kg.)
+                        </td>
+                        <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                          Quantiy<br />UOM
+                        </td>
+                        <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                          Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                        </td>
+                        <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                          Amount<br />{currencySymbol}
+                        </td>
+                      </tr>
+                      <tr className="perfomainvoice-goods-title-row-2">
+                        <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '9px' }}>
+                          Per Pc.
+                        </td>
+                        <td style={{ ...bdTitleRow, padding: '4px', textAlign: 'center', fontWeight: 'bold', fontSize: '9px' }}>
+                          Total
+                        </td>
+                      </tr>
+                    </>
+                  ) : (
+                    <tr className="perfomainvoice-goods-title-row">
+                      <td colSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '11px', verticalAlign: 'middle' }}>
+                        Description of Goods
+                      </td>
+                      <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', verticalAlign: 'middle' }}>
+                        HSN Code
+                      </td>
+                      <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                        Quantiy<br />UOM
+                      </td>
+                      <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                        Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                      </td>
+                      <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
+                        Amount<br />{currencySymbol}
+                      </td>
+                    </tr>
+                  )}
 
                   {groupChunkRowsByProductFormQuality(chunk).map((groupRows, groupIdx) => {
                     const head = groupRows[0]
@@ -559,6 +671,12 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                             </div>
                           </td>
                           <td style={{ ...bdProductMeta, padding: '6px 4px', verticalAlign: 'top' }} />
+                          {hasNetWeightData ? (
+                            <>
+                              <td style={rightMergedEmpty} />
+                              <td style={rightMergedEmpty} />
+                            </>
+                          ) : null}
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
                           <td style={rightMergedEmpty} />
@@ -574,13 +692,19 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                             </div>
                           </td>
                           <td style={{ ...bdItemGrid, padding: '6px 4px', verticalAlign: 'middle' }} />
+                          {hasNetWeightData ? (
+                            <>
+                              <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                              <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
+                            </>
+                          ) : null}
                           <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
                           <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
                           <td style={{ ...bdItemGrid, padding: '6px', verticalAlign: 'middle' }} />
                         </tr>
                         {groupRows.map((row, rowIdx) => (
                           <tr key={`perfomainvoice-line-${pageIdx}-${groupIdx}-${rowIdx}`} className="perfomainvoice-item-grid-row">
-                            <td colSpan={2} style={{ ...bdItemGrid, padding: '6px 10px', verticalAlign: 'middle' }}>
+                            <td colSpan={2} style={{ ...bdItemGrid, padding: '23px 10px', verticalAlign: 'middle' }}>
                               <div style={{ ...descGrid, alignItems: 'start' }}>
                                 <span style={{ fontWeight: 'bold', textDecoration: 'underline', ...goodsDescGridValueSpan }}>{row.item}</span>
                                 <span style={{ ...goodsDescGridValueSpan, whiteSpace: 'nowrap' }}>{row.mesh}</span>
@@ -589,19 +713,29 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                                 <span style={goodsDescGridValueSpan}>{row.sqmArea}</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
+                            <td style={{ ...bdItemGrid, padding: '23px 4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold', wordBreak: 'break-word' }}>
                               {row.hsnCode || ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            {hasNetWeightData ? (
+                              <>
+                                <td style={{ ...bdItemGrid, padding: '23px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+                                  {row.perPc || ''}
+                                </td>
+                                <td style={{ ...bdItemGrid, padding: '23px 4px', textAlign: 'center', verticalAlign: 'middle' }}>
+                                  {row.totalWeight || ''}
+                                </td>
+                              </>
+                            ) : null}
+                            <td style={{ ...bdItemGrid, padding: '23px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                                 <span>{formatPiecesInteger(row.quantity)}</span>
                                 <span>Pcs</span>
                               </div>
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '23px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
                               {Number.isFinite(row.rate) ? formatCurrency(row.rate, '') : ''}
                             </td>
-                            <td style={{ ...bdItemGrid, padding: '6px', textAlign: 'right', verticalAlign: 'middle' }}>
+                            <td style={{ ...bdItemGrid, padding: '23px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
                               {formatCurrency(row.amount, '')}
                             </td>
                           </tr>
@@ -610,39 +744,113 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                     )
                   })}
 
+                  {/* Non-last chunk: dynamic fill row so the vertical
+                   * column borders keep going to the bottom of the
+                   * printable area, matching SaintGoodsTable.tsx's
+                   * `.saint-goods-fill-row` technique (see
+                   * `.perfomainvoice-nonlast-fill` rules in globals.css). */}
+                  {!isLastChunk && (
+                    <tr className="perfomainvoice-goods-fill-row">
+                      <td style={bdSides} />
+                      <td style={bdSides} />
+                      {hasNetWeightData ? (
+                        <>
+                          <td style={bdSides} />
+                          <td style={bdSides} />
+                        </>
+                      ) : null}
+                      <td style={bdSides} />
+                      <td style={bdSides} />
+                      <td style={bdSides} />
+                      <td style={bdSides} />
+                    </tr>
+                  )}
+
                   {isLastChunk && (
                     <>
-                      <tr aria-hidden className="perfomainvoice-goods-spacer">
-                        <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
-                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
-                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
-                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
-                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none', padding: '16px 0', lineHeight: 0, fontSize: 0 }} />
+                      {/* Dynamic pre-tail filler — grows via a `height: 100%`
+                       * chain (see `.perfomainvoice-tail-fill-row` in
+                       * globals.css), same technique as Saint's. */}
+                      <tr aria-hidden className="perfomainvoice-tail-fill-row">
+                        <td colSpan={2} style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                        {hasNetWeightData ? (
+                          <>
+                            <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                            <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                          </>
+                        ) : null}
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
+                        <td style={{ ...bdSides, borderTop: 'none', borderBottom: 'none' }} />
                       </tr>
 
-                      {perfomainvoiceChargeRows.map(([chargeLabel, chargeAmt], chargeIdx) => {
-                        const isDiscountRow = chargeLabel === discountRowLabel
-                        const discountColor = isDiscountRow ? { color: '#c00000' } : null
-                        return (
-                          <tr key={`perfomainvoice-charge-${chargeIdx}`}>
-                            <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', ...discountColor }}>
-                              {chargeLabel}
-                            </td>
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px' }} />
-                            <td style={{ ...bdSides, padding: '6px', textAlign: 'right', ...discountColor }}>
-                              {formatCurrency(chargeAmt, '')}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {/* Export Discount (red) — % of line-item total, informational only (doesn't alter displayGrandTotal). */}
+                      {exportDiscountEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top', color: '#c00000' }}>
+                            {exportDiscountLabel}
+                          </td>
+                          {netWeightFillerCells}
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right', color: '#c00000' }}>
+                            {formatCurrency(exportDiscountAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {transactionChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {transactionChargeLabel}
+                          </td>
+                          {netWeightFillerCells}
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
+                            {formatCurrency(transactionChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {miscChargeEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {miscChargeLabel}
+                          </td>
+                          {netWeightFillerCells}
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
+                            {formatCurrency(miscChargeAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
+
+                      {exportPackingEnabled ? (
+                        <tr>
+                          <td colSpan={2} style={{ ...bdSides, padding: '6px 10px', verticalAlign: 'top' }}>
+                            {exportPackingLabel}
+                          </td>
+                          {netWeightFillerCells}
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px' }} />
+                          <td style={{ ...bdSides, padding: '6px', textAlign: 'right' }}>
+                            {formatCurrency(exportPackingAmt, '')}
+                          </td>
+                        </tr>
+                      ) : null}
 
                       <tr>
                         <td colSpan={2} style={{ ...bdSides, padding: '12px 10px 4px 10px', verticalAlign: 'top', fontWeight: 'bold' }}>
-                          Gross Weight (kg.) :{' '}
-                          {grossWeight ? `${grossWeight} Kg. approx` : ''}
+                          {exportRemarksValue}
                         </td>
+                        {netWeightFillerCells}
                         <td style={{ ...bdSides, padding: '6px' }} />
                         <td style={{ ...bdSides, padding: '6px' }} />
                         <td style={{ ...bdSides, padding: '6px' }} />
@@ -650,17 +858,17 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                       </tr>
 
                       <tr>
-                        <td colSpan={6} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
+                        <td colSpan={wideColSpan(6)} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>Transport</td>
                       </tr>
 
                       <tr>
-                        <td colSpan={6} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+                        <td colSpan={wideColSpan(6)} style={{ ...bd, padding: '4px 10px', textAlign: 'center', fontWeight: 'bold' }}>
                           {transportSummaryLine}
                         </td>
                       </tr>
 
                       <tr>
-                        <td colSpan={4} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top' }}>
+                        <td colSpan={wideColSpan(4)} style={{ ...bd, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top' }}>
                           <span>
                             Note : If the total order value is less than {currencySymbol} 2500, transaction fee of {currencySymbol} 100 per invoice
                             shall be charged extra
@@ -678,7 +886,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                         <td style={{ ...bd, padding: '4px 8px', fontSize: '10px', verticalAlign: 'top', width: '14%' }}>
                           <span style={{ fontWeight: 'bold', display: 'block', lineHeight: 1.2 }}>Amount Chargeable<br />(In words) :</span>
                         </td>
-                        <td colSpan={3} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
+                        <td colSpan={wideColSpan(3)} style={{ ...bd, padding: '4px 8px', fontWeight: 'bold', verticalAlign: 'middle', fontSize: '11px', width: '58%' }}>
                           {amountChargeableInWords}
                         </td>
                         <td style={{ ...bd, padding: '4px 8px', textAlign: 'right', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '11px', width: '10%' }}>

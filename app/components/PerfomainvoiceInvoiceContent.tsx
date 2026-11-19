@@ -5,10 +5,10 @@ import type { QuotationData } from '@/lib/types'
 import { ourBankDetailsBlockStyle, quotationRichText } from '@/lib/quotation-rich-text'
 import BillingConsigneeHeaderFields from './BillingConsigneeHeaderFields'
 import {
+  formatDate,
   resolveCountryOfFinalDestination,
   resolveDispatchExWorksDisplay,
   resolveOtherReferenceDisplay,
-  resolveQuotationValidity,
 } from '@/lib/quotation-utils'
 import PerfomainvoiceGoodsTable from './PerfomainvoiceGoodsTable'
 
@@ -25,10 +25,34 @@ export default function PerfomainvoiceInvoiceContent({
   billingData,
   rawQuotationData,
 }: PerfomainvoiceInvoiceContentProps) {
-  const quotationNumber = data.quotationNumber || rawQuotationData?.Name || ''
-  const quotationDate = data.date || rawQuotationData?.Created_Date_and_time || ''
-  const buyerEnquiryNo = data.buyerEnquiryNo || data.customerReference || rawQuotationData?.customer_Reference || ''
-  const buyerEnquiryDate = data.customerReferenceDate || rawQuotationData?.Customer_Reference_Date || ''
+  // PI No. — the first non-empty, non-"Closed" `PI_no` found on any line
+  // item's row across the families this template can render. All of a
+  // record's line items carry the same PI_no, so the first match wins.
+  // WI families carry it on their `_3_0` row; WMW families carry it on
+  // `_4_0` instead (confirmed against record 238786000009294080 — its
+  // `Category_1_MM_Database_WMW_3_0` rows have no `PI_no` field at all,
+  // the real value "PI-2026-1112-0001" is on `..._WMW_4_0`).
+  const piNumber = (() => {
+    const subformKeys = [
+      'Category_1_MM_Database_WI_3_0',
+      'Category_2_MM_Database_WI_3_0',
+      'Category_1_MM_Database_WMW_4_0',
+      'Category_2_MM_Database_WMW_4_0',
+      'Category_1_MM_Database_WMW_3_0',
+      'Category_2_MM_Database_WMW_3_0',
+      'Product_Fitments3_0',
+    ]
+    for (const key of subformKeys) {
+      const rows = rawQuotationData?.[key]
+      if (!Array.isArray(rows)) continue
+      for (const row of rows) {
+        const piNo = String(row?.PI_no ?? '').trim()
+        if (piNo && piNo.toLowerCase() !== 'closed') return piNo
+      }
+    }
+    return ''
+  })()
+  const buyerEnquiryDate = data.customerReferenceDate || formatDate(rawQuotationData?.Customer_Reference_Date) || ''
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const countryOfOrigin = 'India'
@@ -51,7 +75,11 @@ export default function PerfomainvoiceInvoiceContent({
 
   return (
     <>
-      <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
+      {/* 15mm top spacer — matches SaintInvoiceContent.tsx's outer margin
+       * treatment. An OUTER wrapper so the seamless class' `padding: 0
+       * !important` doesn't wipe it out. */}
+      <div style={{ paddingTop: '15mm' }}>
+      <div className="Proforma-invoice-content-section Proforma-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <PerfomainvoiceGoodsTable
           data={data}
           rawQuotationData={rawQuotationData}
@@ -71,53 +99,65 @@ export default function PerfomainvoiceInvoiceContent({
               <tbody>
                 <tr>
                   <td colSpan={2} style={{ border: '1px solid #000', textAlign: 'center', fontSize: '15px', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-                    Performa Invoice
+                    Proforma Invoice
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>Exporter</div>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '6px' }}>
-                      <img
-                        src="/wmw-logo.svg"
-                        alt="WMW Logo"
-                        style={{ width: '160px', height: '62px', objectFit: 'contain', display: 'block' }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px', marginBottom: '3px' }}>WMW METAL FABRICS LIMITED</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
-                    <div style={{ textAlign: 'center', fontSize: '11px', marginBottom: '2px' }}>Tel : +911417105151</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', marginTop: '6px' }}>
-                      <span>info@wmwindia.com</span>
-                      <span>www.wmwindia.com</span>
-                    </div>
+                  <td style={{ width: '56%', verticalAlign: 'top', border: '1px solid #000', padding: '6px 8px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Exporter</div>
+                    {/* Side-by-side layout: logo LEFT, company text RIGHT
+                     * — matches the Saint template's Exporter cell exactly
+                     * (nested table keeps the two cells top-aligned, row
+                     * height driven by the taller of the two). */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} role="presentation">
+                      <tbody>
+                        <tr>
+                          <td style={{ width: '120px', verticalAlign: 'middle', padding: 0 }}>
+                            <img
+                              src="/wmw-logo.png"
+                              alt="WMW Logo"
+                              style={{ width: '110px', height: '66px', objectFit: 'contain', display: 'block' }}
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
+                          </td>
+                          <td style={{ verticalAlign: 'middle', padding: '0 0 0 8px' }}>
+                            <div style={{ fontWeight: 'bold', fontSize: '12px', lineHeight: 1.2 }}>WMW METAL FABRICS LIMITED</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>53, Industrial Area: Jhotwara, Jaipur 302012 India</div>
+                            <div style={{ fontSize: '10.5px', lineHeight: 1.25 }}>Tel : +911417105151</div>
+                            <div style={{ display: 'flex', gap: '14px', fontSize: '10px', marginTop: '2px' }}>
+                              <span>info@wmwindia.com</span>
+                              <span>www.wmwindia.com</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </td>
-                  <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
+                  <td style={{ width: '44%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Quotation No. &amp; Date</div>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>PI No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-                              <span>{quotationNumber}</span>
-                              <span>{quotationDate}</span>
+                              <span>{piNumber}</span>
+                              <span>{formatDate(rawQuotationData?.PO_Date)}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Buyer&apos;s Enquiry No. &amp; Date</div>
+                          <td style={{ borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Buyer&apos;s Order No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>{buyerEnquiryNo || 'Email'}</span>
+                              <span>{String(rawQuotationData?.PO_Number ?? '').trim()}</span>
                               <span style={{ fontWeight: 'bold' }}>{buyerEnquiryDate}</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
+                          <td style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top', minHeight: '32px' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Other Reference (s)</div>
                             <div>{otherReference}</div>
                           </td>
@@ -127,24 +167,24 @@ export default function PerfomainvoiceInvoiceContent({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
+                  <td style={{ width: '56%', verticalAlign: 'top', border: '1px solid #000', padding: '8px' }}>
                     <BillingConsigneeHeaderFields billingData={billingData} rawQuotationData={rawQuotationData} />
                   </td>
-                  <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
+                  <td style={{ width: '44%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ width: '50%', borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Origin of Goods</div>
                             <div>{countryOfOrigin}</div>
                           </td>
-                          <td style={{ width: '50%', border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ width: '50%', borderBottom: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Country of Final Destination</div>
                             <div>{countryOfDestination}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td colSpan={2} style={{ border: '1px solid #000', padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
+                          <td colSpan={2} style={{ padding: '2px 6px 4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Terms of Payment</div>
                             <div style={{ fontWeight: 'bold' }}>{termsOfPayment}</div>
                             {ourBankDetails ? (
@@ -157,7 +197,7 @@ export default function PerfomainvoiceInvoiceContent({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ width: '53%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
+                  <td style={{ width: '56%', verticalAlign: 'top', border: '1px solid #000', padding: 0 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', tableLayout: 'fixed' }}>
                       <colgroup>
                         <col style={{ width: '50%' }} />
@@ -165,21 +205,21 @@ export default function PerfomainvoiceInvoiceContent({
                       </colgroup>
                       <tbody>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Carriage by</div>
                             <div style={{ textDecoration: 'underline' }}>{modeOfDelivery}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderBottom: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Loading</div>
                             <div style={{ textDecoration: 'underline' }}>{portOfLoading}</div>
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ borderRight: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Port of Discharge</div>
                             <div style={{ textDecoration: 'underline' }}>{portOfDischarge}</div>
                           </td>
-                          <td style={{ border: '1px solid #000', padding: '4px 6px', verticalAlign: 'top' }}>
+                          <td style={{ padding: '4px 6px', verticalAlign: 'top' }}>
                             <div style={{ fontWeight: 'bold' }}>Final Destination</div>
                             <div style={{ textDecoration: 'underline' }}>{finalDestination}</div>
                           </td>
@@ -187,7 +227,7 @@ export default function PerfomainvoiceInvoiceContent({
                       </tbody>
                     </table>
                   </td>
-                  <td style={{ width: '47%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 6px', fontSize: '11px' }}>
+                  <td style={{ width: '44%', verticalAlign: 'top', border: '1px solid #000', padding: '4px 6px', fontSize: '11px' }}>
                     <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '4px' }}>Dispatch Ex-Works</div>
                     <div>{dispatchExWorks}</div>
                   </td>
@@ -206,11 +246,6 @@ export default function PerfomainvoiceInvoiceContent({
                     <table className="quotation-stack-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                       <tbody>
                         <tr>
-                          <td colSpan={2} style={{ width: '100%', border: '1px solid #000', padding: '4px 6px' }}>
-                            <span style={{ fontWeight: 'bold' }}>Offer Validity :</span> {resolveQuotationValidity(rawQuotationData as Record<string, unknown> | undefined)}
-                          </td>
-                        </tr>
-                        <tr>
                           <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>
                             Remarks
                           </td>
@@ -219,13 +254,9 @@ export default function PerfomainvoiceInvoiceContent({
                           </td>
                         </tr>
                         <tr>
-                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4' }}>
-                            1. Please mention this quotation number on your PO and all communications<br />
-                            2. In case of extreme currency volatility prices maybe revised at anytime.<br />
-                            3. This quotation is valid only for the products &amp; quantity mentioned.<br />
-                            4. Packing : Export worthy packing<br />
-                            5. ISPM 15 (Phytosanitory) Certification for Packing Material - provided on request<br />
-                            6. All Foreign Bank charges on Purchaser Account.
+                          <td rowSpan={2} style={{ border: '1px solid #000', padding: '6px 8px', verticalAlign: 'top', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                            {/* Remarks: value comes from Zoho `PI_Remarks` verbatim, no fallback. */}
+                            {String(rawQuotationData?.PI_Remarks ?? '').trim()}
                           </td>
                           <td style={{ border: '1px solid #000', padding: '16px 8px', textAlign: 'center', verticalAlign: 'middle', height: '60px' }}>
                             This is an electronically generated document,<br />doesn&apos;t require a signature.
@@ -255,6 +286,7 @@ export default function PerfomainvoiceInvoiceContent({
             </table>
           }
         />
+      </div>
       </div>
 
       <div className="conditions-for-print conditions-doc" style={{ border: '1px solid #000', padding: '16px', marginTop: '24px' }}>
@@ -298,7 +330,7 @@ export default function PerfomainvoiceInvoiceContent({
         <div className="section" style={{ marginBottom: '16px' }}>
           <div className="section-title" style={{ fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>6. CLAIMS</div>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.1.</strong> The Buyer shall not be entitled to any claim in respect of any repairs of alterations to goods undertaken by the Buyer without the prior specific written consent of the Company nor in respect of any defect arising by reason of normal wear and tear or damage due to misuse/accident.</p>
-          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as performance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
+          <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.2.</strong> The company&apos;s liability in relation to any claim (whether for breach of contract of otherwise) shall neither, in any circumstances, exceed the ex-factory price of the goods, nor shall the Company be liable for any consequential or indirect loss or damage. No warranty is given as Proformance running time etc. Consideration of claim/complaints will only be undertaken provided the whole piece in question is made available to us for examination. Complaints regarding faulty supply cannot be accepted after 6 months from the date of invoice. Any complaint cannot be raised if the product is not used within 12 months of invoice date. Any liability thereafter lies with the buyer.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6 }}><strong>6.3.</strong> Without prejudice to any other rights which it may have against the Buyers, the company may rescind the contract, in whole or in part, or suspend deliveries under it or of any other goods in any of the following circumstances:</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.1.</strong> If any sum is due from the Buyer to the Company under the contract (or of any other account) but it is unpaid.</p>
           <p style={{ marginBottom: '8px', lineHeight: 1.6, marginLeft: '20px' }}><strong>6.3.2.</strong> If the Buyer is in breach of any provision of the contract.</p>

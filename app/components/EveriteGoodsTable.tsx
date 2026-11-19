@@ -146,9 +146,9 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
   // Zoho (matches Bashundhara / Adhunik). Row hides when field is empty.
   const exportRemarks = String(rawQuotationData?.Export_Remarks ?? '').trim()
 
-  const performanceWarrantyText = quotationMultilineField(rawQuotationData as Record<string, unknown> | undefined, 'Performance_Warrenty')
+  const ProformanceWarrantyText = quotationMultilineField(rawQuotationData as Record<string, unknown> | undefined, 'Proformance_Warrenty')
   const paymentScheduleText = quotationMultilineField(rawQuotationData as Record<string, unknown> | undefined, 'Payment_Schedule')
-  const showPerformanceWarranty = performanceWarrantyText.length > 0
+  const showProformanceWarranty = ProformanceWarrantyText.length > 0
   const showPaymentSchedule = paymentScheduleText.length > 0
 
   const toRowArray = (v: unknown): any[] => {
@@ -792,21 +792,21 @@ export default function EveriteGoodsTable({ data, rawQuotationData, shippingData
                         </tr>
                       ) : null}
 
-                      {(showPerformanceWarranty || showPaymentSchedule) && (
+                      {(showProformanceWarranty || showPaymentSchedule) && (
                         <tr>
                           <td colSpan={2} style={{ ...bdRowNoTop, padding: '6px 10px', fontSize: '9px', verticalAlign: 'top', lineHeight: 1.25 }}>
-                            {showPerformanceWarranty ? (
+                            {showProformanceWarranty ? (
                               <div
                                 style={{
                                   borderTop: '1px solid #000',
                                   paddingTop: '8px',
                                 }}
                               >
-                                <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Performance warranty :</div>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>{performanceWarrantyText}</div>
+                                <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Proformance warranty :</div>
+                                <div style={{ whiteSpace: 'pre-wrap' }}>{ProformanceWarrantyText}</div>
                               </div>
                             ) : null}
-                            {showPerformanceWarranty && showPaymentSchedule ? <div style={{ height: '6px' }} /> : null}
+                            {showProformanceWarranty && showPaymentSchedule ? <div style={{ height: '6px' }} /> : null}
                             {showPaymentSchedule ? (
                               <>
                                 <div style={{ fontWeight: 'bold', textDecoration: 'underline', marginBottom: '2px' }}>Payment Schedule :</div>

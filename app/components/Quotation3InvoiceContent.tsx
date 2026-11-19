@@ -59,7 +59,7 @@ export default function Quotation3InvoiceContent({
 
   return (
     <>
-      <div className="performa-invoice-content-section performa-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
+      <div className="Proforma-invoice-content-section Proforma-invoice-content-section--seamless" style={{ marginBottom: '8px' }}>
         <Quotation3GoodsTable
           data={data}
           rawQuotationData={rawQuotationData}
