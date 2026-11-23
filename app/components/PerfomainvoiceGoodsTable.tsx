@@ -304,19 +304,18 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
       width: productDetail.Width,
       sizeDisplay: size,
     })
-    // Quantity / Rate — Category 1 uses Qty × Selling_Price directly.
-    // Category 2's `Qty` is an SQM-scale figure, not the billed unit count:
-    // its real line total (Gross_Amount, confirmed against
-    // Total_Cost_After_Tax_Grand_Total on record 238786000009302060 — the
-    // two line Gross_Amounts sum to exactly that grand total) only
-    // reconciles as Pieces (2_0) × Selling_Price_UOM_Billing (3_0).
-    const quantity = isCategory2Selected
-      ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim() || '0')
-      : parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
-    const rateStr = isCategory2Selected
-      ? String(ext3?.Selling_Price_UOM_Billing ?? '').replace(/,/g, '')
-      : (item.Selling_Price?.replace(/,/g, '') || '')
-    const rate = rateStr ? (parseFloat(rateStr) || 0) : NaN
+    // Quantity / Rate — same formula as SaintGoodsTable.tsx, no Cat1/Cat2
+    // branch needed (confirmed against record 238786000009215040,
+    // Category 1 WMW: ext3.Total_UOM_Billing=2 × Selling_Price_UOM_Billing
+    // 448.0003/449.0004 = 896.00/898.00, summing to the record's Grand
+    // Total of 1794.00 exactly).
+    const quantity = parseFloat(
+      String(ext3?.Total_UOM_Billing ?? '').trim() || productDetail.Qty?.trim() || item.Qty?.trim() || '0'
+    )
+    const rateStr = String(ext3?.Selling_Price_UOM_Billing ?? item?.Selling_Price ?? '').replace(/,/g, '').trim()
+    const rate = rateStr ? (parseFloat(rateStr) || NaN) : NaN
+    /** UOM — same precedence as Saint: WMW 2_0 → WMW 3_0 → main WMW row. Replaces the previous hardcoded "Pcs". */
+    const uom = firstField([item, ext3, productDetail], 'UOM_Billing')
     const totalPriceRaw = productDetail.Total_Price
     const totalPriceParsed =
       totalPriceRaw !== undefined && totalPriceRaw !== null && String(totalPriceRaw).trim() !== ''
@@ -373,6 +372,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
       quantity,
       rate,
       amount,
+      uom,
       perPc,
       totalWeight
     }
@@ -385,7 +385,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
 
     const perPc = pickFitmentNetWeightPerPc(index)
     const totalWeight = perPc * quantity
-    
+
     return {
       item: index + 1,
       product: '',
@@ -399,6 +399,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
       quantity,
       rate,
       amount,
+      uom: '',
       perPc,
       totalWeight,
     }
@@ -421,6 +422,7 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
     quantity: f.quantity,
     rate: f.rate,
     amount: f.amount,
+    uom: '',
     perPc: f.perPc,
     totalWeight: f.totalWeight,
   }))
@@ -435,8 +437,8 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
   // If we only have 0 items and want to match screenshot exactly, inject dummy data
   if (displayLineItems.length === 0) {
     displayLineItems = [
-      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, perPc: 23.0, totalWeight: 138.0 },
-      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, perPc: 22.0, totalWeight: 66.0 }
+      { item: 1, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.728 x 3.020', sqmArea: '14.2786', quantity: 6, rate: 1070, amount: 6420, uom: 'Pcs', perPc: 23.0, totalWeight: 138.0 },
+      { item: 2, product: '', form: 'Endless Diagonal Seam', quality: 'AISI 316L', hsnCode: '7314', mesh: '40/ Inch', brand: 'Formx-040', size: '4.720 x 3.020', sqmArea: '14.2544', quantity: 3, rate: 1065, amount: 3195, uom: 'Pcs', perPc: 22.0, totalWeight: 66.0 }
     ]
   }
 
@@ -614,13 +616,13 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                           Net Weight (Kg.)
                         </td>
                         <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                          Quantiy<br />UOM
+                          Quantity / UOM
                         </td>
                         <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                          Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                          Rate<br />{currencySymbol} / UOM
                         </td>
                         <td rowSpan={2} style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                          Amount<br />{currencySymbol}
+                          Amount {currencySymbol}
                         </td>
                       </tr>
                       <tr className="perfomainvoice-goods-title-row-2">
@@ -641,13 +643,13 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                         HSN Code
                       </td>
                       <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                        Quantiy<br />UOM
+                        Quantity / UOM
                       </td>
                       <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                        Rate<br />{currencySymbol === 'USD' ? 'USD / UOM' : `${currencySymbol} / UOM`}
+                        Rate<br />{currencySymbol} / UOM
                       </td>
                       <td style={{ ...bdTitleRow, padding: '6px', textAlign: 'center', fontWeight: 'bold' }}>
-                        Amount<br />{currencySymbol}
+                        Amount {currencySymbol}
                       </td>
                     </tr>
                   )}
@@ -728,8 +730,8 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
                             ) : null}
                             <td style={{ ...bdItemGrid, padding: '23px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                                <span>{formatPiecesInteger(row.quantity)}</span>
-                                <span>Pcs</span>
+                                <span>{/^pcs?$/i.test(row.uom) ? formatPiecesInteger(row.quantity) : String(row.quantity ?? '').trim()}</span>
+                                {row.uom ? <span>{row.uom}</span> : null}
                               </div>
                             </td>
                             <td style={{ ...bdItemGrid, padding: '23px 10px', textAlign: 'right', verticalAlign: 'middle' }}>

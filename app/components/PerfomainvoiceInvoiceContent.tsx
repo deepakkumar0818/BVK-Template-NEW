@@ -52,7 +52,7 @@ export default function PerfomainvoiceInvoiceContent({
     }
     return ''
   })()
-  const buyerEnquiryDate = data.customerReferenceDate || formatDate(rawQuotationData?.Customer_Reference_Date) || ''
+  const buyerEnquiryDate = formatDate(rawQuotationData?.PO_Date)
   const otherReference = resolveOtherReferenceDisplay(rawQuotationData, '')
 
   const countryOfOrigin = 'India'
@@ -143,7 +143,7 @@ export default function PerfomainvoiceInvoiceContent({
                             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>PI No. &amp; Date</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                               <span>{piNumber}</span>
-                              <span>{formatDate(rawQuotationData?.PO_Date)}</span>
+                              <span>{formatDate(rawQuotationData?.PI_Date)}</span>
                             </div>
                           </td>
                         </tr>
