@@ -15,6 +15,7 @@ import {
   transformQuotationData,
   determineTemplateType,
   formatCurrency,
+  formatDate,
   formatGoodsTableAmountChargeableInWords,
   numberToWords,
   resolveCountryOfFinalDestination,
@@ -188,7 +189,7 @@ function buildAcceptanceOrderData(
   const quotationNumber = data.quotationNumber || raw?.Name || ''
   const quotationDate = data.date || raw?.Created_Date_and_time || ''
   const buyerOrderNo = String(raw?.PO_Number ?? '').trim()
-  const buyerOrderDate = data.customerReferenceDate || raw?.Customer_Reference_Date || ''
+  const buyerOrderDate = formatDate(raw?.PO_Date)
   const otherReferences = resolveOtherReferenceDisplay(raw, '')
 
   const countryOfOrigin = 'India'
@@ -322,15 +323,22 @@ function buildAcceptanceOrderData(
     })
     const areaDisplay = sqmArea ? `${sqmArea} Sqm` : ''
 
-    // Quantity — Category 1: unchanged (`productDetail.Qty` → `item.Qty`).
-    // Category 2: its main row has no Qty/Pieces field at all — the real
-    // billed piece count is on the 2_0 row's `Pieces` (its own `Qty` is an
-    // SQM-scale figure, not the unit count — confirmed against record
-    // 238786000009302060: Pieces 12/9 × Selling_Price_UOM_Billing 369/585
-    // = Gross_Amount 4428/5265, matching the quotation's grand total).
-    const quantity = isCat2Wmw
-      ? parseFloat(String(item.Pieces ?? '').replace(/,/g, '').trim()) || 0
-      : parseFloat(productDetail.Qty?.trim() || item.Qty?.trim() || '0')
+    // Quantity — same formula as SaintGoodsTable.tsx / PerfomainvoiceGoodsTable.tsx,
+    // no Cat1/Cat2 branch needed (confirmed against record 238786000009215040,
+    // Category 1 WMW: ext3.Total_UOM_Billing=2, matching the record's Grand
+    // Total when combined with Selling_Price_UOM_Billing below — the previous
+    // category-branched formula read productDetail.Qty, an SQM-scale figure,
+    // not the billed unit count). `ext4.Total_UOM_Billing` checked as a
+    // fallback same as the Rate field below — on Sales-Order-sourced
+    // Category 2 WMW data (record 238786000009357062) `_3_0` has no
+    // Total_UOM_Billing at all; it's on `_4_0` instead (12/9, matching
+    // `Pieces` on the `_2_0` row exactly).
+    const quantity = parseFloat(
+      String(ext3?.Total_UOM_Billing ?? ext4?.Total_UOM_Billing ?? '').trim() ||
+        productDetail.Qty?.trim() ||
+        item.Qty?.trim() ||
+        '0'
+    )
     const sellingPriceUomBilling = String(
       ext3?.Selling_Price_UOM_Billing ?? ext4?.Selling_Price_UOM_Billing ?? ''
     ).replace(/,/g, '').trim()
