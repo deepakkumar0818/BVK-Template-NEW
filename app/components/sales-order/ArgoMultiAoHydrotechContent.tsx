@@ -316,6 +316,35 @@ export default function ArgoMultiAoHydrotechContent({
           </div>
         ) : null}
 
+        {/* ── Delivery Schedule — printed right after Order_of_Acceptance_Remarks,
+            flowing normally on the same page (no forced page-break). Reuses
+            `data.deliverySchedule` (WI family only, already computed by
+            mapSlsOdsNo44). Hidden entirely when there's nothing to show. */}
+        {deliverySchedule.length > 0 ? (
+          <div style={{ marginTop: '12px', padding: '0 var(--mao-side-inset)' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+              Delivery Schedule:
+            </div>
+            {deliverySchedule.map((group) => (
+              <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                  {group.ref}. {group.brandSellingName || ' '}
+                </div>
+                <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
+                  {group.entries.map((entry, i) => (
+                    <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
+                      <strong>{entry.label}</strong> : {entry.value}
+                      {entry.count ? `, ${entry.count}` : ''}
+                      {entry.uom ? `, ${entry.uom}` : ''}
+                      {entry.delivery ? `, ${entry.delivery}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {/* Quality Harmonisation Number + Date block REMOVED per spec. */}
 
         {/* ── Bold sign-off lines ────────────────────────────── */}
@@ -327,43 +356,6 @@ export default function ArgoMultiAoHydrotechContent({
               </div>
             </td>
           </tr>
-          {/* ── Delivery Schedule — forced onto its own new printed page,
-              same as sls-ods-no-44's own Delivery Schedule page. Reuses
-              `data.deliverySchedule` (WI family only, already computed by
-              mapSlsOdsNo44) and the generic `.ods-delivery-schedule-page`
-              class directly (sales-order-doc.css) for the page-break — no
-              bordered outline box around the content (unlike sls-ods-no-44).
-              Since this row is still inside the same repeating-header
-              table, the BVK letterhead repeats onto this page too. Hidden
-              entirely when there's nothing to show. */}
-          {deliverySchedule.length > 0 ? (
-            <tr>
-              <td style={{ border: 'none', padding: 0, verticalAlign: 'top' }}>
-                <div className="ods-delivery-schedule-page" style={{ padding: '0 var(--mao-side-inset)' }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
-                    Order No. : {orderNo}&nbsp;&nbsp;&nbsp;Order Date : {date}&nbsp;&nbsp;&nbsp;Delivery Schedule:
-                  </div>
-                  {deliverySchedule.map((group) => (
-                    <div key={group.ref} style={{ marginBottom: '10px', paddingLeft: '10px' }}>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                        {group.ref}. {group.brandSellingName || ' '}
-                      </div>
-                      <ul style={{ marginTop: 0, marginBottom: 0, paddingLeft: '20px', listStyleType: 'disc' }}>
-                        {group.entries.map((entry, i) => (
-                          <li key={`${group.ref}-${i}`} style={{ marginBottom: '2px' }}>
-                            <strong>{entry.label}</strong> : {entry.value}
-                            {entry.count ? `, ${entry.count}` : ''}
-                            {entry.uom ? `, ${entry.uom}` : ''}
-                            {entry.delivery ? `, ${entry.delivery}` : ''}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </td>
-            </tr>
-          ) : null}
         </tbody>
         {/* Empty tfoot spacer — reserves 32mm at the bottom of every printed
             page so body content never flows under the fixed footer below. */}
