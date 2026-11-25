@@ -232,7 +232,7 @@ export default function SlsOdsNo44Content({ data }: { data: SlsOdsNo44Data }) {
               <th>Qty / UOM</th>
               {showDimensions ? null : <th>SQM</th>}
               <th>Price / UOM</th>
-              <th>Total Value in INR</th>
+              <th>Total Value {data.currency ? `in ${data.currency}` : ''}</th>
             </tr>
           </thead>
           <tbody>
