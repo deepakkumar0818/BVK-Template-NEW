@@ -225,7 +225,7 @@ export default function SlsOds44HydrotechContent({ data }: { data: SlsOdsNo44Dat
               <th>Qty / UOM</th>
               {showDimensions ? null : <th>SQM</th>}
               <th>Price / UOM</th>
-              <th>Total Value in INR</th>
+              <th>Total Value {data.currency ? `in ${data.currency}` : ''}</th>
             </tr>
           </thead>
           <tbody>
