@@ -236,16 +236,13 @@ export default function AcceptanceOrderContent({
             <td className="xao-signature-cell">
               {/* Quality Harmonisation Number + Date — stacked, above the signature block */}
               <div className="xao-qh-line">
-                <span className="xao-qh-label">Quality Harmonisation Number :</span>{' '}
-                <span>{data.qualityHarmonisationNumber || ' '}</span>
               </div>
               <div className="xao-qh-line">
                 <span className="xao-qh-label">Date :</span>{' '}
-                <span>{data.qualityHarmonisationDate || ' '}</span>
+                <span>{data.signatureDate || ' '}</span>
               </div>
               <div className="xao-signature-company">{data.signatureCompany}</div>
               <div className="xao-signature-spacer">&nbsp;</div>
-              <div className="xao-signature-date">{data.signatureDate}</div>
               <div className="xao-signature-note">{data.electronicNote}</div>
             </td>
           </tr>

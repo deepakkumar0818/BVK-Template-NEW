@@ -214,10 +214,39 @@ export default function PerfomainvoiceGoodsTable({ data, rawQuotationData, shipp
 
   const destLabel = finalDestination || portOfDischarge || 'Benapole Border'
   const transportMethod = modeOfDelivery || 'Road'
-  const transportSummaryLine = resolveTransportDisplayLine(
-    rawQuotationData as Record<string, unknown> | undefined,
-    `Total CPT Price upto ${destLabel} By ${transportMethod}`
-  )
+  // const transportSummaryLine = resolveTransportDisplayLine(
+  //   rawQuotationData as Record<string, unknown> | undefined,
+  //   `Total CPT Price upto ${destLabel} By ${transportMethod}`
+  // )
+  const transportSummaryLine = (() => {
+    const zohoTransport = String(rawQuotationData?.Transport ?? '').trim()
+    if (zohoTransport) return zohoTransport
+
+    // Strict formula, no fallbacks and no elision:
+    //   "Total <Delivery_Terms> Price upto <Port_of_Discharge> By <Mode_of_Delivery>"
+    // Delivery_Terms stores a long descriptive picklist value (e.g.
+    // "CIP+Insurance-Carriage, Insurance paid up to Transporter's Godown,
+    // Freight shown in invoice.") — only the short Incoterm code before the
+    // first "-"/"+" is wanted here (e.g. "CIP"). A value with no delimiter
+    // (e.g. "Ex Works") is kept as-is.
+    const deliveryTermsRaw = String(rawQuotationData?.Delivery_Terms ?? '').trim()
+    const deliveryTermsDelimiterIdx = (() => {
+      const idxs = [deliveryTermsRaw.indexOf('-'), deliveryTermsRaw.indexOf('+')].filter((i) => i >= 0)
+      return idxs.length ? Math.min(...idxs) : -1
+    })()
+    const deliveryTerms = (
+      deliveryTermsDelimiterIdx >= 0 ? deliveryTermsRaw.slice(0, deliveryTermsDelimiterIdx) : deliveryTermsRaw
+    )
+      .trim()
+      .toUpperCase()
+    const portOfDischarge = String(rawQuotationData?.Port_of_Discharge ?? '').trim()
+    const modeRaw = String(rawQuotationData?.Mode_of_Delivery ?? '').trim()
+    const modeOfDelivery = modeRaw
+      ? modeRaw.charAt(0).toUpperCase() + modeRaw.slice(1).toLowerCase()
+      : ''
+
+    return `Total ${deliveryTerms} Price upto ${portOfDischarge} By ${modeOfDelivery}`
+  })()
 
   const lineItemsFromZoho = rawLineItems.map((item, index) => {
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''

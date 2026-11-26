@@ -199,7 +199,6 @@ function buildAcceptanceOrderData(
   const portOfLoading = String(raw?.Port_of_Loading ?? '').trim()
   const portOfDischarge = String(raw?.Port_of_Discharge ?? '').trim()
   const finalDestination = String(raw?.Final_Destination ?? '').trim()
-  const termsOfDelivery = String(raw?.Delivery_Terms ?? '').trim().toUpperCase()
   const payment = data.termsOfPayment || raw?.Term_of_Payment || ''
   const ourBankDetails = quotationRichText(raw, 'Our_Bank_Details')
 
@@ -226,6 +225,22 @@ function buildAcceptanceOrderData(
     consigneeCountry,
   ].filter((line) => line.trim().length > 0)
 
+  // delivery term
+  const deliveryTermsRaw = String(rawQuotationData?.Delivery_Terms ?? '').trim()
+  const deliveryTermsDelimiterIdx = (() => {
+    const idxs = [deliveryTermsRaw.indexOf('-'), deliveryTermsRaw.indexOf('+')].filter((i) => i >= 0)
+    return idxs.length ? Math.min(...idxs) : -1
+  })()
+  const termsOfDelivery = (
+    deliveryTermsDelimiterIdx >= 0 ? deliveryTermsRaw.slice(0, deliveryTermsDelimiterIdx) : deliveryTermsRaw
+  )
+    .trim()
+    .toUpperCase()
+
+
+
+  ////////////////////////
+
   // ── Line items — same field mapping as AdhunikGoodsTable ──────────
   // Category 1 WMW vs Category 2 WMW — was hardcoded to Category 1 only;
   // a Category 2 WMW record (e.g. 238786000009302060, Template =
@@ -245,8 +260,8 @@ function buildAcceptanceOrderData(
     const itemRef = item.last_item_ref?.trim() || item.Last_item_ref?.trim() || ''
     const productDetail = itemRef
       ? rawProductDetails.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || rawProductDetails[index] || {}
+        (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+      ) || rawProductDetails[index] || {}
       : rawProductDetails[index] || {}
 
     const rows3Linked = toRowArray(
@@ -255,8 +270,8 @@ function buildAcceptanceOrderData(
     const ext3 =
       (itemRef
         ? rows3Linked.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+        )
         : undefined) || rows3Linked[index]
 
     // `_4_0` — on Quotation-sourced data `Selling_Price_UOM_Billing` lives
@@ -271,15 +286,15 @@ function buildAcceptanceOrderData(
     const ext4 =
       (itemRef
         ? rows4Linked.find(
-            (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
-          )
+          (x: any) => String(x?.last_item_ref ?? x?.Last_item_ref ?? '').trim() === itemRef
+        )
         : undefined) || rows4Linked[index]
 
     const cat2WmwMainRows = toRowArray(raw?.Category_2_MM_Database_WMW)
     const cat2ProductDetail = itemRef
       ? cat2WmwMainRows.find(
-          (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
-        ) || cat2WmwMainRows[index] || {}
+        (pd: any) => pd.last_item_ref?.trim() === itemRef || pd.Last_item_ref?.trim() === itemRef
+      ) || cat2WmwMainRows[index] || {}
       : cat2WmwMainRows[index] || {}
 
     // Blend_Category — Category 1 carries it on the 2_0 row (`item`);
@@ -335,9 +350,9 @@ function buildAcceptanceOrderData(
     // `Pieces` on the `_2_0` row exactly).
     const quantity = parseFloat(
       String(ext3?.Total_UOM_Billing ?? ext4?.Total_UOM_Billing ?? '').trim() ||
-        productDetail.Qty?.trim() ||
-        item.Qty?.trim() ||
-        '0'
+      productDetail.Qty?.trim() ||
+      item.Qty?.trim() ||
+      '0'
     )
     const sellingPriceUomBilling = String(
       ext3?.Selling_Price_UOM_Billing ?? ext4?.Selling_Price_UOM_Billing ?? ''
@@ -423,7 +438,7 @@ function buildAcceptanceOrderData(
   // "Total <Delivery_Terms> Price Up To <Port_of_Discharge> By <Mode_of_Delivery>"
   // — same literal-word / slot-value shape as the Transport line other
   // WMW templates build, just with "Up To" in place of "upto".
-  const totalLabel = ['Total', termsOfDelivery, 'Price Up To', portOfDischarge, 'By', carriageBy]
+  const totalLabel = ['Total', termsOfDelivery, 'Price upto', portOfDischarge, 'By', carriageBy]
     .filter(Boolean)
     .join(' ')
 
